@@ -1,0 +1,511 @@
+import React, { useEffect, useRef, useState } from 'react';
+import {
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+  Pressable,
+  StyleSheet,
+  Platform,
+} from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import {
+  RecordingPresets,
+  requestRecordingPermissionsAsync,
+  setAudioModeAsync,
+  useAudioRecorder,
+} from 'expo-audio';
+import * as Speech from 'expo-speech';
+import Screen from '../components/Screen';
+import Header from '../components/Header';
+import { colors, shadows } from '../theme/colors';
+import { getNavoraAssistantResponse } from '../services/navoraAssistant';
+import { useApp } from '../context/AppContext';
+
+const suggestions = [
+  'Como chegar ao hospital',
+  'Estou no SUS',
+  'Quero visitar alguem',
+  'Estou perdido',
+  'Banheiro mais proximo',
+  'Rota acessivel',
+  'Ativar modo noturno',
+  'Solicitar medico',
+  'SOS Emergencia',
+];
+
+const initialMessages = [
+  {
+    id: 'assistant-welcome',
+    role: 'assistant',
+    text: 'Ola, sou a IA Navora. Fale ou escreva como posso ajudar.',
+  },
+];
+
+export default function AssistantScreen({ navigate, goBack, routeParams = {}, userProfile }) {
+  const { toggleTheme } = useApp();
+  const [messages, setMessages] = useState(initialMessages);
+  const [input, setInput] = useState('');
+  const [status, setStatus] = useState('Pronta para ajudar');
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioUri, setAudioUri] = useState(null);
+  const scrollRef = useRef(null);
+  const autoVoiceStarted = useRef(false);
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+
+  useEffect(() => {
+    if (routeParams?.voice && !autoVoiceStarted.current) {
+      autoVoiceStarted.current = true;
+      handleMicrophonePress();
+    }
+  }, [routeParams]);
+
+  useEffect(() => {
+    setTimeout(() => scrollRef.current?.scrollToEnd?.({ animated: true }), 80);
+  }, [messages]);
+
+  const appendMessage = (message) => {
+    setMessages((current) => [
+      ...current,
+      {
+        id: `${message.role}-${Date.now()}-${Math.random()}`,
+        ...message,
+      },
+    ]);
+  };
+
+  const processMessage = (rawText, extraUserText) => {
+    const text = rawText.trim();
+    if (!text) return;
+
+    appendMessage({ role: 'user', text: extraUserText || text });
+    setStatus('Processando...');
+
+    const assistantResponse = getNavoraAssistantResponse(text, userProfile);
+    setTimeout(() => {
+      appendMessage({ role: 'assistant', ...assistantResponse });
+      setStatus('Pronta para ajudar');
+    }, 250);
+  };
+
+  const sendMessage = () => {
+    const text = input;
+    setInput('');
+    processMessage(text);
+  };
+
+  const speakText = (text) => {
+    Speech.stop();
+    Speech.speak(text, {
+      language: 'pt-BR',
+      rate: 0.95,
+      pitch: 1,
+    });
+  };
+
+  const stopSpeech = () => {
+    Speech.stop();
+  };
+
+  const startRecording = async () => {
+    const permission = await requestRecordingPermissionsAsync();
+    if (!permission.granted) {
+      appendMessage({
+        role: 'assistant',
+        text: 'Nao consegui acessar o microfone. Verifique a permissao do aplicativo.',
+      });
+      return;
+    }
+
+    await setAudioModeAsync({
+      allowsRecording: true,
+      playsInSilentMode: true,
+    });
+
+    await recorder.prepareToRecordAsync();
+    recorder.record();
+    setIsRecording(true);
+    setStatus('Gravando audio...');
+  };
+
+  const stopRecording = async () => {
+    setStatus('Processando...');
+    await recorder.stop();
+    const uri = recorder.uri;
+    setAudioUri(uri);
+    setIsRecording(false);
+
+    // Futuro: enviar audioUri para backend/Whisper para transcricao real.
+    const simulatedTranscript = 'Me leve ate Tomografia';
+    appendMessage({
+      role: 'user',
+      text: `Audio gravado${uri ? ` (${uri.split('/').pop()})` : ''}`,
+    });
+    processMessage(
+      simulatedTranscript,
+      `Transcricao simulada: "${simulatedTranscript}"`
+    );
+  };
+
+  const handleMicrophonePress = async () => {
+    try {
+      if (isRecording) {
+        await stopRecording();
+      } else {
+        await startRecording();
+      }
+    } catch (error) {
+      setIsRecording(false);
+      setStatus('Pronta para ajudar');
+      appendMessage({
+        role: 'assistant',
+        text: 'Nao consegui gravar agora. Tente novamente ou digite sua mensagem.',
+      });
+    }
+  };
+
+  const runAction = (message) => {
+    if (message.actionScreen === 'ToggleTheme') {
+      toggleTheme();
+      appendMessage({
+        role: 'assistant',
+        text: 'Pronto. Ajustei o modo de exibicao do app.',
+      });
+      return;
+    }
+
+    if (message.actionScreen) {
+      navigate(message.actionScreen, message.actionParams || {});
+    }
+  };
+
+  const clearConversation = () => {
+    Speech.stop();
+    setMessages(initialMessages);
+    setAudioUri(null);
+    setStatus('Pronta para ajudar');
+  };
+
+  return (
+    <Screen scroll={false} padded={false}>
+      <View style={styles.screen}>
+        <Header title="IA Navora" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+
+        <ScrollView
+          ref={scrollRef}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={[styles.aiCard, shadows.card]}>
+            <Pressable
+              onPress={handleMicrophonePress}
+              style={({ pressed }) => [
+                styles.aiIcon,
+                isRecording && styles.aiIconRecording,
+                pressed && styles.pressed,
+              ]}
+            >
+              <MaterialCommunityIcons
+                name={isRecording ? 'stop' : 'microphone'}
+                size={25}
+                color="#FFFFFF"
+              />
+            </Pressable>
+            <View style={styles.aiCopy}>
+              <Text style={styles.aiTitle}>IA Navora</Text>
+              <Text style={styles.aiText}>Fale ou escreva como posso ajudar.</Text>
+              <Text style={styles.statusText}>{status}</Text>
+            </View>
+            <Pressable onPress={stopSpeech} style={styles.stopVoiceButton}>
+              <MaterialCommunityIcons name="volume-off" size={18} color={colors.primary} />
+            </Pressable>
+          </View>
+
+          <View style={styles.suggestions}>
+            {suggestions.map((item) => (
+              <Pressable
+                key={item}
+                onPress={() => processMessage(item)}
+                style={({ pressed }) => [styles.suggestion, pressed && styles.pressed]}
+              >
+                <Text numberOfLines={1} style={styles.suggestionText}>{item}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          <View style={styles.history}>
+            {messages.map((message) => {
+              const isUser = message.role === 'user';
+              return (
+                <View
+                  key={message.id}
+                  style={[
+                    styles.messageBubble,
+                    isUser ? styles.userBubble : styles.assistantBubble,
+                  ]}
+                >
+                  <Text style={[styles.messageText, isUser && styles.userText]}>
+                    {message.text}
+                  </Text>
+
+                  {!isUser ? (
+                    <View style={styles.messageActions}>
+                      <Pressable
+                        onPress={() => speakText(message.text)}
+                        style={({ pressed }) => [styles.listenButton, pressed && styles.pressed]}
+                      >
+                        <MaterialCommunityIcons name="volume-high" size={15} color={colors.primary} />
+                        <Text style={styles.listenText}>Ouvir</Text>
+                      </Pressable>
+
+                      {message.actionLabel ? (
+                        <Pressable
+                          onPress={() => runAction(message)}
+                          style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
+                        >
+                          <Text style={styles.actionText}>{message.actionLabel}</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
+
+        <View style={[styles.composer, shadows.card]}>
+          <Pressable onPress={clearConversation} style={styles.smallIconButton}>
+            <MaterialCommunityIcons name="trash-can-outline" size={19} color={colors.muted} />
+          </Pressable>
+          <TextInput
+            value={input}
+            onChangeText={setInput}
+            placeholder="Digite sua mensagem..."
+            placeholderTextColor="#8B8D96"
+            style={styles.input}
+            returnKeyType="send"
+            onSubmitEditing={sendMessage}
+          />
+          <Pressable onPress={sendMessage} style={styles.sendButton}>
+            <MaterialCommunityIcons name="send" size={18} color="#FFFFFF" />
+          </Pressable>
+          <Pressable
+            onPress={handleMicrophonePress}
+            style={[styles.micButton, isRecording && styles.micButtonRecording]}
+          >
+            <MaterialCommunityIcons name={isRecording ? 'stop' : 'microphone'} size={19} color="#FFFFFF" />
+          </Pressable>
+        </View>
+      </View>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    width: '100%',
+    maxWidth: Platform.OS === 'web' ? 430 : undefined,
+    alignSelf: 'center',
+    backgroundColor: colors.bg,
+  },
+  content: {
+    paddingHorizontal: 20,
+    paddingBottom: 104,
+  },
+  aiCard: {
+    minHeight: 92,
+    borderRadius: 22,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 14,
+    marginTop: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  aiIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: colors.primary,
+    shadowOpacity: 0.22,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  aiIconRecording: {
+    backgroundColor: colors.primaryDark,
+  },
+  aiCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  aiTitle: {
+    color: colors.text,
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  aiText: {
+    color: colors.muted,
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 3,
+  },
+  statusText: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '900',
+    marginTop: 7,
+  },
+  stopVoiceButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 14,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  suggestions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  suggestion: {
+    minHeight: 34,
+    borderRadius: 17,
+    backgroundColor: '#FFF7F8',
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  suggestionText: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  history: {
+    gap: 10,
+    marginTop: 14,
+  },
+  messageBubble: {
+    maxWidth: '92%',
+    borderRadius: 18,
+    padding: 12,
+    borderWidth: 1,
+  },
+  assistantBubble: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
+  },
+  userBubble: {
+    alignSelf: 'flex-end',
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  messageText: {
+    color: colors.text,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '700',
+  },
+  userText: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+  },
+  messageActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  listenButton: {
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primarySoft,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  listenText: {
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  actionButton: {
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  composer: {
+    position: 'absolute',
+    left: 12,
+    right: 12,
+    bottom: 12,
+    minHeight: 62,
+    borderRadius: 22,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  smallIconButton: {
+    width: 38,
+    height: 44,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  input: {
+    flex: 1,
+    minWidth: 0,
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  sendButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  micButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 15,
+    backgroundColor: colors.primaryDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  micButtonRecording: {
+    backgroundColor: colors.danger,
+  },
+  pressed: {
+    opacity: 0.86,
+    transform: [{ scale: 0.985 }],
+  },
+});

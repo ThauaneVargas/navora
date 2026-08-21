@@ -1,0 +1,437 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CallType {
+  HELP
+  HELP_REQUEST
+  SOS
+  DOCTOR
+  LOST
+  MOBILITY_HELP
+  LOST_USER
+}
+
+enum CallStatus {
+  PENDING
+  ACCEPTED
+  TEAM_DISPATCHED
+  IN_PROGRESS
+  CLOSED
+  CANCELED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum VisitorAccessStatus {
+  PENDING
+  APPROVED
+  DENIED
+  CANCELED
+  EXPIRED
+  WAITING_AUTHORIZATION
+  AUTHORIZED
+  IN_ROUTE
+  ARRIVED
+  OFF_ROUTE
+  FINISHED
+}
+
+enum NavigationNodeType {
+  ENTRANCE
+  RECEPTION
+  ROOM
+  CORRIDOR
+  ELEVATOR
+  BATHROOM
+  EXIT
+  OTHER
+}
+
+enum RouteType {
+  CORRIDOR
+  ELEVATOR
+  RAMP
+  STAIRS
+  DOOR
+  TRANSFER
+}
+
+enum AccessSubject {
+  PATIENT
+  VISITOR
+  EXTERNAL_PATIENT
+}
+
+enum AccessDecision {
+  ALLOW
+  BLOCK
+  REQUIRE_AUTHORIZATION
+  REDIRECT_TO_RECEPTION
+}
+
+enum AccessRuleScope {
+  GLOBAL
+  AREA
+  SECTOR
+  DESTINATION
+  CATEGORY
+  ACCESS_LEVEL
+}
+
+enum UserRole {
+  PATIENT
+  RECEPTION
+  ADMIN
+}
+
+enum CheckInStatus {
+  WAITING
+  IN_ROUTE
+  IN_SERVICE
+  FINISHED
+  CANCELED
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String
+  phone        String?
+  role         UserRole
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  staffProfile StaffProfile?
+  patientProfile PatientProfile?
+  checkIns CheckIn[]
+
+  @@map("users")
+}
+
+model PatientProfile {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @unique @map("user_id")
+  patientCode   String?  @unique @map("patient_code")
+  birthDate     DateTime? @map("birth_date")
+  accessibility Json     @default("{}")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("patient_profiles")
+}
+
+model StaffProfile {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique @map("user_id")
+  jobTitle  String?  @map("job_title")
+  sectorId  Int?     @map("sector_id")
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user   User    @relation(fields: [userId], references: [id])
+  sector Sector? @relation(fields: [sectorId], references: [id])
+
+  @@map("staff_profiles")
+}
+
+model CallRequest {
+  id          Int        @id @default(autoincrement())
+  userType    String     @default("patient") @map("user_type")
+  userName    String     @default("Paciente Navora") @map("user_name")
+  area        String     @default("private")
+  areaName    String     @default("HMC Private") @map("area_name")
+  patientName String     @map("patient_name")
+  callType    CallType   @map("call_type")
+  reason      String?
+  location    String
+  sector      String
+  beaconCode  String?    @map("beacon_code")
+  message     String?
+  status      CallStatus @default(PENDING)
+  priority    Priority   @default(MEDIUM)
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  @@map("call_requests")
+}
+
+model VisitorAccessRequest {
+  id                   Int                 @id @default(autoincrement())
+  visitorName          String              @map("visitor_name")
+  area                 String
+  areaName             String              @default("HMC Private") @map("area_name")
+  entrance             String              @default("Entrada pelos fundos")
+  areaId               String              @map("area_id")
+  entry                String
+  currentLocation      String              @map("current_location")
+  currentBeacon        String?             @map("current_beacon")
+  requestedDestination String              @map("requested_destination")
+  reason               String
+  accessibility        String              @default("Nao")
+  status               VisitorAccessStatus @default(PENDING)
+  beacon               String?
+  permissionMinutes    Int?                @map("permission_minutes")
+  authorizedRoute      String?             @map("authorized_route")
+  deniedReason         String?             @map("denied_reason")
+  allowedRoute         String?             @map("allowed_route")
+  allowedTime          String?             @map("allowed_time")
+  releaseType          String?             @map("release_type")
+  denialReason         String?             @map("denial_reason")
+  destinationId        Int?                @map("destination_id")
+  authorizedAt         DateTime?           @map("authorized_at")
+  expiresAt            DateTime?           @map("expires_at")
+  finishedAt           DateTime?           @map("finished_at")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  destination Destination? @relation(fields: [destinationId], references: [id])
+  checkIns CheckIn[]
+
+  @@map("visitor_access_requests")
+}
+
+model Beacon {
+  id           Int      @id @default(autoincrement())
+  code         String   @unique
+  name         String   @default("")
+  area         String   @default("shared")
+  areaName     String   @default("Compartilhado") @map("area_name")
+  location     String   @default("")
+  battery      Int      @default(100)
+  sector       String
+  status       String   @default("Online")
+  navigationNodeId Int? @map("navigation_node_id")
+  lastSignalAt DateTime @default(now()) @map("last_signal_at")
+
+  navigationNode NavigationNode? @relation(fields: [navigationNodeId], references: [id])
+
+  @@map("beacons")
+}
+
+model HospitalArea {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  label       String?
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  entrances        Entrance[]
+  sectors          Sector[]
+  navigationNodes  NavigationNode[]
+  destinations     Destination[]
+  accessRules      AccessRule[]
+
+  @@map("hospital_areas")
+}
+
+model Entrance {
+  id               Int             @id @default(autoincrement())
+  code             String          @unique
+  name             String
+  entryKey         String?         @map("entry_key")
+  areaId           Int             @map("area_id")
+  navigationNodeId Int?            @map("navigation_node_id")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  area           HospitalArea    @relation(fields: [areaId], references: [id])
+  navigationNode NavigationNode?  @relation(fields: [navigationNodeId], references: [id])
+
+  @@map("entrances")
+}
+
+model Sector {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  name        String
+  floor       String?
+  serviceType String?  @map("service_type")
+  areaId      Int?     @map("area_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  area            HospitalArea?    @relation(fields: [areaId], references: [id])
+  navigationNodes NavigationNode[]
+  destinations    Destination[]
+  accessRules     AccessRule[]
+  staffProfiles   StaffProfile[]
+  checkIns        CheckIn[]
+
+  @@map("sectors")
+}
+
+model NavigationNode {
+  id          Int                @id @default(autoincrement())
+  code        String             @unique
+  label       String
+  type        NavigationNodeType @default(OTHER)
+  floor       String?
+  x           Float?
+  y           Float?
+  z           Float?
+  instruction String?
+  areaId      Int?               @map("area_id")
+  sectorId    Int?               @map("sector_id")
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  area              HospitalArea? @relation(fields: [areaId], references: [id])
+  sector            Sector?       @relation(fields: [sectorId], references: [id])
+  entrances         Entrance[]
+  destinations      Destination[]
+  beacons           Beacon[]
+  outgoingRouteEdges RouteEdge[]  @relation("RouteEdgeFromNode")
+  incomingRouteEdges RouteEdge[]  @relation("RouteEdgeToNode")
+
+  @@map("navigation_nodes")
+}
+
+model RouteEdge {
+  id                   Int       @id @default(autoincrement())
+  fromNodeId           Int       @map("from_node_id")
+  toNodeId             Int       @map("to_node_id")
+  distanceMeters       Float     @map("distance_meters")
+  accessible           Boolean   @default(false)
+  routeType            RouteType @default(CORRIDOR) @map("route_type")
+  wheelchairAccessible Boolean   @default(true) @map("wheelchair_accessible")
+  stretcherAccessible  Boolean   @default(true) @map("stretcher_accessible")
+  bidirectional        Boolean   @default(true)
+  instruction          String?
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  fromNode NavigationNode @relation("RouteEdgeFromNode", fields: [fromNodeId], references: [id])
+  toNode   NavigationNode @relation("RouteEdgeToNode", fields: [toNodeId], references: [id])
+
+  @@unique([fromNodeId, toNodeId])
+  @@map("route_edges")
+}
+
+model Destination {
+  id               Int      @id @default(autoincrement())
+  code             String   @unique
+  name             String
+  icon             String?
+  category         String
+  floor            String?
+  distanceLabel    String?  @map("distance_label")
+  timeLabel        String?  @map("time_label")
+  accessLevel      String   @default("public") @map("access_level")
+  areaId           Int?     @map("area_id")
+  sectorId         Int?     @map("sector_id")
+  navigationNodeId Int?     @map("navigation_node_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  area           HospitalArea?   @relation(fields: [areaId], references: [id])
+  sector         Sector?         @relation(fields: [sectorId], references: [id])
+  navigationNode NavigationNode? @relation(fields: [navigationNodeId], references: [id])
+  accessRules    AccessRule[]
+  fallbackForAccessRules AccessRule[] @relation("AccessRuleFallback")
+  fallbackForAccessWindows AccessWindow[] @relation("AccessWindowFallback")
+  visitorAccessRequests VisitorAccessRequest[]
+  checkIns CheckIn[]
+
+  @@map("destinations")
+}
+
+model AccessRule {
+  id                    Int             @id @default(autoincrement())
+  code                  String          @unique
+  name                  String
+  enabled               Boolean         @default(true)
+  subject               AccessSubject
+  scope                 AccessRuleScope
+  priority              Int             @default(100)
+  areaId                Int?            @map("area_id")
+  sectorId              Int?            @map("sector_id")
+  destinationId         Int?            @map("destination_id")
+  category              String?
+  accessLevel           String?         @map("access_level")
+  decision              AccessDecision?
+  message               String?
+  fallbackDestinationId Int?            @map("fallback_destination_id")
+  createdAt             DateTime        @default(now()) @map("created_at")
+  updatedAt             DateTime        @updatedAt @map("updated_at")
+
+  area                HospitalArea?  @relation(fields: [areaId], references: [id])
+  sector              Sector?        @relation(fields: [sectorId], references: [id])
+  destination         Destination?   @relation(fields: [destinationId], references: [id])
+  fallbackDestination Destination?   @relation("AccessRuleFallback", fields: [fallbackDestinationId], references: [id])
+  windows             AccessWindow[]
+
+  @@map("access_rules")
+}
+
+model AccessWindow {
+  id                    Int            @id @default(autoincrement())
+  ruleId                Int            @map("rule_id")
+  startTime             String         @map("start_time")
+  endTime               String         @map("end_time")
+  timezone              String         @default("America/Sao_Paulo")
+  daysOfWeek            Int[]          @map("days_of_week")
+  insideDecision        AccessDecision @map("inside_decision")
+  outsideDecision       AccessDecision @map("outside_decision")
+  insideMessage         String?        @map("inside_message")
+  outsideMessage        String?        @map("outside_message")
+  fallbackDestinationId Int?           @map("fallback_destination_id")
+
+  rule                AccessRule   @relation(fields: [ruleId], references: [id])
+  fallbackDestination Destination?  @relation("AccessWindowFallback", fields: [fallbackDestinationId], references: [id])
+
+  @@map("access_windows")
+}
+
+model CheckIn {
+  id                     Int           @id @default(autoincrement())
+  patientName            String        @map("patient_name")
+  document               String?
+  destinationLabel       String        @map("destination_label")
+  accessibility          String        @default("Nao")
+  observations           String?
+  status                 CheckInStatus @default(WAITING)
+  userId                 Int?          @map("user_id")
+  destinationId          Int?          @map("destination_id")
+  sectorId               Int?          @map("sector_id")
+  visitorAccessRequestId Int?          @map("visitor_access_request_id")
+  createdAt              DateTime      @default(now()) @map("created_at")
+  updatedAt              DateTime      @updatedAt @map("updated_at")
+
+  user                 User?                 @relation(fields: [userId], references: [id])
+  destination          Destination?          @relation(fields: [destinationId], references: [id])
+  sector               Sector?               @relation(fields: [sectorId], references: [id])
+  visitorAccessRequest VisitorAccessRequest? @relation(fields: [visitorAccessRequestId], references: [id])
+
+  @@map("check_ins")
+}
+
+model OperationalMessage {
+  id        Int       @id @default(autoincrement())
+  recipient String
+  content   String
+  priority  String    @default("Media")
+  direction String    @default("Enviada")
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("operational_messages")
+}

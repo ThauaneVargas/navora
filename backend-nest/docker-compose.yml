@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: navora-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: navora
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - navora-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  navora-postgres-data:

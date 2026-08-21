@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "Navora",
+    "slug": "navora",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icone_app.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/images/icone_app.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FFFFFF"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icone_app.png",
+        "backgroundColor": "#FFFFFF"
+      }
+    },
+    "web": {
+      "favicon": "./assets/images/icone_app.png"
+    },
+    "plugins": [
+      "expo-asset",
+      "expo-font",
+      "expo-audio",
+      "expo-secure-store"
+    ]
+  }
+}

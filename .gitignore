@@ -1,0 +1,40 @@
+﻿# Dependências
+node_modules/
+
+# Variáveis de ambiente / secrets
+.env
+.env.*
+!.env.example
+
+# Builds
+dist/
+build/
+verify-dist/
+.expo/
+coverage/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/
+
+# Deploy local
+.vercel/
+
+# Temporários
+*.tmp
+*.temp
+.cache/
+
+# Builds de revisão
+review-dist/
