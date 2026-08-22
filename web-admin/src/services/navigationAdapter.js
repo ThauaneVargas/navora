@@ -1,5 +1,4 @@
-const FALLBACK_FLOOR = 'Terreo';
-const FALLBACK_DISTANCE = '-';
+const UNKNOWN_VALUE = 'Nao informado';
 
 const metricCodeAliases = {
   'private-reception': 'Recepcao',
@@ -39,21 +38,24 @@ function metricFallbacks(initialSectors) {
 }
 
 export function normalizeSectorFromApi(sector) {
+  const navigationNodes = sector.navigationNodes || sector.navigation_nodes || [];
+  const firstNodeWithFloor = navigationNodes.find((node) => node?.floor);
+
   return {
     id: sector.id,
     code: sector.code,
     name: sector.name || sector.code || 'Setor sem nome',
-    floor: sector.floor || FALLBACK_FLOOR,
+    floor: sector.floor || firstNodeWithFloor?.floor || UNKNOWN_VALUE,
     serviceType: sector.service_type || sector.serviceType,
     areaId: sector.area_id || sector.areaId || sector.area?.id,
     areaCode: sector.area?.code || sector.area_code,
     areaName: sector.area?.label || sector.area?.name || sector.area_name,
     destinations: sector.destinations || [],
-    navigationNodes: sector.navigationNodes || sector.navigation_nodes || [],
+    navigationNodes,
   };
 }
 
-export function applyLocalOperationalMetrics(sectors, initialSectors) {
+export function mergeSectorOperationalFallback(sectors, initialSectors) {
   const fallbacks = metricFallbacks(initialSectors);
 
   return sectors.map((sector) => {
@@ -75,8 +77,11 @@ export function applyLocalOperationalMetrics(sectors, initialSectors) {
   });
 }
 
+export const applyLocalOperationalMetrics = mergeSectorOperationalFallback;
+
 export function normalizeBeaconFromApi(beacon) {
   const lastSignal = beacon.last_signal_at ? new Date(beacon.last_signal_at) : null;
+  const navigationNode = beacon.navigation_node || beacon.navigationNode || null;
 
   return {
     id: beacon.code || beacon.id,
@@ -85,16 +90,21 @@ export function normalizeBeaconFromApi(beacon) {
     areaId: beacon.area,
     areaName: beacon.area_name || beacon.areaName,
     area: beacon.area_name || beacon.areaName || beacon.area,
-    sector: beacon.sector || beacon.location || 'Nao informado',
-    location: beacon.location || beacon.sector || 'Nao informado',
-    floor: beacon.floor || FALLBACK_FLOOR,
+    sector: beacon.sector || beacon.location || UNKNOWN_VALUE,
+    location: beacon.location || beacon.sector || UNKNOWN_VALUE,
+    floor: beacon.floor || navigationNode?.floor || UNKNOWN_VALUE,
     battery: beacon.battery ?? 0,
     status: beacon.status || 'Offline',
     lastSignal: lastSignal
       ? lastSignal.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-      : 'Nao informado',
+      : UNKNOWN_VALUE,
     lastSignalAt: beacon.last_signal_at,
-    distance: beacon.distance || FALLBACK_DISTANCE,
+    last_signal_at: beacon.last_signal_at,
+    distance: beacon.distance ?? UNKNOWN_VALUE,
+    originNodeCode: beacon.origin_node_code || navigationNode?.code || null,
+    origin_node_code: beacon.origin_node_code || navigationNode?.code || null,
+    navigationNode,
+    navigation_node: navigationNode,
   };
 }
 
@@ -121,7 +131,7 @@ export function normalizeDestinationFromApi(destination) {
     code: destination.code,
     name: destination.name || destination.code || 'Destino sem nome',
     category: destination.category || 'Servico',
-    floor: destination.floor || FALLBACK_FLOOR,
+    floor: destination.floor || destination.navigationNode?.floor || destination.navigation_node?.floor || UNKNOWN_VALUE,
     accessLevel: destination.access_level || destination.accessLevel,
     area: destination.area
       ? {
@@ -164,9 +174,9 @@ export function normalizeNavigationMapFromApi(map) {
     })),
     edges: (map?.edges || []).map((edge) => ({
       id: edge.id,
-      fromNodeId: edge.from_node_id || edge.fromNodeId,
-      toNodeId: edge.to_node_id || edge.toNodeId,
-      distanceMeters: edge.distance_meters || edge.distanceMeters,
+      fromNodeId: edge.from_node_id ?? edge.fromNodeId,
+      toNodeId: edge.to_node_id ?? edge.toNodeId,
+      distanceMeters: edge.distance_meters ?? edge.distanceMeters,
       accessible: !!edge.accessible,
       bidirectional: edge.bidirectional !== false,
       instruction: edge.instruction,

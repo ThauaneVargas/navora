@@ -65,6 +65,13 @@ async function request(path, options = {}, fallback) {
   }
 }
 
+async function requestFromApi(path, options = {}) {
+  return {
+    data: await request(path, options),
+    source: 'api',
+  };
+}
+
 const fallbackSummary = {
   source: 'fallback',
   totalCalls: 5,
@@ -123,12 +130,12 @@ export const adminApi = {
     request('/operational-messages', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }),
   markOperationalMessageRead: (id) =>
     request(`/operational-messages/${id}/read`, { method: 'PATCH', authenticated: true }),
-  getBeacons: () => request('/beacons', { authenticated: true }),
-  getSectors: () => request('/sectors', { authenticated: true }),
-  getNavigationBootstrap: () => request('/navigation/bootstrap', { authenticated: true }),
-  getNavigationAreas: () => request('/navigation/areas', { authenticated: true }),
-  getNavigationDestinations: () => request('/navigation/destinations', { authenticated: true }),
-  getNavigationMap: () => request('/navigation/map', { authenticated: true }),
+  getBeacons: () => requestFromApi('/beacons', { authenticated: true }),
+  getSectors: () => requestFromApi('/sectors', { authenticated: true }),
+  getNavigationBootstrap: () => requestFromApi('/navigation/bootstrap', { authenticated: true }),
+  getNavigationAreas: () => requestFromApi('/navigation/areas', { authenticated: true }),
+  getNavigationDestinations: () => requestFromApi('/navigation/destinations', { authenticated: true }),
+  getNavigationMap: () => requestFromApi('/navigation/map', { authenticated: true }),
   generateAdminReport: (payload = {}) =>
     request('/reports/admin', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }, { demoMode: true }),
 };

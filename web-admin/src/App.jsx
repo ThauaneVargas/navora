@@ -14,8 +14,8 @@ import {
 import LoginPage from './pages/Login.jsx';
 import { adminApi } from './services/api.js';
 import {
-  applyLocalOperationalMetrics,
   fallbackAreasFromSectors,
+  mergeSectorOperationalFallback,
   normalizeAreaFromApi,
   normalizeBeaconFromApi,
   normalizeDestinationFromApi,
@@ -330,12 +330,12 @@ function App() {
 
   const loadSectors = async () => {
     try {
-      const apiSectors = await adminApi.getSectors();
+      const { data: apiSectors, source } = await adminApi.getSectors();
       if (!Array.isArray(apiSectors)) throw new Error('Formato invalido de setores');
 
       const structuralSectors = apiSectors.map(normalizeSectorFromApi);
-      setSectors(applyLocalOperationalMetrics(structuralSectors, initialSectors));
-      setSectorsSource('api');
+      setSectors(mergeSectorOperationalFallback(structuralSectors, initialSectors));
+      setSectorsSource(source);
     } catch (error) {
       setSectors(initialSectors);
       setSectorsSource('fallback');
@@ -345,11 +345,11 @@ function App() {
 
   const loadBeacons = async () => {
     try {
-      const apiBeacons = await adminApi.getBeacons();
+      const { data: apiBeacons, source } = await adminApi.getBeacons();
       if (!Array.isArray(apiBeacons)) throw new Error('Formato invalido de beacons');
 
       setBeacons(apiBeacons.map(normalizeBeaconFromApi));
-      setBeaconsSource('api');
+      setBeaconsSource(source);
     } catch (error) {
       setBeacons(initialBeacons);
       setBeaconsSource('fallback');
@@ -359,16 +359,19 @@ function App() {
 
   const loadNavigationData = async () => {
     try {
-      const bootstrap = await adminApi.getNavigationBootstrap();
-      const [areas, destinations, map] = await Promise.all([
-        Array.isArray(bootstrap?.areas) ? bootstrap.areas : adminApi.getNavigationAreas(),
-        Array.isArray(bootstrap?.destinations) ? bootstrap.destinations : adminApi.getNavigationDestinations(),
+      const { data: bootstrap } = await adminApi.getNavigationBootstrap();
+      const [areasResult, destinationsResult, mapResult] = await Promise.all([
+        Array.isArray(bootstrap?.areas) ? { data: bootstrap.areas, source: 'api' } : adminApi.getNavigationAreas(),
+        Array.isArray(bootstrap?.destinations) ? { data: bootstrap.destinations, source: 'api' } : adminApi.getNavigationDestinations(),
         adminApi.getNavigationMap(),
       ]);
 
-      setNavigationAreas(Array.isArray(areas) ? areas.map(normalizeAreaFromApi) : []);
-      setNavigationDestinations(Array.isArray(destinations) ? destinations.map(normalizeDestinationFromApi) : []);
-      setNavigationMap(normalizeNavigationMapFromApi(map));
+      if (!Array.isArray(areasResult.data)) throw new Error('Formato invalido de areas');
+      if (!Array.isArray(destinationsResult.data)) throw new Error('Formato invalido de destinos');
+
+      setNavigationAreas(areasResult.data.map(normalizeAreaFromApi));
+      setNavigationDestinations(destinationsResult.data.map(normalizeDestinationFromApi));
+      setNavigationMap(normalizeNavigationMapFromApi(mapResult.data));
       setNavigationSource('api');
     } catch (error) {
       setNavigationAreas(fallbackAreasFromSectors(initialSectors));
