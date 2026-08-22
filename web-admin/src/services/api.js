@@ -1,4 +1,4 @@
-import { getAdminToken } from './adminToken.js';
+import { clearAdminSession, getAdminToken } from './adminToken.js';
 
 const configuredApiUrl = import.meta.env.VITE_NAVORA_API_URL;
 const API_BASE_URL = (configuredApiUrl || 'http://localhost:8000').replace(/\/$/, '');
@@ -18,6 +18,8 @@ export class AdminApiError extends Error {
 }
 
 export const isAuthError = (error) => error?.status === 401 || error?.status === 403;
+export const isUnauthorizedError = (error) => error?.status === 401;
+export const isForbiddenError = (error) => error?.status === 403;
 export const isNetworkError = (error) => Boolean(error?.network);
 
 async function parseResponse(response) {
@@ -45,6 +47,10 @@ async function request(path, options = {}, fallback) {
     const data = await parseResponse(response);
 
     if (!response.ok) {
+      if (authenticated && response.status === 401) {
+        clearAdminSession();
+      }
+
       throw new AdminApiError(`Erro na API Navora: ${response.status}`, {
         status: response.status,
         payload: data,

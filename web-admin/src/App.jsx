@@ -22,8 +22,8 @@ import {
   normalizeNavigationMapFromApi,
   normalizeSectorFromApi,
 } from './services/navigationAdapter.js';
-import { isAuthError, isNetworkError } from './services/api.js';
-import { getAdminToken, removeAdminToken, saveAdminToken } from './services/adminToken.js';
+import { isForbiddenError, isNetworkError, isUnauthorizedError } from './services/api.js';
+import { clearAdminSession, getAdminToken, getAdminUser, storeAdminSession } from './services/adminToken.js';
 import './styles.css';
 
 const adminNav = [
@@ -247,6 +247,7 @@ function App() {
   const [currentRole, setCurrentRole] = useState(null);
   const [currentPage, setCurrentPage] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+  const [authRestoring, setAuthRestoring] = useState(true);
   const [users, setUsers] = useState(initialUsers);
   const [staffAccounts, setStaffAccounts] = useState(initialStaffAccounts);
   const [calls, setCalls] = useState(initialCalls);
@@ -275,11 +276,46 @@ function App() {
   const openModal = (title, content, footer = null) => setModal({ title, content, footer });
   const closeModal = () => setModal(null);
 
+  const enterAdminPanel = (account, replace = false) => {
+    setCurrentUser(account);
+    setCurrentRole(account.role);
+    setCurrentPage(account.role === 'admin' ? 'admin-dashboard' : 'reception-dashboard');
+    window.history[replace ? 'replaceState' : 'pushState'](
+      {},
+      '',
+      account.role === 'admin' ? '/admin/dashboard' : '/recepcao/painel'
+    );
+  };
+
+  const leaveAdminPanel = () => {
+    clearAdminSession();
+    setCurrentRole(null);
+    setCurrentPage(null);
+    setCurrentUser(null);
+    window.history.replaceState({}, '', '/login');
+  };
+
+  const handleAuthFailure = (error, forbiddenMessage = 'Acesso negado para este perfil.') => {
+    if (isUnauthorizedError(error)) {
+      leaveAdminPanel();
+      showToast('Sessao invalida ou expirada.', 'danger');
+      return true;
+    }
+
+    if (isForbiddenError(error)) {
+      showToast(forbiddenMessage, 'danger');
+      return true;
+    }
+
+    return false;
+  };
+
   const loadVisitorAccessRequests = async () => {
     try {
       const requests = await adminApi.getVisitorAccessRequests();
       setVisitors(requests.map(mapVisitorAccessFromApi));
     } catch (error) {
+      if (handleAuthFailure(error)) return;
       showToast('API indisponivel, mantendo dados simulados de visitantes', 'warning');
     }
   };
@@ -289,13 +325,20 @@ function App() {
       const requests = await adminApi.getCalls();
       setCalls(requests.map(mapCallFromApi));
     } catch (error) {
+      if (handleAuthFailure(error)) return;
       showToast('API indisponivel, mantendo chamados simulados', 'warning');
     }
   };
 
   const loadDashboardSummary = async () => {
-    const summary = await adminApi.getDashboardSummary();
-    setDashboardSummary(summary);
+    try {
+      const summary = await adminApi.getDashboardSummary();
+      setDashboardSummary(summary);
+    } catch (error) {
+      if (handleAuthFailure(error)) return;
+      setDashboardSummary(null);
+      showToast('API indisponivel, mantendo resumo local', 'warning');
+    }
   };
 
   const loadCheckIns = async () => {
@@ -303,9 +346,8 @@ function App() {
       const apiCheckIns = await adminApi.getCheckIns();
       setCheckins(Array.isArray(apiCheckIns) ? apiCheckIns.map(mapCheckInFromApi) : []);
     } catch (error) {
-      if (isAuthError(error)) {
+      if (handleAuthFailure(error, 'Acesso negado aos check-ins')) {
         setCheckins([]);
-        showToast('Acesso negado aos check-ins', 'danger');
         return;
       }
       setCheckins(initialCheckins);
@@ -318,9 +360,8 @@ function App() {
       const apiMessages = await adminApi.getOperationalMessages();
       setMessages(Array.isArray(apiMessages) ? apiMessages.map(mapMessageFromApi) : []);
     } catch (error) {
-      if (isAuthError(error)) {
+      if (handleAuthFailure(error, 'Acesso negado as mensagens')) {
         setMessages([]);
-        showToast('Acesso negado as mensagens', 'danger');
         return;
       }
       setMessages(initialMessages);
@@ -337,6 +378,7 @@ function App() {
       setSectors(mergeSectorOperationalFallback(structuralSectors, initialSectors));
       setSectorsSource(source);
     } catch (error) {
+      if (handleAuthFailure(error)) return;
       setSectors(initialSectors);
       setSectorsSource('fallback');
       showToast('API indisponivel, usando setores simulados', 'warning');
@@ -351,6 +393,7 @@ function App() {
       setBeacons(apiBeacons.map(normalizeBeaconFromApi));
       setBeaconsSource(source);
     } catch (error) {
+      if (handleAuthFailure(error)) return;
       setBeacons(initialBeacons);
       setBeaconsSource('fallback');
       showToast('API indisponivel, usando beacons simulados', 'warning');
@@ -374,6 +417,7 @@ function App() {
       setNavigationMap(normalizeNavigationMapFromApi(mapResult.data));
       setNavigationSource('api');
     } catch (error) {
+      if (handleAuthFailure(error)) return;
       setNavigationAreas(fallbackAreasFromSectors(initialSectors));
       setNavigationDestinations([]);
       setNavigationMap({ nodes: [], edges: [] });
@@ -398,24 +442,44 @@ function App() {
     let active = true;
 
     const restoreSession = async () => {
-      if (!getAdminToken()) return;
+      if (!getAdminToken()) {
+        setAuthRestoring(false);
+        return;
+      }
 
       try {
+        const storedUser = getAdminUser();
+        if (storedUser && active) {
+          const storedAccount = mapUserToStaffAccount(storedUser);
+          if (storedAccount.role && ['admin', 'reception'].includes(storedAccount.role)) {
+            setCurrentUser(storedAccount);
+          }
+        }
+
         const user = await adminApi.getAuthMe();
         const account = mapUserToStaffAccount(user);
         if (!account.role || !['admin', 'reception'].includes(account.role)) {
-          removeAdminToken();
+          clearAdminSession();
           return;
         }
         if (!active) return;
-        setCurrentUser(account);
-        setCurrentRole(account.role);
-        setCurrentPage(account.role === 'admin' ? 'admin-dashboard' : 'reception-dashboard');
-        window.history.replaceState({}, '', account.role === 'admin' ? '/admin/dashboard' : '/recepcao/painel');
+        storeAdminSession({ accessToken: getAdminToken(), user });
+        enterAdminPanel(account, true);
       } catch (error) {
-        if (isAuthError(error)) {
-          removeAdminToken();
+        if (isUnauthorizedError(error)) {
+          clearAdminSession();
+          if (active) {
+            setCurrentRole(null);
+            setCurrentPage(null);
+            setCurrentUser(null);
+            window.history.replaceState({}, '', '/login');
+            showToast('Sessao invalida ou expirada.', 'danger');
+          }
+        } else if (isForbiddenError(error)) {
+          if (active) showToast('Acesso negado para este perfil.', 'danger');
         }
+      } finally {
+        if (active) setAuthRestoring(false);
       }
     };
 
@@ -426,64 +490,60 @@ function App() {
     };
   }, []);
 
-  const loginWithFallback = ({ email, password, role }) => {
-    const account = staffAccounts.find(
-      (item) =>
-        item.email.toLowerCase() === email.trim().toLowerCase() &&
-        item.password === password &&
-        (!role || item.role === role)
-    );
-
-    if (!account) {
-      showToast('Login ou senha invalidos, ou acesso inativo', 'danger');
-      return;
-    }
-
-    if (account.status !== 'Ativo') {
-      showToast('Este funcionario esta inativo', 'warning');
-      return;
-    }
-
-    setCurrentUser(account);
-    setCurrentRole(account.role);
-    setCurrentPage(account.role === 'admin' ? 'admin-dashboard' : 'reception-dashboard');
-    window.history.pushState({}, '', account.role === 'admin' ? '/admin/dashboard' : '/recepcao/painel');
-    setStaffAccounts((items) =>
-      items.map((item) => (item.id === account.id ? { ...item, lastLogin: 'Agora' } : item))
-    );
-    showToast(`Bem-vindo(a), ${account.name}`, 'info');
-  };
-
   const login = async ({ email, password, role }) => {
     try {
+      clearAdminSession();
       const auth = await adminApi.login({ email, password });
+      if (!auth?.access_token || !auth?.user) {
+        showToast('Resposta de autenticacao invalida.', 'danger');
+        return;
+      }
+
       const account = mapUserToStaffAccount(auth?.user);
 
       if (!account.role || !['admin', 'reception'].includes(account.role)) {
-        showToast('Este usuario nao pode acessar o painel administrativo', 'danger');
+        clearAdminSession();
+        showToast('Este perfil nao possui acesso ao painel administrativo.', 'danger');
         return;
       }
 
       if (role && account.role !== role) {
+        clearAdminSession();
         showToast('Perfil selecionado nao corresponde ao usuario autenticado', 'danger');
         return;
       }
 
-      saveAdminToken(auth.access_token);
+      storeAdminSession({ accessToken: auth.access_token, user: auth.user });
       const authUser = await adminApi.getAuthMe();
       const confirmedAccount = mapUserToStaffAccount(authUser);
-      setCurrentUser(confirmedAccount);
-      setCurrentRole(confirmedAccount.role);
-      setCurrentPage(confirmedAccount.role === 'admin' ? 'admin-dashboard' : 'reception-dashboard');
-      window.history.pushState({}, '', confirmedAccount.role === 'admin' ? '/admin/dashboard' : '/recepcao/painel');
+
+      if (!confirmedAccount.role || !['admin', 'reception'].includes(confirmedAccount.role)) {
+        clearAdminSession();
+        showToast('Este perfil nao possui acesso ao painel administrativo.', 'danger');
+        return;
+      }
+
+      if (role && confirmedAccount.role !== role) {
+        clearAdminSession();
+        showToast('Perfil selecionado nao corresponde ao usuario autenticado', 'danger');
+        return;
+      }
+
+      storeAdminSession({ accessToken: auth.access_token, user: authUser });
+      enterAdminPanel(confirmedAccount);
       showToast(`Bem-vindo(a), ${confirmedAccount.name}`, 'info');
     } catch (error) {
       if (isNetworkError(error)) {
-        loginWithFallback({ email, password, role });
+        showToast('Nao foi possivel conectar ao backend de autenticacao.', 'danger');
         return;
       }
-      if (isAuthError(error)) {
-        showToast('Login ou senha invalidos, ou acesso nao autorizado', 'danger');
+      if (isUnauthorizedError(error)) {
+        clearAdminSession();
+        showToast('Credenciais invalidas ou sessao expirada.', 'danger');
+        return;
+      }
+      if (isForbiddenError(error)) {
+        showToast('Acesso negado para este perfil.', 'danger');
         return;
       }
       showToast('Nao foi possivel autenticar agora', 'danger');
@@ -491,11 +551,7 @@ function App() {
   };
 
   const logout = () => {
-    removeAdminToken();
-    setCurrentRole(null);
-    setCurrentPage(null);
-    setCurrentUser(null);
-    window.history.pushState({}, '', '/login');
+    leaveAdminPanel();
     showToast('Sessao encerrada', 'info');
   };
 
@@ -576,7 +632,8 @@ function App() {
       applyCallStatus(id, callApiStatusToLabel[updated.status] || status);
       showToast(updated?.demoMode ? `Chamado atualizado localmente para ${status}` : `Chamado atualizado para ${status}`, updated?.demoMode ? 'warning' : 'success');
     } catch (error) {
-      showToast(isAuthError(error) ? 'Acesso negado para atualizar chamado' : 'Chamado nao atualizado. Dados locais mantidos.', 'danger');
+      if (handleAuthFailure(error, 'Acesso negado para atualizar chamado')) return;
+      showToast('Chamado nao atualizado. Dados locais mantidos.', 'danger');
       return;
     }
     loadCalls();
@@ -589,7 +646,8 @@ function App() {
       applyCallStatus(id, callApiStatusToLabel[updated.status] || 'Equipe acionada', { assignedTo: 'Equipe Navora' });
       showToast(updated?.demoMode ? 'Equipe acionada localmente' : 'Equipe acionada', updated?.demoMode ? 'warning' : 'success');
     } catch (error) {
-      showToast(isAuthError(error) ? 'Acesso negado para acionar equipe' : 'Equipe nao acionada. Dados locais mantidos.', 'danger');
+      if (handleAuthFailure(error, 'Acesso negado para acionar equipe')) return;
+      showToast('Equipe nao acionada. Dados locais mantidos.', 'danger');
       return;
     }
     loadCalls();
@@ -611,10 +669,7 @@ function App() {
       showToast('Check-in criado');
       closeModal();
     } catch (error) {
-      if (isAuthError(error)) {
-        showToast('Acesso negado para criar check-in', 'danger');
-        return;
-      }
+      if (handleAuthFailure(error, 'Acesso negado para criar check-in')) return;
       showToast('Check-in nao criado. API indisponivel ou dados recusados.', 'danger');
     }
   };
@@ -625,10 +680,7 @@ function App() {
       setCheckins((items) => items.map((item) => (item.id === id ? mapCheckInFromApi(updated) : item)));
       showToast(`Check-in atualizado para ${status}`);
     } catch (error) {
-      if (isAuthError(error)) {
-        showToast('Acesso negado para atualizar check-in', 'danger');
-        return;
-      }
+      if (handleAuthFailure(error, 'Acesso negado para atualizar check-in')) return;
       showToast('Check-in nao atualizado. Dados locais mantidos.', 'danger');
     }
   };
@@ -653,10 +705,7 @@ function App() {
       showToast('Mensagem enviada');
       closeModal();
     } catch (error) {
-      if (isAuthError(error)) {
-        showToast('Acesso negado para enviar mensagem', 'danger');
-        return;
-      }
+      if (handleAuthFailure(error, 'Acesso negado para enviar mensagem')) return;
       showToast('Mensagem nao enviada. API indisponivel ou dados recusados.', 'danger');
     }
   };
@@ -676,7 +725,8 @@ function App() {
       const updated = await adminApi.updateVisitorAccessStatus(visitor.id, visitorLabelToApiStatus[status] || status);
       updateVisitor(visitor.id, { ...(updated.visitor_name ? mapVisitorAccessFromApi(updated) : { status }), ...changes }, toastMessage);
     } catch (error) {
-      showToast(isAuthError(error) ? 'Acesso negado para atualizar visitante' : 'Visitante nao atualizado. Dados locais mantidos.', 'danger');
+      if (handleAuthFailure(error, 'Acesso negado para atualizar visitante')) return;
+      showToast('Visitante nao atualizado. Dados locais mantidos.', 'danger');
       return;
     }
     loadVisitorAccessRequests();
@@ -711,7 +761,8 @@ function App() {
         'Acesso autorizado'
       );
     } catch (error) {
-      showToast(isAuthError(error) ? 'Acesso negado para autorizar visitante' : 'Acesso nao autorizado. Dados locais mantidos.', 'danger');
+      if (handleAuthFailure(error, 'Acesso negado para autorizar visitante')) return;
+      showToast('Acesso nao autorizado. Dados locais mantidos.', 'danger');
       return;
     }
     closeModal();
@@ -728,7 +779,8 @@ function App() {
         'Acesso negado'
       );
     } catch (error) {
-      showToast(isAuthError(error) ? 'Acesso negado para negar visitante' : 'Negativa nao registrada. Dados locais mantidos.', 'danger');
+      if (handleAuthFailure(error, 'Acesso negado para negar visitante')) return;
+      showToast('Negativa nao registrada. Dados locais mantidos.', 'danger');
       return;
     }
     closeModal();
@@ -765,9 +817,12 @@ function App() {
       if (report?.demoMode) return generateLocalReport(period);
       return report;
     } catch (error) {
-      if (isAuthError(error)) {
-        showToast('Acesso negado para gerar relatorio', 'danger');
-        return generateLocalReport(period);
+      if (handleAuthFailure(error, 'Acesso negado para gerar relatorio')) {
+        return {
+          period,
+          source: 'auth-error',
+          status: 'Nao autorizado',
+        };
       }
       showToast('API indisponivel, gerando relatorio local', 'warning');
       return generateLocalReport(period);
@@ -799,6 +854,7 @@ function App() {
     createStaffAccount, toggleStaffStatus, updateStaffPassword,
   };
 
+  if (authRestoring) return <LoginPage onLogin={login} toast={toast} />;
   if (!currentRole) return <LoginPage onLogin={login} toast={toast} />;
 
   return (
@@ -1081,6 +1137,7 @@ function ReportsPage({ app }) {
     const next = await app.generateReport(period);
     setReport(next);
     setLoading(false);
+    if (next?.source === 'auth-error') return;
     app.showToast(`Relatorio ${period} gerado`);
   };
   return (
