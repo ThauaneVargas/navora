@@ -14,7 +14,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "prisma db seed",
     "prisma:studio": "prisma studio",
-    "test:e2e": "ts-node src/e2e/auth-dashboard.e2e.spec.ts"
+    "test:e2e": "ts-node src/e2e/auth-dashboard.e2e.spec.ts && ts-node src/e2e/navigation.e2e.spec.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
