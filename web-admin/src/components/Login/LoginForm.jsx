@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { LockKeyhole, Mail } from 'lucide-react';
+import NavoraBrand from '../branding/NavoraBrand.jsx';
 
 const profileText = {
   admin: {
@@ -44,7 +46,7 @@ export default function LoginForm({ profile, onSubmit, children }) {
 
   return (
     <form className="login-card" onSubmit={submit}>
-      <div className="login-card-icon" aria-hidden="true">#</div>
+      <div className="login-card-icon" aria-hidden="true"><NavoraBrand variant="badge" showName={false} showRole={false} /></div>
       <header className="login-card-head">
         <h2>{content.title}</h2>
         <p>{content.subtitle}</p>
@@ -57,7 +59,7 @@ export default function LoginForm({ profile, onSubmit, children }) {
       <label className={`field ${errors.user ? 'invalid' : ''}`}>
         <span>E-mail ou Usuario</span>
         <div className="input-shell">
-          <i aria-hidden="true">@</i>
+          <i aria-hidden="true"><Mail size={17} /></i>
           <input
             value={user}
             onChange={(event) => setUser(event.target.value)}
@@ -71,7 +73,7 @@ export default function LoginForm({ profile, onSubmit, children }) {
       <label className={`field ${errors.password ? 'invalid' : ''}`}>
         <span>Senha</span>
         <div className="input-shell">
-          <i aria-hidden="true">[]</i>
+          <i aria-hidden="true"><LockKeyhole size={17} /></i>
           <input
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -95,15 +97,12 @@ export default function LoginForm({ profile, onSubmit, children }) {
           />
           Lembrar-me
         </label>
-        <button type="button">Esqueceu sua senha?</button>
+        <span className="access-help">Recuperacao de acesso: contate o administrador.</span>
       </div>
 
       <button className="login-submit" type="submit" disabled={loading}>
         {loading ? 'Entrando...' : content.button}
       </button>
-
-      <div className="login-divider"><span>ou continue com</span></div>
-      <button className="sso-button" type="button">Login com SSO Hospitalar</button>
 
       <footer className="login-security">
         <strong>Acesso restrito e monitorado</strong>

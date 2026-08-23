@@ -1,6 +1,31 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
+  Activity,
+  BarChart3,
+  Building2,
+  Camera,
+  ChevronRight,
+  CheckCircle2,
+  ClipboardCheck,
+  Clock3,
+  Download,
+  Gauge,
+  HeartPulse,
+  HelpCircle,
+  Map as MapIcon,
+  MessageSquare,
+  MoreVertical,
+  Plus,
+  RadioTower,
+  RefreshCw,
+  Search,
+  Settings,
+  ShieldCheck,
+  UserCheck,
+  Users,
+} from 'lucide-react';
+import {
   initialBeacons,
   initialCalls,
   initialCheckins,
@@ -12,6 +37,12 @@ import {
   initialUsers,
 } from './data/mockData.js';
 import LoginPage from './pages/Login.jsx';
+import DashboardHeatmap from './components/dashboard/DashboardHeatmap.jsx';
+import DashboardRecentAlerts from './components/dashboard/RecentAlerts.jsx';
+import DashboardStatCard from './components/dashboard/StatCard.jsx';
+import AppSidebar from './components/layout/AppSidebar.jsx';
+import AppTopbar from './components/layout/AppTopbar.jsx';
+import LayoutOperatorAvatar from './components/layout/OperatorAvatar.jsx';
 import { adminApi } from './services/api.js';
 import {
   fallbackAreasFromSectors,
@@ -27,25 +58,44 @@ import { clearAdminSession, getAdminToken, getAdminUser, storeAdminSession } fro
 import './styles.css';
 
 const adminNav = [
-  ['admin-dashboard', 'Dashboard'],
-  ['admin-heatmap', 'Heatmap'],
-  ['admin-alerts', 'Alertas SOS'],
-  ['admin-users', 'Usuarios'],
-  ['admin-beacons', 'Beacons'],
-  ['admin-reports', 'Relatorios'],
-  ['admin-settings', 'Configuracoes'],
+  ['admin-dashboard', 'Dashboard', Gauge],
+  ['admin-heatmap', 'Heatmap', MapIcon],
+  ['admin-alerts', 'Alertas SOS', HeartPulse],
+  ['admin-users', 'Usuarios', Users],
+  ['admin-beacons', 'Beacons', RadioTower],
+  ['admin-reports', 'Relatorios', BarChart3],
+  ['admin-settings', 'Configuracoes', Settings],
 ];
 
 const receptionNav = [
-  ['reception-dashboard', 'Dashboard'],
-  ['reception-visitors', 'Visitantes Online'],
-  ['reception-calls', 'Chamados'],
-  ['reception-checkin', 'Check-in'],
-  ['reception-access', 'Solicitacoes de Acesso'],
-  ['reception-sectors', 'Setores'],
-  ['reception-messages', 'Mensagens'],
-  ['reception-settings', 'Configuracoes'],
+  ['reception-dashboard', 'Painel', Gauge],
+  ['reception-visitors', 'Visitantes', UserCheck],
+  ['reception-access', 'Autorizacoes', ShieldCheck],
+  ['reception-checkin', 'Check-ins', ClipboardCheck],
+  ['reception-calls', 'Chamados', HelpCircle],
+  ['reception-messages', 'Mensagens', MessageSquare],
+  ['reception-settings', 'Configuracoes', Settings],
 ];
+
+const pageLabels = Object.fromEntries([...adminNav, ...receptionNav].map(([id, label]) => [id, label]));
+const pagePaths = {
+  'admin-dashboard': '/admin/dashboard',
+  'admin-heatmap': '/admin/heatmap',
+  'admin-alerts': '/admin/alertas',
+  'admin-users': '/admin/usuarios',
+  'admin-beacons': '/admin/beacons',
+  'admin-reports': '/admin/relatorios',
+  'admin-settings': '/admin/configuracoes',
+  'reception-dashboard': '/recepcao/painel',
+  'reception-visitors': '/recepcao/visitantes',
+  'reception-access': '/recepcao/autorizacoes',
+  'reception-checkin': '/recepcao/check-ins',
+  'reception-calls': '/recepcao/chamados',
+  'reception-messages': '/recepcao/mensagens',
+  'reception-settings': '/recepcao/configuracoes',
+};
+const pathPages = Object.fromEntries(Object.entries(pagePaths).map(([page, path]) => [path, page]));
+const profileOverrideKey = 'navora.admin.profile_overrides';
 
 const statusOrder = {
   Aceito: 'Aceito',
@@ -243,6 +293,69 @@ function matchesFloor(filter, floor) {
   return current === wanted || current.includes(wanted) || wanted.includes(current);
 }
 
+const heatmapFloorOptions = [
+  { key: 'terreo', label: 'Terreo', title: 'Terreo', backend: 'Piso Terreo' },
+  { key: 'andar1', label: '1o andar', title: '1o Andar', backend: '1o Andar' },
+  { key: 'andar2', label: '2o andar', title: '2o Andar', backend: '2o Andar' },
+  { key: 'terraco', label: 'Terraco', title: 'Terraco / Heliponto', backend: 'Terraco / Heliponto', special: true },
+];
+
+function normalizeHeatmapFloor(value) {
+  const normalized = comparableLocation(value)
+    .replace(/piso /g, '')
+    .replace(/andar/g, '')
+    .trim();
+  if (!normalized) return '';
+  if (normalized.includes('terraco') || normalized.includes('heliponto')) return 'terraco';
+  if (normalized.includes('2o') || normalized.includes('2 ') || normalized === '2' || normalized.includes('segundo')) return 'andar2';
+  if (normalized.includes('1o') || normalized.includes('1 ') || normalized === '1' || normalized.includes('primeiro')) return 'andar1';
+  if (normalized.includes('terreo')) return 'terreo';
+  return normalized;
+}
+
+function getHeatmapFloorOption(key) {
+  return heatmapFloorOptions.find((option) => option.key === key) || heatmapFloorOptions[0];
+}
+
+function sectorBelongsToFloor(sector, floorKey) {
+  return normalizeHeatmapFloor(sector.floor) === floorKey;
+}
+
+function nodeBelongsToFloor(node, floorKey) {
+  return normalizeHeatmapFloor(node.floor) === floorKey;
+}
+
+function beaconBelongsToFloor(beacon, floorKey, floorSectors) {
+  const directFloor = normalizeHeatmapFloor(beacon.floor || beacon.navigationNode?.floor || beacon.node?.floor);
+  if (directFloor) return directFloor === floorKey;
+  return floorSectors.some((sector) => matchesSector(beacon.sector || beacon.name, sector));
+}
+
+function getProfileOverrideKey(account) {
+  return account?.email || account?.id || 'current';
+}
+
+function readProfileOverrides() {
+  try {
+    return JSON.parse(window.sessionStorage.getItem(profileOverrideKey) || '{}');
+  } catch (error) {
+    window.sessionStorage.removeItem(profileOverrideKey);
+    return {};
+  }
+}
+
+function mergeProfileOverride(account) {
+  const overrides = readProfileOverrides();
+  return { ...account, ...(overrides[getProfileOverrideKey(account)] || {}) };
+}
+
+function saveProfileOverride(account, changes) {
+  const key = getProfileOverrideKey(account);
+  const overrides = readProfileOverrides();
+  const current = overrides[key] || {};
+  window.sessionStorage.setItem(profileOverrideKey, JSON.stringify({ ...overrides, [key]: { ...current, ...changes } }));
+}
+
 function App() {
   const [currentRole, setCurrentRole] = useState(null);
   const [currentPage, setCurrentPage] = useState(null);
@@ -275,16 +388,24 @@ function App() {
 
   const openModal = (title, content, footer = null) => setModal({ title, content, footer });
   const closeModal = () => setModal(null);
+  const defaultPageForRole = (role) => (role === 'admin' ? 'admin-dashboard' : 'reception-dashboard');
+  const canRoleOpenPage = (role, page) => (role === 'admin' ? page?.startsWith('admin-') : page?.startsWith('reception-'));
+  const pageFromCurrentPath = (role) => {
+    const page = pathPages[window.location.pathname];
+    return canRoleOpenPage(role, page) ? page : defaultPageForRole(role);
+  };
+  const navigatePage = (page, replace = false) => {
+    if (!page) return;
+    setCurrentPage(page);
+    window.history[replace ? 'replaceState' : 'pushState']({}, '', pagePaths[page] || pagePaths[defaultPageForRole(currentRole)]);
+  };
 
   const enterAdminPanel = (account, replace = false) => {
-    setCurrentUser(account);
+    setCurrentUser(mergeProfileOverride(account));
     setCurrentRole(account.role);
-    setCurrentPage(account.role === 'admin' ? 'admin-dashboard' : 'reception-dashboard');
-    window.history[replace ? 'replaceState' : 'pushState'](
-      {},
-      '',
-      account.role === 'admin' ? '/admin/dashboard' : '/recepcao/painel'
-    );
+    const nextPage = pageFromCurrentPath(account.role);
+    setCurrentPage(nextPage);
+    window.history[replace ? 'replaceState' : 'pushState']({}, '', pagePaths[nextPage]);
   };
 
   const leaveAdminPanel = () => {
@@ -490,6 +611,15 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    const handlePopState = () => {
+      if (!currentRole) return;
+      setCurrentPage(pageFromCurrentPath(currentRole));
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [currentRole]);
+
   const login = async ({ email, password, role }) => {
     try {
       clearAdminSession();
@@ -571,7 +701,6 @@ function App() {
       id: `AC-${Date.now()}`,
       name: data.name,
       email: data.email,
-      password: data.password || '123456',
       role,
       roleLabel,
       sector: data.sector || 'Recepcao',
@@ -606,14 +735,6 @@ function App() {
       )
     );
     showToast('Status de acesso atualizado');
-  };
-
-  const updateStaffPassword = (id, password) => {
-    setStaffAccounts((items) =>
-      items.map((item) => (item.id === id ? { ...item, password } : item))
-    );
-    showToast('Senha atualizada');
-    closeModal();
   };
 
   const applyCallStatus = (id, status, extra = {}) => {
@@ -713,6 +834,16 @@ function App() {
   const saveSettings = (data) => {
     setSettings((current) => ({ ...current, ...data }));
     showToast('Configuracoes salvas');
+  };
+
+  const updateCurrentUserProfile = (changes) => {
+    setCurrentUser((current) => {
+      const next = { ...current, ...changes };
+      saveProfileOverride(current, changes);
+      return next;
+    });
+    showToast('Perfil do operador atualizado');
+    closeModal();
   };
 
   const updateVisitor = (id, changes, toastMessage = 'Visitante atualizado') => {
@@ -847,11 +978,11 @@ function App() {
     users, staffAccounts, currentUser, calls, beacons, beaconsSource, checkins, sectors, sectorsSource,
     navigationSource, navigationAreas, navigationDestinations, navigationMap,
     messages, visitors, settings, filters, dashboardSummary,
-    setCurrentPage, setFilters, showToast, openModal, closeModal,
+    setCurrentPage: navigatePage, setFilters, showToast, openModal, closeModal,
     updateCallStatus, assignTeam, closeCall, createCheckin, updateCheckinStatus,
     updateBeacon, restartBeacon, createMessage, saveSettings, generateReport, exportToCSV,
     setSectors, setMessages, setCalls, setUsers, setVisitors, updateVisitor, updateVisitorAccessStatus, authorizeVisitor, denyVisitor,
-    createStaffAccount, toggleStaffStatus, updateStaffPassword,
+    createStaffAccount, toggleStaffStatus, updateCurrentUserProfile,
   };
 
   if (authRestoring) return <LoginPage onLogin={login} toast={toast} />;
@@ -859,53 +990,28 @@ function App() {
 
   return (
     <main className="admin-shell">
-      <Sidebar role={currentRole} currentUser={currentUser} currentPage={currentPage} onNavigate={setCurrentPage} onLogout={logout} />
+      <AppSidebar
+        role={currentRole}
+        currentUser={currentUser}
+        currentPage={currentPage}
+        navItems={currentRole === 'admin' ? adminNav : receptionNav}
+        onNavigate={navigatePage}
+        onLogout={logout}
+        onEditProfile={() => openProfileEditor(app)}
+      />
       <section className="workspace">
-        <Header role={currentRole} currentUser={currentUser} currentPage={currentPage} calls={calls} messages={messages} />
+        <AppTopbar
+          role={currentRole}
+          currentUser={currentUser}
+          currentPageLabel={pageLabels[currentPage] || currentPage}
+          notificationCount={calls.filter((call) => call.status !== 'Encerrado').length + messages.length}
+          onEditProfile={() => openProfileEditor(app)}
+        />
         <PageRouter role={currentRole} page={currentPage} app={app} />
       </section>
       <Toast toast={toast} />
       <Modal modal={modal} onClose={closeModal} />
     </main>
-  );
-}
-
-function Sidebar({ role, currentUser, currentPage, onNavigate, onLogout }) {
-  const nav = role === 'admin' ? adminNav : receptionNav;
-  return (
-    <aside className="sidebar">
-      <button className="brand" onClick={() => onNavigate(role === 'admin' ? 'admin-dashboard' : 'reception-dashboard')}>navora</button>
-      <nav>
-        {nav.map(([id, label]) => (
-          <button key={id} className={currentPage === id ? 'active' : ''} onClick={() => onNavigate(id)}>
-            <span>{label.slice(0, 1)}</span>{label}
-          </button>
-        ))}
-      </nav>
-      <div className="side-profile">
-        <b>{currentUser?.name || (role === 'admin' ? 'Amanda Souza' : 'Juliana Lima')}</b>
-        <small>{currentUser?.roleLabel || (role === 'admin' ? 'Administradora' : 'Recepcao')}</small>
-      </div>
-      <button className="logout" onClick={onLogout}>Sair</button>
-    </aside>
-  );
-}
-
-function Header({ role, currentUser, currentPage, calls, messages }) {
-  const title = role === 'admin' ? `Ola, ${currentUser?.name?.split(' ')[0] || 'Amanda'}!` : 'Painel da Recepcao';
-  const subtitle = role === 'admin' ? 'Bem-vinda ao painel administrativo do Navora.' : 'Gerencie chamados, ajuda e fluxo de pacientes.';
-  return (
-    <header className="topbar">
-      <div>
-        <small>{currentPage.replace('-', ' / ')}</small>
-        <h1>{title}</h1>
-        <p>{subtitle}</p>
-      </div>
-      <div className="top-actions">
-        <span>{new Date().toLocaleDateString('pt-BR')}</span>
-        <button title="Notificacoes">{calls.filter((call) => call.status !== 'Encerrado').length + messages.length}</button>
-      </div>
-    </header>
   );
 }
 
@@ -937,42 +1043,46 @@ function AdminDashboard({ app }) {
   const routes = app.users.filter((user) => user.status === 'Em rota').length + app.checkins.filter((item) => item.status === 'Em rota').length;
   const online = summary ? summary.beaconsOnline : app.beacons.filter((beacon) => beacon.status === 'Online').length;
   const pendingVisitors = summary ? summary.pendingVisitorRequests : app.visitors.filter((visitor) => visitor.status === 'Aguardando autorizacao').length;
-  const closedCalls = summary ? summary.closedCalls : app.calls.filter((call) => call.status === 'Encerrado').length;
+  const openCalls = summary ? summary.openCalls : app.calls.filter((call) => call.status !== 'Encerrado').length;
+  const activeHelp = summary ? summary.activeHelp : app.calls.filter((call) => call.type !== 'SOS Emergencia' && call.status !== 'Encerrado').length;
+  const approvedVisitors = summary ? summary.approvedVisitors : app.visitors.filter((visitor) => visitor.status === 'Autorizado').length;
+  const sectorsTotal = summary ? summary.sectorsTotal : app.sectors.length;
+  const destinationsTotal = summary ? summary.destinationsTotal : app.navigationDestinations.length;
   const alerts = app.calls.filter((call) => ['Critica', 'Alta'].includes(call.priority) && call.status !== 'Encerrado');
+  const dashboardFloorKey = normalizeHeatmapFloor(app.filters.floor) || 'terreo';
+  const dashboardFloor = getHeatmapFloorOption(dashboardFloorKey);
+  const heatmapSectors = app.sectors.filter((sector) => sectorBelongsToFloor(sector, dashboardFloorKey) && (app.filters.sector === 'Todos' || matchesSector(app.filters.sector, sector)));
+  const heatmapNodes = (app.navigationMap?.nodes || []).filter((node) => nodeBelongsToFloor(node, dashboardFloorKey));
 
   return (
     <div className="page-stack">
       <section className="stats-grid">
-        <Stat title={summary?.source === 'api' ? 'Pacientes cadastrados' : 'Pacientes demo'} value={people} tone="good" onClick={() => app.setCurrentPage('admin-users')} />
-        <Stat title="Alertas SOS Ativos" value={sos} tone="danger" onClick={() => app.setCurrentPage('admin-alerts')} />
-        <Stat title="Visitantes aguardando" value={pendingVisitors} tone="warning" onClick={() => app.setCurrentPage('reception-access')} />
-        <Stat title="Beacons Online" value={summary ? `${online}/${summary.beaconsTotal}` : online} tone="good" onClick={() => app.setCurrentPage('admin-beacons')} />
-        <Stat title="Chamados encerrados" value={closedCalls} tone="info" onClick={() => app.setCurrentPage('admin-alerts')} />
+        <DashboardStatCard icon={Users} title={summary?.source === 'api' ? 'Pacientes cadastrados' : 'Pacientes demo'} value={people} tone="good" detail={summary?.source === 'api' ? 'Fonte API' : 'Fonte fallback'} onClick={() => app.setCurrentPage('admin-users')} />
+        <DashboardStatCard icon={UserCheck} title="Visitantes aguardando" value={pendingVisitors} tone="warning" detail="Autorizacao pendente" onClick={() => app.setCurrentPage('reception-access')} />
+        <DashboardStatCard icon={RadioTower} title="Beacons online" value={summary ? `${online}/${summary.beaconsTotal}` : online} tone="good" detail={app.beaconsSource === 'api' ? 'Fonte API' : 'Fonte fallback'} onClick={() => app.setCurrentPage('admin-beacons')} />
+        <DashboardStatCard icon={HeartPulse} title="Chamados abertos" value={openCalls} tone="purple" detail="Ativos agora" onClick={() => app.setCurrentPage('admin-alerts')} />
+        <DashboardStatCard icon={HelpCircle} title="Help ativos" value={activeHelp} tone="blue" detail="Aguardando resposta" onClick={() => app.setCurrentPage('admin-alerts')} />
+        <DashboardStatCard icon={Building2} title="Setores cadastrados" value={sectorsTotal} tone="violet" detail="Total de setores" onClick={() => app.setCurrentPage('admin-heatmap')} />
+        <DashboardStatCard icon={MapIcon} title="Destinos cadastrados" value={destinationsTotal} tone="teal" detail="Pontos de interesse" onClick={() => app.setCurrentPage('admin-heatmap')} />
+        <DashboardStatCard icon={CheckCircle2} title="Visitantes aprovados" value={approvedVisitors} tone="lime" detail="Hoje" onClick={() => app.setCurrentPage('reception-access')} />
       </section>
-      {summary?.source === 'api' ? (
-        <section className="stats-grid">
-          <Stat title="Chamados abertos" value={summary.openCalls} tone="warning" onClick={() => app.setCurrentPage('admin-alerts')} />
-          <Stat title="Help ativos" value={summary.activeHelp} tone="info" onClick={() => app.setCurrentPage('admin-alerts')} />
-          <Stat title="Visitantes aprovados" value={summary.approvedVisitors} tone="good" onClick={() => app.setCurrentPage('reception-access')} />
-          <Stat title="Setores cadastrados" value={summary.sectorsTotal} tone="info" onClick={() => app.setCurrentPage('reception-sectors')} />
-          <Stat title="Destinos cadastrados" value={summary.destinationsTotal} tone="info" onClick={() => app.setCurrentPage('admin-beacons')} />
-        </section>
-      ) : null}
       <section className="two-col">
-        <Panel title="Mapa de calor">
-          <Toolbar>
-            <select onChange={(event) => app.setFilters({ ...app.filters, floor: event.target.value })}>
-              <option>Terreo</option><option>1o Andar</option><option>2o Andar</option>
+        <Panel title="Mapa de calor" meta="Fonte operacional Navora">
+          <Toolbar className="heatmap-dashboard-toolbar">
+            <select value={dashboardFloorKey} onChange={(event) => app.setFilters({ ...app.filters, floor: event.target.value })}>
+              {heatmapFloorOptions.map((option) => <option key={option.key} value={option.key}>{option.label}</option>)}
+            </select>
+            <select value={app.filters.sector || 'Todos'} onChange={(event) => app.setFilters({ ...app.filters, sector: event.target.value })}>
+              <option value="Todos">Todos os setores</option>
+              {app.sectors.map((sector) => <option key={sector.id} value={sector.name}>{sector.name}</option>)}
             </select>
             <button onClick={() => app.showToast('Dados atualizados com sucesso')}>Atualizar dados</button>
             <button onClick={() => app.openModal('Relatorio operacional', <ReportView report={report} />, <ReportFooter app={app} report={report} />)}>Gerar relatorio</button>
           </Toolbar>
-          <Heatmap sectors={app.sectors.filter((sector) => matchesFloor(app.filters.floor, sector.floor))} onSelect={(sector) => openSector(app, sector)} />
+          <DashboardHeatmap sectors={heatmapSectors} nodes={heatmapNodes} floor={dashboardFloor} onSelect={(sector) => openSector(app, sector)} />
         </Panel>
-        <Panel title="Alertas recentes">
-          <div className="card-list">
-            {alerts.map((call) => <CallCard key={call.id} call={call} app={app} />)}
-          </div>
+        <Panel title="Alertas recentes" action={<button onClick={() => app.setCurrentPage('admin-alerts')}>Ver todos</button>}>
+          <DashboardRecentAlerts visitors={app.visitors} calls={alerts} />
         </Panel>
       </section>
     </div>
@@ -980,30 +1090,107 @@ function AdminDashboard({ app }) {
 }
 
 function AdminHeatmap({ app }) {
-  const [floor, setFloor] = useState('Todos');
+  const initialSector = app.sectors.find((sector) => matchesSector(app.filters.sector, sector));
+  const [floorKey, setFloorKey] = useState(normalizeHeatmapFloor(app.filters.floor) || normalizeHeatmapFloor(initialSector?.floor) || 'terreo');
   const [sectorKey, setSectorKey] = useState(app.filters.sector || 'Todos');
-  const visible = app.sectors.filter(
-    (sector) => matchesFloor(floor, sector.floor) && (sectorKey === 'Todos' || matchesSector(sectorKey, sector))
-  );
+  const [lastUpdated, setLastUpdated] = useState(() => new Date());
+  const activeFloor = getHeatmapFloorOption(floorKey);
+  const refreshMap = (silent = false) => {
+    setLastUpdated(new Date());
+    if (!silent) app.showToast('Mapa atualizado');
+  };
+  useEffect(() => {
+    const timer = window.setInterval(() => refreshMap(true), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const floorSectors = app.sectors.filter((sector) => sectorBelongsToFloor(sector, floorKey));
+  const visible = floorSectors.filter((sector) => sectorKey === 'Todos' || matchesSector(sectorKey, sector));
+  const floorNodes = (app.navigationMap?.nodes || []).filter((node) => nodeBelongsToFloor(node, floorKey));
+  const floorBeacons = app.beacons.filter((beacon) => beaconBelongsToFloor(beacon, floorKey, floorSectors));
+  const onlineFloorBeacons = floorBeacons.filter((beacon) => comparableLocation(beacon.status) === 'online').length;
+  const highFlowSectors = visible.filter((sector) => ['critical', 'high'].includes(getHeatLevel(sector.peopleCount))).length;
+  const monitoredPeople = visible.reduce((total, sector) => total + sector.peopleCount, 0);
+  const flowSummary = ['critical', 'high', 'medium', 'low', 'very-low'].map((level) => ({
+    level,
+    label: heatLevelLabel(level),
+    total: visible.filter((sector) => getHeatLevel(sector.peopleCount) === level).length,
+  }));
   return (
-    <Panel title="Heatmap operacional" wide>
-      <Toolbar>
-        <select value={floor} onChange={(e) => setFloor(e.target.value)}><option>Todos</option><option>Terreo</option><option>1o Andar</option><option>2o Andar</option></select>
-        <select value={sectorKey} onChange={(e) => setSectorKey(e.target.value)}><option>Todos</option>{app.sectors.map((s) => <option key={s.id} value={s.code || s.name}>{s.name}</option>)}</select>
-        <button onClick={() => app.showToast('Fluxo recalculado')}>Recalcular fluxo</button>
-        <button onClick={() => { app.setMessages((m) => [{ id: `MSG-${Date.now()}`, to: 'Recepcao', message: 'Aviso de fluxo elevado enviado pelo admin.', priority: 'Alta', time: 'Agora', direction: 'Recebida' }, ...m]); app.showToast('Aviso enviado para recepcao'); }}>Enviar aviso para recepcao</button>
-      </Toolbar>
-      <div className="heatmap-layout">
-        <Heatmap sectors={visible} onSelect={(sector) => openSector(app, sector)} large />
-        <div className="rank-list">
-          {visible.sort((a, b) => b.peopleCount - a.peopleCount).map((sector) => (
-            <button key={sector.id} onClick={() => openSector(app, sector)}>
-              <b>{sector.name}</b><span>{sector.peopleCount} pessoas</span><small>{sector.flow} - {sector.waitingTime}</small>
+    <div className="heatmap-page">
+      <header className="heatmap-page-head">
+        <h2>Heatmap</h2>
+        <p>Visualizacao do fluxo de pessoas por setor</p>
+      </header>
+      <div className="heatmap-filterbar">
+        <div className="floor-tabs" role="tablist" aria-label="Selecionar andar">
+          {heatmapFloorOptions.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              className={floorKey === option.key ? 'active' : ''}
+              onClick={() => { setFloorKey(option.key); setSectorKey('Todos'); }}
+              aria-pressed={floorKey === option.key}
+            >
+              <span>{option.label}</span>
+              {option.special ? <small>Heliponto</small> : null}
             </button>
           ))}
         </div>
+        <select value={sectorKey} onChange={(e) => setSectorKey(e.target.value)}>
+          <option value="Todos">Todos os setores</option>
+          {floorSectors.map((s) => <option key={s.id} value={s.code || s.name}>{s.name}</option>)}
+        </select>
+        <button className="heatmap-refresh" onClick={() => refreshMap()}>
+          <RefreshCw size={16} />Atualizar dados
+        </button>
+        <button className="heatmap-export" onClick={() => app.exportToCSV('heatmap-setores.csv', visible)}>
+          <Download size={16} />Exportar relatorio
+        </button>
       </div>
-    </Panel>
+      <section className="floor-overview" aria-label="Informacoes do andar">
+        <article><MapIcon size={16} /><span>Andar</span><b>{activeFloor.title}</b></article>
+        <article><Users size={16} /><span>Pessoas</span><b>{monitoredPeople}</b></article>
+        <article><Building2 size={16} /><span>Setores</span><b>{floorSectors.length}</b></article>
+        <article><RadioTower size={16} /><span>Beacons online</span><b>{onlineFloorBeacons}</b></article>
+        <article><Activity size={16} /><span>Fluxo alto</span><b>{highFlowSectors}</b></article>
+      </section>
+      <div className="heatmap-layout heatmap-screen-layout">
+        <Heatmap sectors={visible} nodes={floorNodes} floor={activeFloor} beacons={floorBeacons} onSelect={(sector) => openSector(app, sector)} large lastUpdated={lastUpdated} />
+        <aside className="rank-panel" aria-label="Setores monitorados">
+          <div className="rank-panel-head">
+            <h3>Setores monitorados</h3>
+            <small>{visible.length} areas acompanhadas</small>
+          </div>
+          <div className="rank-list">
+          {visible.sort((a, b) => b.peopleCount - a.peopleCount).map((sector) => (
+            <button key={sector.id} className={getHeatLevel(sector.peopleCount)} onClick={() => openSector(app, sector)}>
+              <span className="rank-icon"><Building2 size={18} /></span>
+              <span className="rank-copy">
+                <b>{sector.name}</b>
+                <span>{sector.peopleCount} pessoas</span>
+                <small><em>{heatLevelLabel(getHeatLevel(sector.peopleCount))}</em>{sector.waitingTime}</small>
+              </span>
+              <ChevronRight size={16} />
+            </button>
+          ))}
+          </div>
+          <button className="rank-all" onClick={() => app.showToast('Todos os setores ja estao visiveis')}>Ver todos os setores <ChevronRight size={15} /></button>
+        </aside>
+      </div>
+      <section className="flow-summary" aria-label="Resumo do fluxo">
+        <h3>Resumo do fluxo</h3>
+        <div>
+          {flowSummary.map((item) => (
+            <article className={item.level} key={item.level}>
+              <span className="summary-icon"><Building2 size={17} /></span>
+              <p>{item.label}</p>
+              <strong>{item.total}</strong>
+              <small>{item.total === 1 ? 'area' : 'areas'}</small>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -1030,17 +1217,57 @@ function CallsPage({ app, admin = false }) {
     return matchesQuery && matchesFilter;
   });
   const filterList = admin ? ['Todos', 'SOS', 'Pedido de Ajuda', 'Solicitar Medico', 'Estou Perdido', 'Alta prioridade', 'Pendentes', 'Encerrados'] : ['Todos', 'Ajuda', 'Medico', 'SOS', 'Perdido', 'Locomocao', 'Pendentes', 'Em atendimento', 'Encerrados'];
-  return (
-    <Panel title={admin ? 'Alertas e SOS' : 'Chamados da recepcao'} wide>
-      <Toolbar>
-        <input placeholder="Buscar paciente, setor ou tipo" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <button onClick={() => app.exportToCSV('chamados.csv', visible)}>Exportar CSV</button>
-      </Toolbar>
-      <Pills items={filterList} active={filter} onChange={setFilter} />
-      <div className="card-list">
-        {visible.map((call) => <CallCard key={call.id} call={call} app={app} reception={!admin} />)}
+  if (!admin) {
+    return (
+      <div className="page-view premium-page reception-calls-page">
+        <PageHeading title="Chamados e SOS" subtitle="Acompanhe pedidos de ajuda, emergencias e solicitacoes operacionais." />
+        <section className="kpi-grid">
+          <KpiCard icon={HeartPulse} tone="danger" label="SOS ativos" value={app.calls.filter((call) => call.type === 'SOS Emergencia' && call.status !== 'Encerrado').length} helper="Prioridade critica" />
+          <KpiCard icon={HelpCircle} tone="warning" label="Pedidos de ajuda" value={app.calls.filter((call) => call.type !== 'SOS Emergencia' && call.status !== 'Encerrado').length} helper="Nao encerrados" />
+          <KpiCard icon={Clock3} tone="info" label="Em atendimento" value={app.calls.filter((call) => call.status === 'Em atendimento').length} helper="Equipe acompanhando" />
+          <KpiCard icon={CheckCircle2} tone="success" label="Encerrados" value={app.calls.filter((call) => call.status === 'Encerrado').length} helper="Historico operacional" />
+        </section>
+        <div className="page-toolbar">
+          <div className="page-search"><Search size={16} /><input placeholder="Buscar paciente, setor ou tipo" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
+          <button className="btn btn-secondary" onClick={() => app.exportToCSV('chamados.csv', visible)}><Download size={16} />Exportar CSV</button>
+        </div>
+        <FilterChips items={filterList} active={filter} onChange={setFilter} />
+        <SectionCard title="Chamados recebidos" subtitle="Acoes semanticas por status e prioridade.">
+          <div className="card-list alerts-list">
+            {visible.map((call) => <CallCard key={call.id} call={call} app={app} reception />)}
+            {!visible.length ? <EmptyState title="Nenhum chamado encontrado" text="Novos chamados e SOS aparecerao aqui." /> : null}
+          </div>
+        </SectionCard>
       </div>
-    </Panel>
+    );
+  }
+  return (
+    <section className={`panel wide ${admin ? 'alerts-page' : 'calls-page'}`}>
+      <div className="panel-title">
+        <div>
+          <h2>{admin ? 'Alertas e SOS' : 'Chamados da recepcao'}</h2>
+        </div>
+      </div>
+      <Toolbar>
+        {admin ? (
+          <div className="alerts-search">
+            <Search size={17} aria-hidden="true" />
+            <input aria-label="Buscar paciente, setor ou tipo" placeholder="Buscar paciente, setor ou tipo" value={query} onChange={(e) => setQuery(e.target.value)} />
+          </div>
+        ) : (
+          <input placeholder="Buscar paciente, setor ou tipo" value={query} onChange={(e) => setQuery(e.target.value)} />
+        )}
+        <button className={admin ? 'alerts-export' : undefined} onClick={() => app.exportToCSV('chamados.csv', visible)}>
+          {admin ? <Download size={16} aria-hidden="true" /> : null}Exportar CSV
+        </button>
+      </Toolbar>
+      <div className="alerts-filters">
+        <Pills items={filterList} active={filter} onChange={setFilter} />
+      </div>
+      <div className="card-list alerts-list">
+        {visible.map((call) => <CallCard key={call.id} call={call} app={app} reception={!admin} adminView={admin} />)}
+      </div>
+    </section>
   );
 }
 
@@ -1049,89 +1276,151 @@ function UsersPage({ app }) {
   const [query, setQuery] = useState('');
   const activeStaff = app.staffAccounts.filter((account) => account.status === 'Ativo').length;
   const receptionStaff = app.staffAccounts.filter((account) => account.role === 'reception').length;
+  const staffQuery = app.staffAccounts.filter((account) => {
+    const matchesQuery = `${account.name} ${account.email} ${account.roleLabel} ${account.sector}`.toLowerCase().includes(query.toLowerCase());
+    const matchesFilter =
+      filter === 'Todos' ||
+      (filter === 'Administrador' && account.role === 'admin') ||
+      (filter === 'Recepcao' && account.role === 'reception');
+    return matchesQuery && matchesFilter;
+  });
   const visible = app.users.filter((user) => {
-    const okFilter = filter === 'Todos' || (filter === 'Pacientes' && user.role === 'Paciente') || (filter === 'Funcionarios' && user.role !== 'Paciente') || (filter === 'Em rota' && user.status === 'Em rota') || (filter === 'Precisam acessibilidade' && user.accessibility !== 'Nao');
-    return okFilter && user.name.toLowerCase().includes(query.toLowerCase());
+    const okFilter =
+      filter === 'Todos' ||
+      (filter === 'Administrador' && user.role === 'Administrador') ||
+      (filter === 'Recepcao' && user.role === 'Recepcao') ||
+      (filter === 'Pacientes' && user.role === 'Paciente') ||
+      (filter === 'Visitantes' && user.role === 'Visitante');
+    return okFilter && `${user.name} ${user.role} ${user.location} ${user.accessibility}`.toLowerCase().includes(query.toLowerCase());
   });
   return (
-    <Panel title="Usuarios monitorados" wide>
-      <section className="access-summary">
-        <article>
-          <span>Acessos internos</span>
-          <strong>{app.staffAccounts.length}</strong>
-          <small>Funcionarios cadastrados</small>
-        </article>
-        <article>
-          <span>Ativos agora</span>
-          <strong>{activeStaff}</strong>
-          <small>Podem entrar no sistema</small>
-        </article>
-        <article>
-          <span>Acesso recepcao</span>
-          <strong>{receptionStaff}</strong>
-          <small>Perfis de recepcao</small>
-        </article>
+    <div className="page-view premium-page">
+      <PageHeading title="Usuarios" subtitle="Gestao de perfis administrativos e pacientes monitorados" />
+      <section className="kpi-grid">
+        <KpiCard icon={Users} tone="violet" label="Acessos internos" value={app.staffAccounts.length} helper="Perfis internos cadastrados" />
+        <KpiCard icon={CheckCircle2} tone="success" label="Ativos agora" value={activeStaff} helper="Podem entrar no sistema" />
+        <KpiCard icon={UserCheck} tone="warning" label="Acesso recepcao" value={receptionStaff} helper="Perfis de recepcao" />
+        <KpiCard icon={Activity} tone="info" label="Pacientes monitorados" value={app.users.length} helper="Usuarios na plataforma" />
       </section>
 
-      <Toolbar>
-        <input placeholder="Buscar por nome" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <button onClick={() => openStaffAccount(app)}>Cadastrar funcionario</button>
-      </Toolbar>
-
-      <div className="access-panel">
-        <div className="panel-title access-title">
-          <div>
-            <h2>Logins e senhas de funcionarios</h2>
-            <p>Controle quem acessa o painel administrativo e a recepcao.</p>
-          </div>
-          <div className="credential-hint">
-            <span>Admin: admin@navora.com / admin123</span>
-            <span>Recepcao: recepcao@navora.com / recepcao123</span>
-          </div>
-        </div>
-        <Table rows={app.staffAccounts} columns={['name', 'email', 'roleLabel', 'sector', 'status', 'lastLogin']} actions={(account) => (
-          <>
-            <button onClick={() => app.toggleStaffStatus(account.id)}>{account.status === 'Ativo' ? 'Desativar' : 'Ativar'}</button>
-            <button onClick={() => openPasswordReset(app, account)}>Alterar senha</button>
-            <button onClick={() => app.openModal('Dados de acesso', <Details data={{ ...account, password: `senha atual: ${account.password}` }} />)}>Ver acesso</button>
-          </>
-        )} />
+      <div className="page-toolbar">
+        <div className="page-search"><Search size={16} /><input placeholder="Buscar por nome, e-mail ou setor" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
+        <button className="btn btn-primary" onClick={() => openStaffAccount(app)}><Plus size={16} />Adicionar perfil local</button>
+        <button className="btn btn-secondary" onClick={() => app.exportToCSV('usuarios.csv', [...staffQuery, ...visible])}><Download size={16} />Exportar</button>
       </div>
 
-      <Pills items={['Todos', 'Pacientes', 'Funcionarios', 'Em rota', 'Precisam acessibilidade']} active={filter} onChange={setFilter} />
-      <Table rows={visible} columns={['name', 'role', 'status', 'location', 'accessibility', 'lastSeen']} actions={(user) => (
-        <>
-          <button onClick={() => app.openModal('Perfil do usuario', <UserProfile user={user} />)}>Ver perfil</button>
-          <button onClick={() => { app.setCurrentPage('admin-heatmap'); app.setFilters({ sector: user.location }); }}>Ver localizacao</button>
-          <button onClick={() => openMessage(app, user.name)}>Enviar notificacao</button>
-          <button onClick={() => { app.setUsers((items) => items.map((item) => item.id === user.id ? { ...item, status: item.status === 'Bloqueado' ? 'Ativo' : 'Bloqueado' } : item)); app.showToast('Status do usuario atualizado'); }}>Bloquear/Desbloquear</button>
-        </>
-      )} />
-    </Panel>
+      <FilterChips items={['Todos', 'Administrador', 'Recepcao', 'Pacientes']} active={filter} onChange={setFilter} />
+
+      <SectionCard title="Acessos administrativos" subtitle="Controle de acessos da equipe interna ao sistema.">
+        <PremiumTable
+          rows={staffQuery}
+          columns={[
+            { key: 'name', label: 'Nome', render: (account) => <UserCell name={account.name} sub={account.email} /> },
+            { key: 'email', label: 'E-mail', render: (account) => account.email },
+            { key: 'roleLabel', label: 'Perfil', render: (account) => <RoleBadge value={account.roleLabel} /> },
+            { key: 'sector', label: 'Setor', render: (account) => account.sector },
+            { key: 'status', label: 'Status', render: (account) => <NvBadge value={account.status} /> },
+            { key: 'lastLogin', label: 'Ultimo acesso', render: (account) => account.lastLogin },
+            { key: 'actions', label: 'Acoes', render: (account) => (
+              <RowActions>
+                <button className="btn btn-secondary" onClick={() => app.openModal('Perfil administrativo', <Details data={account} />)}>Ver perfil</button>
+                <ActionMenu>
+                  <button onClick={() => app.toggleStaffStatus(account.id)}>{account.status === 'Ativo' ? 'Desativar' : 'Ativar'}</button>
+                  <button onClick={() => app.openModal('Dados de acesso', <Details data={account} />)}>Ver dados</button>
+                </ActionMenu>
+              </RowActions>
+            ) },
+          ]}
+        />
+      </SectionCard>
+
+      <SectionCard title="Pacientes monitorados" subtitle="Acompanhe pacientes em rota ou aguardando atendimento.">
+        <PremiumTable
+          rows={visible}
+          columns={[
+            { key: 'name', label: 'Nome', render: (user) => <UserCell name={user.name} sub={user.role} /> },
+            { key: 'role', label: 'Perfil', render: (user) => <RoleBadge value={user.role} /> },
+            { key: 'status', label: 'Status', render: (user) => <NvBadge value={user.status} /> },
+            { key: 'location', label: 'Localizacao', render: (user) => user.location },
+            { key: 'accessibility', label: 'Acessibilidade', render: (user) => <AccessibilityNote value={user.accessibility} /> },
+            { key: 'lastSeen', label: 'Ultima atualizacao', render: (user) => user.lastSeen },
+            { key: 'actions', label: 'Acoes', render: (user) => (
+              <RowActions>
+                <button className="btn btn-secondary" onClick={() => app.openModal('Perfil do usuario', <UserProfile user={user} />)}>Ver perfil</button>
+                <button className="btn btn-info" onClick={() => { app.setCurrentPage('admin-heatmap'); app.setFilters({ sector: user.location }); }}>Localizacao</button>
+                <ActionMenu>
+                  <button onClick={() => openMessage(app, user.name)}>Enviar notificacao</button>
+                  <button className="menu-danger" onClick={() => { app.setUsers((items) => items.map((item) => item.id === user.id ? { ...item, status: item.status === 'Bloqueado' ? 'Ativo' : 'Bloqueado' } : item)); app.showToast('Status do usuario atualizado'); }}>{user.status === 'Bloqueado' ? 'Desbloquear' : 'Bloquear'}</button>
+                </ActionMenu>
+              </RowActions>
+            ) },
+          ]}
+        />
+      </SectionCard>
+    </div>
   );
 }
 
 function BeaconsPage({ app }) {
   const [filter, setFilter] = useState('Todos');
-  const visible = app.beacons.filter((beacon) => filter === 'Todos' || beacon.status === filter || (filter === 'Bateria baixa' && beacon.battery < 30));
+  const [query, setQuery] = useState('');
+  const visible = app.beacons.filter((beacon) => {
+    const matchesFilter = filter === 'Todos' || beacon.status === filter || (filter === 'Bateria baixa' && beacon.battery < 30);
+    const matchesQuery = `${beacon.id} ${beacon.name} ${beacon.sector} ${beacon.area}`.toLowerCase().includes(query.toLowerCase());
+    return matchesFilter && matchesQuery;
+  });
+  const rows = visible.map((beacon) => ({
+    ...beacon,
+    node: beacon.originNodeCode || beacon.navigationNode?.code || 'Nao informado',
+    lastSignal: beacon.lastSignal || 'Sem sinal',
+  }));
   return (
-    <Panel title="Beacons MBM04" wide>
-      <Pills items={['Todos', 'Online', 'Atencao', 'Offline', 'Bateria baixa', 'Manutencao']} active={filter} onChange={setFilter} />
-      <Table rows={visible} columns={['id', 'name', 'sector', 'floor', 'battery', 'status', 'lastSignal', 'distance']} rowClass={(b) => b.battery < 30 || b.status !== 'Online' ? 'row-warning' : ''} actions={(beacon) => (
-        <>
-          <button onClick={() => app.openModal('Detalhes do beacon', <Details data={beacon} />)}>Ver detalhes</button>
-          <button onClick={() => app.restartBeacon(beacon.id)}>Reiniciar</button>
-          <button onClick={() => { app.updateBeacon(beacon.id, { status: 'Manutencao' }); app.showToast('Beacon marcado para manutencao', 'warning'); }}>Manutencao</button>
-          <button onClick={() => { app.setFilters({ sector: beacon.sector }); app.setCurrentPage('admin-heatmap'); }}>Localizar</button>
-        </>
-      )} />
-    </Panel>
+    <div className="page-view premium-page">
+      <PageHeading title="Beacons" subtitle="Monitoramento dos dispositivos de localizacao indoor" />
+      <section className="kpi-grid">
+        <KpiCard icon={RadioTower} tone="info" label="Total de beacons" value={app.beacons.length} helper="Dispositivos cadastrados" />
+        <KpiCard icon={CheckCircle2} tone="success" label="Online" value={app.beacons.filter((b) => b.status === 'Online').length} helper="Transmitindo sinal" />
+        <KpiCard icon={Clock3} tone="warning" label="Bateria baixa" value={app.beacons.filter((b) => b.battery < 30).length} helper="Requer atencao" />
+        <KpiCard icon={ShieldCheck} tone="danger" label="Offline" value={app.beacons.filter((b) => b.status === 'Offline').length} helper="Sem comunicacao" />
+      </section>
+      <div className="page-toolbar">
+        <div className="page-search"><Search size={16} /><input placeholder="Buscar por codigo, nome ou setor" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
+        <button className="btn btn-secondary" onClick={() => app.exportToCSV('beacons.csv', rows)}><Download size={16} />Exportar</button>
+      </div>
+      <FilterChips items={['Todos', 'Online', 'Atencao', 'Offline', 'Sem sinal', 'Bateria baixa', 'Manutencao']} active={filter} onChange={setFilter} />
+      <SectionCard title="Dispositivos monitorados" subtitle="Status operacional dos beacons no ambiente.">
+        <PremiumTable
+          rows={rows}
+          columns={[
+            { key: 'id', label: 'Codigo', render: (beacon) => beacon.id },
+            { key: 'name', label: 'Nome', render: (beacon) => beacon.name },
+            { key: 'sector', label: 'Setor', render: (beacon) => beacon.sector },
+            { key: 'area', label: 'Area', render: (beacon) => beacon.area },
+            { key: 'status', label: 'Status', render: (beacon) => <NvBadge value={beacon.status} /> },
+            { key: 'battery', label: 'Bateria', render: (beacon) => <BatteryMeter value={beacon.battery} /> },
+            { key: 'lastSignal', label: 'Ultimo sinal', render: (beacon) => beacon.lastSignal },
+            { key: 'node', label: 'No', render: (beacon) => beacon.node },
+            { key: 'actions', label: 'Acoes', render: (beacon) => (
+              <RowActions>
+                <button className="btn btn-secondary" onClick={() => app.openModal('Detalhes do beacon', <Details data={beacon} />)}>Ver detalhes</button>
+                <button className="btn btn-info" onClick={() => { app.setFilters({ sector: beacon.sector }); app.setCurrentPage('admin-heatmap'); }}>Localizar</button>
+                <ActionMenu>
+                  <button onClick={() => app.restartBeacon(beacon.id)}>Reiniciar</button>
+                  <button onClick={() => { app.updateBeacon(beacon.id, { status: 'Manutencao' }); app.showToast('Beacon marcado para manutencao', 'warning'); }}>Manutencao</button>
+                </ActionMenu>
+              </RowActions>
+            ) },
+          ]}
+        />
+      </SectionCard>
+    </div>
   );
 }
 
 function ReportsPage({ app }) {
   const [report, setReport] = useState({ period: 'diario', source: 'fallback', status: 'Aguardando geracao' });
   const [loading, setLoading] = useState(false);
+  const [period, setPeriod] = useState('diario');
   const make = async (period) => {
     setLoading(true);
     const next = await app.generateReport(period);
@@ -1140,63 +1429,243 @@ function ReportsPage({ app }) {
     if (next?.source === 'auth-error') return;
     app.showToast(`Relatorio ${period} gerado`);
   };
+  const generated = report.status !== 'Aguardando geracao';
+  const localSource = report.source === 'fallback' ? 'Dados locais' : report.source === 'api' ? 'Fonte API' : report.source;
   return (
-    <Panel title="Relatorios" wide>
-      <Toolbar>
-        <button onClick={() => make('diario')} disabled={loading}>Gerar diario</button>
-        <button onClick={() => make('semanal')} disabled={loading}>Gerar semanal</button>
-        <button onClick={() => make('mensal')} disabled={loading}>Gerar mensal</button>
-        <button onClick={() => app.openModal('Relatorio', <ReportView report={report} />, <ReportFooter app={app} report={report} />)}>Visualizar relatorio</button>
-        <button onClick={() => app.showToast('PDF gerado com sucesso')}>Exportar PDF</button>
-        <button onClick={() => app.exportToCSV(`relatorio-${report.period}.csv`, [report])}>Exportar CSV</button>
-      </Toolbar>
-      <ReportView report={report} />
-    </Panel>
+    <div className="page-view premium-page">
+      <PageHeading title="Relatorios" subtitle="Gere, visualize e exporte informacoes operacionais do Navora." />
+      <section className="kpi-grid">
+        <KpiCard icon={HeartPulse} tone="danger" label="SOS" value={app.calls.filter((c) => c.type === 'SOS Emergencia').length} helper="Chamados de emergencia" />
+        <KpiCard icon={HelpCircle} tone="warning" label="Help" value={app.calls.filter((c) => c.type !== 'SOS Emergencia').length} helper="Pedidos de ajuda" />
+        <KpiCard icon={UserCheck} tone="info" label="Visitantes" value={app.visitors.length} helper="Solicitacoes registradas" />
+        <KpiCard icon={ClipboardCheck} tone="success" label="Check-ins" value={app.checkins.length} helper="Atendimentos criados" />
+      </section>
+      <section className="section-card">
+        <div className="report-toolbar page-toolbar">
+          <label className="form-label">Periodo
+            <select className="page-select" value={period} onChange={(event) => setPeriod(event.target.value)}>
+              <option value="diario">Diario</option>
+              <option value="semanal">Semanal</option>
+              <option value="mensal">Mensal</option>
+            </select>
+          </label>
+          <button className="btn btn-primary" onClick={() => make(period)} disabled={loading}>{loading ? 'Gerando...' : 'Gerar relatorio'}</button>
+          {generated ? <button className="btn btn-secondary" onClick={() => app.openModal('Relatorio', <ReportView report={report} />, <ReportFooter app={app} report={report} />)}>Visualizar</button> : null}
+          {generated ? <button className="btn btn-secondary" onClick={() => app.exportToCSV(`relatorio-${report.period}.csv`, [report])}><Download size={16} />Exportar CSV</button> : null}
+        </div>
+        {generated ? (
+          <div className="report-result">
+            <div>
+              <h3 className="section-title">Relatorio {report.period}</h3>
+              <p className="section-subtitle">Fonte: <span className="badge badge-neutral">{localSource}</span></p>
+            </div>
+            <ReportView report={{ ...report, source: localSource }} />
+          </div>
+        ) : (
+          <div className="empty-state premium-empty">
+            <BarChart3 size={34} />
+            <div><strong>Nenhum relatorio gerado</strong><span>Selecione o periodo e gere um relatorio para visualizar os resultados.</span></div>
+            <button className="btn btn-primary" onClick={() => make(period)} disabled={loading}>{loading ? 'Gerando...' : 'Gerar relatorio'}</button>
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
 
 function SettingsPage({ app, admin = false }) {
   const [form, setForm] = useState(app.settings);
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const textFields = admin
+    ? [['hospitalName', 'Nome do hospital'], ['hospitalAddress', 'Endereco do hospital'], ['waitLimit', 'Tempo limite de espera']]
+    : [['receptionName', 'Nome da recepcao'], ['waitLimit', 'Tempo maximo de espera']];
+  const toggles = admin
+    ? [['sosNotifications', 'Notificacoes de SOS'], ['heatmap', 'Heatmap operacional'], ['beaconMonitoring', 'Monitoramento de beacons'], ['maintenanceMode', 'Modo manutencao']]
+    : [['soundAlerts', 'Alertas sonoros'], ['prioritizeSos', 'Priorizar SOS'], ['prioritizeDoctor', 'Priorizar medico'], ['showClosed', 'Exibir encerrados']];
   return (
-    <Panel title={admin ? 'Configuracoes administrativas' : 'Configuracoes da recepcao'} wide>
-      <div className="settings-grid">
-        {(admin ? [
-          ['hospitalName', 'Nome do hospital'], ['hospitalAddress', 'Endereco do hospital'], ['waitLimit', 'Tempo limite de espera'],
-        ] : [
-          ['receptionName', 'Nome da recepcao'], ['waitLimit', 'Tempo maximo de espera'],
-        ]).map(([key, label]) => <label key={key}>{label}<input value={form[key]} onChange={(e) => update(key, e.target.value)} /></label>)}
-        {(admin ? ['sosNotifications', 'heatmap', 'beaconMonitoring', 'maintenanceMode'] : ['soundAlerts', 'prioritizeSos', 'prioritizeDoctor', 'showClosed']).map((key) => (
-          <label className="toggle" key={key}><input type="checkbox" checked={!!form[key]} onChange={(e) => update(key, e.target.checked)} />{key}</label>
-        ))}
+    <div className="page-view premium-page">
+      <PageHeading
+        title={admin ? 'Configuracoes' : 'Configuracoes da recepcao'}
+        subtitle={admin ? 'Gerencie preferencias administrativas e operacionais.' : 'Ajuste preferencias operacionais da recepcao.'}
+      />
+      <div className="settings-grid premium-settings-grid">
+        <section className="settings-group">
+          <div><h3 className="section-title">{admin ? 'Instituicao' : 'Recepcao'}</h3><p className="section-subtitle">Dados operacionais exibidos no painel.</p></div>
+          {textFields.map(([key, label]) => <label className="form-label settings-row" key={key}>{label}<input className="form-control" value={form[key]} onChange={(e) => update(key, e.target.value)} /></label>)}
+        </section>
+        <section className="settings-group">
+          <div><h3 className="section-title">Operacao e notificacoes</h3><p className="section-subtitle">Preferencias de alertas e monitoramento.</p></div>
+          {toggles.map(([key, label]) => (
+            <label className={`toggle settings-toggle ${key === 'maintenanceMode' ? 'warning' : ''}`} key={key}><input type="checkbox" checked={!!form[key]} onChange={(e) => update(key, e.target.checked)} /><span>{label}</span></label>
+          ))}
+        </section>
       </div>
-      <button className="primary" onClick={() => app.saveSettings(form)}>Salvar configuracoes</button>
-    </Panel>
+      <button className="btn btn-primary settings-save" onClick={() => app.saveSettings(form)}>Salvar configuracoes</button>
+    </div>
   );
+}
+
+function PageHeading({ title, subtitle }) {
+  return <header className="page-heading"><h1>{title}</h1><p>{subtitle}</p></header>;
+}
+
+function SectionCard({ title, subtitle, children }) {
+  return (
+    <section className="section-card">
+      <div className="section-card-head">
+        <div><h2 className="section-title">{title}</h2>{subtitle ? <p className="section-subtitle">{subtitle}</p> : null}</div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function KpiCard({ icon: Icon, tone = 'info', label, value, helper }) {
+  return (
+    <article className={`kpi-card ${tone}`}>
+      <span className="kpi-card__icon"><Icon size={19} /></span>
+      <span className="kpi-card__label">{label}</span>
+      <strong className="kpi-card__value">{value}</strong>
+      <small className="kpi-card__helper">{helper}</small>
+    </article>
+  );
+}
+
+function FilterChips({ items, active, onChange }) {
+  return <div className="filter-row">{items.map((item) => <button key={item} className={`filter-chip ${active === item ? 'active' : ''}`} onClick={() => onChange(item)}>{item}</button>)}</div>;
+}
+
+function PremiumTable({ rows, columns }) {
+  return (
+    <div className="table-card">
+      <div className="table-scroll">
+        <table className="nv-table">
+          <thead><tr>{columns.map((column) => <th key={column.key}>{column.label}</th>)}</tr></thead>
+          <tbody>
+            {rows.map((row) => <tr key={row.id}>{columns.map((column) => <td key={column.key}>{column.render(row)}</td>)}</tr>)}
+          </tbody>
+        </table>
+        {!rows.length ? <div className="empty-state compact"><strong>Nenhum registro encontrado</strong><span>Ajuste a busca ou os filtros para ampliar os resultados.</span></div> : null}
+      </div>
+    </div>
+  );
+}
+
+function initialsFromName(name) {
+  return String(name || 'N')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+}
+
+function UserCell({ name, sub }) {
+  return <span className="user-cell"><span className="avatar-initials">{initialsFromName(name)}</span><span><strong>{name}</strong><small>{sub}</small></span></span>;
+}
+
+function RoleBadge({ value }) {
+  const normalized = comparableLocation(value);
+  const tone = normalized.includes('admin') ? 'violet' : normalized.includes('recepc') ? 'info' : normalized.includes('paciente') ? 'info' : 'neutral';
+  return <span className={`badge badge-${tone}`}>{value || 'Nao informado'}</span>;
+}
+
+function NvBadge({ value }) {
+  const label = String(value || 'Nao informado');
+  const normalized = comparableLocation(label);
+  const tone =
+    normalized.includes('bloqueado') || normalized.includes('offline') || normalized.includes('negado')
+      ? 'danger'
+      : normalized.includes('aguardando') || normalized.includes('atencao') || normalized.includes('manutencao') || normalized.includes('bateria')
+        ? 'warning'
+        : normalized.includes('em rota') || normalized.includes('sem sinal')
+          ? 'info'
+          : normalized.includes('ativo') || normalized.includes('online') || normalized.includes('autorizado') || normalized.includes('finalizado') || normalized.includes('encerrado')
+            ? 'success'
+            : 'neutral';
+  return <span className={`badge badge-${tone}`}>{label}</span>;
+}
+
+function AccessibilityNote({ value }) {
+  const label = String(value || 'Nao');
+  const needsCare = comparableLocation(label) !== 'nao';
+  return <span className={`accessibility-note ${needsCare ? 'care' : ''}`}>{needsCare ? <Activity size={14} /> : null}{label}</span>;
+}
+
+function RowActions({ children }) {
+  return <div className="table-actions">{children}</div>;
+}
+
+function ActionMenu({ children }) {
+  return (
+    <details className="action-menu">
+      <summary aria-label="Mais acoes"><MoreVertical size={16} /></summary>
+      <div>{children}</div>
+    </details>
+  );
+}
+
+function BatteryMeter({ value }) {
+  const safeValue = Number.isFinite(Number(value)) ? Number(value) : 0;
+  const tone = safeValue < 15 ? 'danger' : safeValue < 30 ? 'warning' : 'success';
+  return <span className="battery-meter"><span><i className={tone} style={{ width: `${Math.max(0, Math.min(100, safeValue))}%` }} /></span><b>{safeValue}%</b></span>;
 }
 
 function ReceptionDashboard({ app }) {
   const summary = app.dashboardSummary;
   const waiting = app.checkins.filter((item) => item.status === 'Aguardando').length;
-  const help = summary ? summary.activeHelp : app.calls.filter((call) => call.type.includes('Ajuda') && call.status !== 'Encerrado').length;
   const sos = summary ? summary.activeSOS : app.calls.filter((call) => call.type === 'SOS Emergencia' && call.status !== 'Encerrado').length;
-  const doctors = app.calls.filter((call) => call.type === 'Solicitar Medico' && call.status !== 'Encerrado').length;
   const awaitingVisitors = summary ? summary.pendingVisitorRequests : app.visitors.filter((visitor) => visitor.status === 'Aguardando autorizacao').length;
+  const openCalls = summary ? summary.openCalls : app.calls.filter((call) => call.status !== 'Encerrado').length;
+  const waitingCheckins = app.checkins.filter((item) => item.status === 'Aguardando').slice(0, 4);
+  const pendingVisitors = app.visitors.filter((visitor) => visitor.status === 'Aguardando autorizacao').slice(0, 4);
   return (
-    <div className="page-stack">
-      <section className="stats-grid five">
-        <Stat title="Check-ins Hoje" value={app.checkins.length} onClick={() => app.setCurrentPage('reception-checkin')} />
-        <Stat title="Pacientes Esperando" value={waiting} onClick={() => { app.setFilters({ checkin: 'Aguardando' }); app.setCurrentPage('reception-checkin'); }} />
-        <Stat title="Pedidos de Ajuda" value={help} onClick={() => { app.setFilters({ calls: 'Ajuda' }); app.setCurrentPage('reception-calls'); }} />
-        <Stat title="SOS Ativos" value={sos} tone="danger" onClick={() => { app.setFilters({ calls: 'SOS' }); app.setCurrentPage('reception-calls'); }} />
-        <Stat title="Visitantes aguardando" value={awaitingVisitors || doctors} tone={awaitingVisitors ? 'warning' : 'info'} onClick={() => app.setCurrentPage('reception-access')} />
+    <div className="page-view premium-page reception-dashboard">
+      <PageHeading title="Painel da Recepcao" subtitle="Acompanhe pacientes, visitantes e solicitacoes em tempo real." />
+      <section className="kpi-grid">
+        <KpiCard icon={ClipboardCheck} tone="info" label="Check-ins aguardando" value={waiting} helper="Fila inicial" />
+        <KpiCard icon={UserCheck} tone="warning" label="Visitantes pendentes" value={awaitingVisitors} helper="Aguardando autorizacao" />
+        <KpiCard icon={HelpCircle} tone="info" label="Chamados ativos" value={openCalls} helper="Nao encerrados" />
+        <KpiCard icon={HeartPulse} tone="danger" label="SOS ativos" value={sos} helper="Prioridade critica" />
       </section>
       <section className="two-col">
-        <Panel title="Chamados recebidos"><div className="card-list">{app.calls.filter((c) => c.status === 'Pendente').map((call) => <CallCard key={call.id} call={call} app={app} reception />)}</div></Panel>
-        <Panel title="Fluxo recepcao">
-          <div className="flow-card"><b>Tempo medio de espera</b><strong>15 min</strong><span>Fluxo medio</span></div>
-          <button onClick={() => app.showToast('Fluxo atualizado')}>Atualizar</button>
-        </Panel>
+        <SectionCard title="Pacientes aguardando" subtitle="Check-ins pendentes e primeiros atendimentos.">
+          <PremiumTable
+            rows={waitingCheckins}
+            columns={[
+              { key: 'patient', label: 'Paciente', render: (item) => <UserCell name={item.patient} sub={item.document} /> },
+              { key: 'destination', label: 'Destino', render: (item) => item.destination },
+              { key: 'status', label: 'Status', render: (item) => <NvBadge value={item.status} /> },
+              { key: 'time', label: 'Tempo', render: (item) => item.time },
+              { key: 'accessibility', label: 'Acessibilidade', render: (item) => <AccessibilityNote value={item.accessibility} /> },
+              { key: 'actions', label: 'Acoes', render: (item) => (
+                <RowActions>
+                  <button className="btn btn-primary" onClick={() => app.updateCheckinStatus(item.id, 'Em rota')}>Iniciar rota</button>
+                  <button className="btn btn-secondary" onClick={() => app.openModal('Detalhes do check-in', <Details data={item} />)}>Ver detalhes</button>
+                </RowActions>
+              ) },
+            ]}
+          />
+        </SectionCard>
+        <SectionCard title="Solicitacoes de visitantes" subtitle="Visitantes aguardando decisao da recepcao.">
+          <PremiumTable
+            rows={pendingVisitors}
+            columns={[
+              { key: 'name', label: 'Visitante', render: (visitor) => <UserCell name={visitor.name} sub={visitor.profile} /> },
+              { key: 'requestedDestination', label: 'Destino', render: (visitor) => visitor.requestedDestination },
+              { key: 'status', label: 'Status', render: (visitor) => <NvBadge value={visitor.status} /> },
+              { key: 'onlineTime', label: 'Tempo', render: (visitor) => visitor.onlineTime },
+              { key: 'actions', label: 'Acoes', render: (visitor) => (
+                <RowActions>
+                  <button className="btn btn-secondary" onClick={() => app.openModal('Detalhes do visitante', <Details data={visitor} />)}>Ver detalhes</button>
+                  <button className="btn btn-success" onClick={() => openAuthorizeVisitor(app, visitor)}>Autorizar</button>
+                  <button className="btn btn-danger" onClick={() => openDenyVisitor(app, visitor)}>Negar</button>
+                </RowActions>
+              ) },
+            ]}
+          />
+        </SectionCard>
       </section>
     </div>
   );
@@ -1208,54 +1677,44 @@ function VisitorsAccessPage({ app, accessOnly = false }) {
   const statuses = ['Todos', 'Online', 'Aguardando autorizacao', 'Autorizado', 'Em rota', 'Chegou ao destino', 'Fora da rota', 'Acesso negado', 'Finalizado', 'Offline'];
 
   return (
-    <Panel title={accessOnly ? 'Solicitacoes de Acesso' : 'Visitantes Online / Acessos'} wide>
-      <section className="visitor-summary">
-        <Stat title="Private" value={app.visitors.filter((v) => v.areaId === 'private').length} />
-        <Stat title="Hospital Marco Capute" value={app.visitors.filter((v) => v.areaId === 'sus').length} />
-        <Stat title="Aguardando" value={app.visitors.filter((v) => v.status === 'Aguardando autorizacao').length} tone="warning" />
-        <Stat title="Fora da rota" value={app.visitors.filter((v) => v.status === 'Fora da rota').length} tone="danger" />
+    <div className="page-view premium-page reception-visitors-page">
+      <PageHeading
+        title={accessOnly ? 'Autorizacoes' : 'Visitantes'}
+        subtitle={accessOnly ? 'Analise solicitacoes de acesso e libere rotas autorizadas.' : 'Acompanhe visitantes, status de rota e permissoes ativas.'}
+      />
+      <section className="kpi-grid">
+        <KpiCard icon={Building2} tone="info" label="Private" value={app.visitors.filter((v) => v.areaId === 'private').length} helper="Visitantes registrados" />
+        <KpiCard icon={ShieldCheck} tone="success" label="Autorizados" value={app.visitors.filter((v) => v.status === 'Autorizado').length} helper="Permissao ativa" />
+        <KpiCard icon={Clock3} tone="warning" label="Pendentes" value={app.visitors.filter((v) => v.status === 'Aguardando autorizacao').length} helper="Aguardando decisao" />
+        <KpiCard icon={HeartPulse} tone="danger" label="Fora da rota" value={app.visitors.filter((v) => v.status === 'Fora da rota').length} helper="Requer atencao" />
       </section>
-      <Pills items={statuses} active={filter} onChange={setFilter} />
-      <div className="visitor-grid">
-        {visible.map((visitor) => (
-          <article className={`visitor-card ${visitor.status === 'Fora da rota' ? 'off-route' : ''}`} key={visitor.id}>
-            <header>
-              <div>
-                <b>{visitor.name}</b>
-                <span>{visitor.profile} - {visitor.area}</span>
-              </div>
-              <em>{visitor.status}</em>
-            </header>
-            <div className="visitor-details">
-              <p><strong>Entrada</strong><span>{visitor.entry}</span></p>
-              <p><strong>Local atual</strong><span>{visitor.currentLocation}</span></p>
-              <p><strong>Beacon atual</strong><span>{visitor.beacon}</span></p>
-              <p><strong>Destino solicitado</strong><span>{visitor.requestedDestination}</span></p>
-              <p><strong>Motivo</strong><span>{visitor.reason}</span></p>
-              <p><strong>Tempo online</strong><span>{visitor.onlineTime}</span></p>
-            </div>
-            {visitor.status === 'Fora da rota' ? (
-              <div className="route-alert">
-                <b>Visitante fora da rota autorizada</b>
-                <div>
-                  <button onClick={() => app.showToast('Orientacao enviada ao visitante')}>Enviar orientacao</button>
-                  <button onClick={() => app.showToast('Equipe chamada para apoio', 'warning')}>Chamar equipe</button>
-                  <button onClick={() => app.updateVisitorAccessStatus(visitor, 'Finalizado', {}, 'Permissao encerrada')}>Encerrar permissao</button>
-                </div>
-              </div>
-            ) : null}
-            <div className="actions">
-              <button onClick={() => app.openModal('Detalhes do visitante', <Details data={visitor} />)}>Ver detalhes</button>
-              <button onClick={() => openAuthorizeVisitor(app, visitor)}>Autorizar rota</button>
-              <button onClick={() => openDenyVisitor(app, visitor)}>Negar acesso</button>
-              <button onClick={() => app.updateVisitorAccessStatus(visitor, 'Em rota', { requestedDestination: visitor.areaId === 'private' ? 'Recepcao Private' : 'Recepcao Hospital Marco Capute' }, 'Visitante orientado ate a recepcao')}>Levar ate recepcao</button>
-              <button onClick={() => openMessage(app, visitor.name)}>Enviar mensagem</button>
-              <button onClick={() => app.updateVisitorAccessStatus(visitor, 'Finalizado', {}, 'Permissao encerrada')}>Encerrar permissao</button>
-            </div>
-          </article>
-        ))}
-      </div>
-    </Panel>
+      <FilterChips items={statuses} active={filter} onChange={setFilter} />
+      <SectionCard title={accessOnly ? 'Solicitacoes de acesso' : 'Visitantes monitorados'} subtitle="Dados reais ou fallback operacional ja existente no projeto.">
+        <PremiumTable
+          rows={visible}
+          columns={[
+            { key: 'name', label: 'Visitante', render: (visitor) => <UserCell name={visitor.name} sub={`${visitor.profile} - ${visitor.area}`} /> },
+            { key: 'entry', label: 'Entrada', render: (visitor) => visitor.entry },
+            { key: 'currentLocation', label: 'Local atual', render: (visitor) => visitor.currentLocation },
+            { key: 'requestedDestination', label: 'Destino', render: (visitor) => visitor.requestedDestination },
+            { key: 'status', label: 'Status', render: (visitor) => <NvBadge value={visitor.status} /> },
+            { key: 'onlineTime', label: 'Tempo', render: (visitor) => visitor.onlineTime },
+            { key: 'actions', label: 'Acoes', render: (visitor) => (
+              <RowActions>
+                <button className="btn btn-secondary" onClick={() => app.openModal('Detalhes do visitante', <Details data={visitor} />)}>Ver detalhes</button>
+                <button className="btn btn-success" onClick={() => openAuthorizeVisitor(app, visitor)}>Autorizar</button>
+                <button className="btn btn-danger" onClick={() => openDenyVisitor(app, visitor)}>Negar</button>
+                <ActionMenu>
+                  <button onClick={() => app.updateVisitorAccessStatus(visitor, 'Em rota', { requestedDestination: visitor.areaId === 'private' ? 'Recepcao Private' : 'Recepcao Hospital Marco Capute' }, 'Visitante orientado ate a recepcao')}>Levar ate recepcao</button>
+                  <button onClick={() => openMessage(app, visitor.name)}>Enviar mensagem</button>
+                  <button className="menu-danger" onClick={() => app.updateVisitorAccessStatus(visitor, 'Finalizado', {}, 'Permissao encerrada')}>Encerrar permissao</button>
+                </ActionMenu>
+              </RowActions>
+            ) },
+          ]}
+        />
+      </SectionCard>
+    </div>
   );
 }
 
@@ -1264,22 +1723,37 @@ function CheckinPage({ app }) {
   const [query, setQuery] = useState('');
   const visible = app.checkins.filter((item) => (filter === 'Todos' || item.status === filter) && `${item.patient} ${item.document}`.toLowerCase().includes(query.toLowerCase()));
   return (
-    <Panel title="Check-ins" wide>
-      <Toolbar>
-        <input placeholder="Buscar nome/documento" value={query} onChange={(e) => setQuery(e.target.value)} />
-        <button onClick={() => openCheckin(app)}>Novo check-in</button>
-        <button onClick={() => app.exportToCSV('checkins.csv', visible)}>Exportar CSV</button>
-      </Toolbar>
-      <Pills items={['Todos', 'Aguardando', 'Em rota', 'Em atendimento', 'Finalizado']} active={filter} onChange={setFilter} />
-      <Table rows={visible} columns={['patient', 'document', 'destination', 'status', 'time', 'accessibility']} actions={(item) => (
-        <>
-          <button onClick={() => app.updateCheckinStatus(item.id, 'Em rota')}>Iniciar rota</button>
-          <button onClick={() => app.updateCheckinStatus(item.id, 'Em atendimento')}>Marcar atendimento</button>
-          <button onClick={() => app.updateCheckinStatus(item.id, 'Finalizado')}>Finalizar</button>
-          <button onClick={() => app.openModal('Detalhes do check-in', <Details data={item} />)}>Ver detalhes</button>
-        </>
-      )} />
-    </Panel>
+    <div className="page-view premium-page reception-checkin-page">
+      <PageHeading title="Check-ins" subtitle="Registre entradas e acompanhe o fluxo inicial de atendimento." />
+      <div className="page-toolbar">
+        <div className="page-search"><Search size={16} /><input placeholder="Buscar por nome ou documento" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
+        <button className="btn btn-primary" onClick={() => openCheckin(app)}><Plus size={16} />Novo check-in</button>
+        <button className="btn btn-secondary" onClick={() => app.exportToCSV('checkins.csv', visible)}><Download size={16} />Exportar CSV</button>
+      </div>
+      <FilterChips items={['Todos', 'Aguardando', 'Em rota', 'Em atendimento', 'Finalizado']} active={filter} onChange={setFilter} />
+      <SectionCard title="Atendimentos registrados" subtitle="Lista de check-ins com status operacional.">
+        <PremiumTable
+          rows={visible}
+          columns={[
+            { key: 'patient', label: 'Paciente', render: (item) => <UserCell name={item.patient} sub={item.document} /> },
+            { key: 'destination', label: 'Destino', render: (item) => item.destination },
+            { key: 'status', label: 'Status', render: (item) => <NvBadge value={item.status} /> },
+            { key: 'time', label: 'Tempo', render: (item) => item.time },
+            { key: 'accessibility', label: 'Acessibilidade', render: (item) => <AccessibilityNote value={item.accessibility} /> },
+            { key: 'actions', label: 'Acoes', render: (item) => (
+              <RowActions>
+                <button className="btn btn-primary" onClick={() => app.updateCheckinStatus(item.id, 'Em rota')}>Iniciar rota</button>
+                <button className="btn btn-info" onClick={() => app.updateCheckinStatus(item.id, 'Em atendimento')}>Em atendimento</button>
+                <button className="btn btn-success" onClick={() => app.updateCheckinStatus(item.id, 'Finalizado')}>Finalizar</button>
+                <ActionMenu>
+                  <button onClick={() => app.openModal('Detalhes do check-in', <Details data={item} />)}>Ver detalhes</button>
+                </ActionMenu>
+              </RowActions>
+            ) },
+          ]}
+        />
+      </SectionCard>
+    </div>
   );
 }
 
@@ -1304,111 +1778,326 @@ function SectorsPage({ app }) {
 }
 
 function MessagesPage({ app }) {
+  const selected = app.messages[0];
   return (
-    <Panel title="Mensagens" wide>
-      <Toolbar><button onClick={() => openMessage(app)}>Criar mensagem</button></Toolbar>
-      <div className="card-list">{app.messages.map((msg) => <article className="message-card" key={msg.id}><b>{msg.direction} - {msg.to}</b><p>{msg.message}</p><span>{msg.priority} - {msg.time}</span></article>)}</div>
-    </Panel>
+    <div className="page-view premium-page reception-messages-page">
+      <PageHeading title="Mensagens" subtitle="Comunicacao operacional da recepcao com pacientes e setores." />
+      <div className="page-toolbar">
+        <button className="btn btn-primary" onClick={() => openMessage(app)}><Plus size={16} />Criar mensagem</button>
+      </div>
+      <section className="messages-shell">
+        <SectionCard title="Conversas" subtitle="Mensagens registradas">
+          <div className="message-list">
+            {app.messages.map((msg) => (
+              <button className="message-list-item" key={msg.id} onClick={() => app.openModal('Mensagem', <Details data={msg} />)}>
+                <span className="avatar-initials">{initialsFromName(msg.to)}</span>
+                <span><b>{msg.to}</b><small>{msg.direction} - {msg.time}</small></span>
+                <NvBadge value={msg.priority} />
+              </button>
+            ))}
+            {!app.messages.length ? <EmptyState title="Nenhuma mensagem" text="Novas mensagens operacionais aparecerao aqui." /> : null}
+          </div>
+        </SectionCard>
+        <SectionCard title="Previa" subtitle="Mensagem selecionada mais recente">
+          {selected ? (
+            <article className="message-preview">
+              <header><UserCell name={selected.to} sub={`${selected.direction} - ${selected.time}`} /><NvBadge value={selected.priority} /></header>
+              <p>{selected.message}</p>
+            </article>
+          ) : (
+            <EmptyState title="Sem mensagem selecionada" text="Selecione uma conversa para ver os detalhes." />
+          )}
+        </SectionCard>
+      </section>
+    </div>
   );
 }
 
-function Stat({ title, value, tone = 'info', onClick }) {
-  return <button className={`stat-card ${tone}`} onClick={onClick}><span>{title}</span><strong>{value}</strong><small>Clique para abrir</small></button>;
+function Stat({ title, value, detail = 'Ver detalhes', tone = 'info', icon: Icon = Activity, onClick }) {
+  return (
+    <button className={`stat-card ${tone}`} onClick={onClick}>
+      <span className="stat-icon" aria-hidden="true"><Icon size={20} /></span>
+      <span className="stat-label">{title}</span>
+      <strong>{value}</strong>
+      <small>{detail}</small>
+    </button>
+  );
 }
 
-function Panel({ title, children, wide = false }) {
-  return <section className={`panel ${wide ? 'wide' : ''}`}><div className="panel-title"><h2>{title}</h2></div>{children}</section>;
+function EmptyState({ title = 'Nenhum registro encontrado', text }) {
+  return <div className="empty-state"><Search size={20} /><strong>{title}</strong>{text ? <span>{text}</span> : null}</div>;
 }
 
-function Toolbar({ children }) { return <div className="toolbar">{children}</div>; }
+function Panel({ title, children, wide = false, meta = null, action = null }) {
+  return (
+    <section className={`panel ${wide ? 'wide' : ''}`}>
+      <div className="panel-title">
+        <div>
+          <h2>{title}</h2>
+          {meta ? <small>{meta}</small> : null}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function Toolbar({ children, className = '' }) { return <div className={`toolbar ${className}`.trim()}>{children}</div>; }
 
 function Pills({ items, active, onChange }) {
   return <div className="pills">{items.map((item) => <button key={item} className={active === item ? 'active' : ''} onClick={() => onChange(item)}>{item}</button>)}</div>;
 }
 
-function Heatmap({ sectors, onSelect, large = false }) {
-  const getLevel = (count) => {
-    if (count >= 75) return 'critical';
-    if (count >= 45) return 'high';
-    if (count >= 18) return 'medium';
-    return 'low';
+function Heatmap({ sectors, nodes = [], floor = heatmapFloorOptions[0], beacons = [], onSelect, large = false, lastUpdated = null }) {
+  const sectorNodes = (sector) => {
+    const embeddedNodes = (sector.navigationNodes || []).filter((node) => Number.isFinite(Number(node.x)) && Number.isFinite(Number(node.y)));
+    const mapNodes = nodes.filter((node) => {
+      const nodeSector = node.sector || {};
+      return (
+        Number.isFinite(Number(node.x)) &&
+        Number.isFinite(Number(node.y)) &&
+        (nodeSector.id === sector.id || nodeSector.code === sector.code || matchesSector(nodeSector.name || nodeSector.code, sector))
+      );
+    });
+    return [...embeddedNodes, ...mapNodes].filter((node, index, all) => {
+      const key = node.id || node.code || `${node.x}-${node.y}-${index}`;
+      return all.findIndex((candidate) => (candidate.id || candidate.code || `${candidate.x}-${candidate.y}-${index}`) === key) === index;
+    });
   };
-  const sectorPosition = {
-    Recepcao: { x: 18, y: 70, size: 156 },
-    'Setor de Imagem': { x: 63, y: 42, size: 132 },
-    Laboratorio: { x: 51, y: 67, size: 104 },
-    Consultorios: { x: 78, y: 30, size: 116 },
-    Banheiro: { x: 34, y: 36, size: 74 },
-    Elevador: { x: 46, y: 50, size: 86 },
-    'Saida / Emergencia': { x: 85, y: 70, size: 72 },
+  const blockPositionFromNodes = (sector, sectorNodeList) => {
+    if (!sectorNodeList.length) return null;
+    const xs = sectorNodeList.map((node) => Number(node.x));
+    const ys = sectorNodeList.map((node) => Number(node.y));
+    const minX = Math.min(...xs);
+    const maxX = Math.max(...xs);
+    const minY = Math.min(...ys);
+    const maxY = Math.max(...ys);
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const w = Math.max(12, Math.min(26, maxX - minX + 12));
+    const h = Math.max(12, Math.min(22, maxY - minY + 12));
+    return {
+      x: Math.max(3, Math.min(95 - w, centerX - w / 2)),
+      y: Math.max(5, Math.min(94 - h, centerY - h / 2)),
+      w,
+      h,
+    };
   };
+  const mappedSectors = sectors
+    .map((sector) => ({ sector, nodes: sectorNodes(sector) }))
+    .map((item) => ({ ...item, position: blockPositionFromNodes(item.sector, item.nodes) }))
+    .filter((item) => item.position);
+  const monitoredPeople = sectors.reduce((total, sector) => total + sector.peopleCount, 0);
+  const onlineBeacons = beacons.filter((beacon) => comparableLocation(beacon.status) === 'online').length;
+  const highFlow = sectors.filter((sector) => ['critical', 'high'].includes(getHeatLevel(sector.peopleCount))).length;
+  const hasMappedFloor = sectors.length > 0 && mappedSectors.length > 0;
+  const hasVerticalConnector = sectors.some((sector) => {
+    const name = comparableLocation(sector.name);
+    return name.includes('elevador') || name.includes('escada');
+  });
+  const updatedLabel = lastUpdated
+    ? lastUpdated.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : null;
 
   return (
-    <div className={`heatmap ${large ? 'large' : ''}`}>
+    <div className={`heatmap heatmap-dedicated ${large ? 'large' : ''}`}>
       <header className="heatmap-head">
         <div>
-          <span>Mapa de calor</span>
-          <b>Movimentacao por setor</b>
+          <b>Fluxo de pessoas</b>
+          <small className="heatmap-floor-name">{floor.title}</small>
+          <div className="heatmap-legend">
+            <span><i className="critical" />Muito alto</span>
+            <span><i className="high" />Alto</span>
+            <span><i className="medium" />Medio</span>
+            <span><i className="low" />Baixo</span>
+            <span><i className="very-low" />Muito baixo</span>
+          </div>
         </div>
-        <em>{sectors.reduce((total, sector) => total + sector.peopleCount, 0)} pessoas monitoradas</em>
+        {updatedLabel ? (
+          <div className="heatmap-update" aria-live="polite">
+            <span><Clock3 size={14} />Atualizado as {updatedLabel}</span>
+            <small>Auto a cada 60s</small>
+          </div>
+        ) : null}
       </header>
-      <div className="hospital-map">
-        <div className="map-room reception">Recepcao</div>
-        <div className="map-room imaging">Setor de Imagem</div>
-        <div className="map-room lab">Laboratorio</div>
-        <div className="map-room consult">Consultorios</div>
-        <div className="map-room bathroom">Banheiro</div>
-        <div className="map-room elevator">Elevador</div>
-        <div className="map-room exit">Saida Emergencia</div>
-        <div className="map-room pharmacy">Farmacia</div>
-        <div className="map-room waiting">Espera</div>
-        <div className="map-corridor corridor-a" />
-        <div className="map-corridor corridor-b" />
-        <div className="map-corridor corridor-c" />
-        {sectors.map((sector, index) => {
-          const level = getLevel(sector.peopleCount);
-          const position = sectorPosition[sector.name] || { x: 48 + index * 5, y: 48, size: 88 };
-          return (
-            <button
-              key={sector.id}
-              className={`heat-spot ${level}`}
-              style={{
-                '--x': `${position.x}%`,
-                '--y': `${position.y}%`,
-                '--spot': `${Math.max(position.size, sector.peopleCount * 1.45)}px`,
-              }}
-              onClick={() => onSelect(sector)}
-              aria-label={`${sector.name}, ${sector.peopleCount} pessoas, fluxo ${sector.flow}`}
-            >
-              <span>{sector.peopleCount}</span>
-              <small>{sector.name}</small>
-            </button>
-          );
-        })}
+      <div className={`hospital-map schematic-map ${hasMappedFloor ? '' : 'unmapped'}`}>
+        {hasMappedFloor ? (
+          <>
+            <div className="map-corridor corridor-main" />
+            <div className="map-corridor corridor-cross-a" />
+            <div className="map-corridor corridor-cross-b" />
+            {mappedSectors.map(({ sector, position }) => {
+              const level = getHeatLevel(sector.peopleCount);
+              return (
+                <button
+                  key={sector.id}
+                  className={`map-sector-block ${level}`}
+                  style={{
+                    '--x': `${position.x}%`,
+                    '--y': `${position.y}%`,
+                    '--w': `${position.w}%`,
+                    '--h': `${position.h}%`,
+                    '--heat-size': `${Math.max(70, Math.min(142, 56 + sector.peopleCount * 0.9))}px`,
+                  }}
+                  onClick={() => onSelect(sector)}
+                  aria-label={`${sector.name}, ${sector.peopleCount} pessoas, fluxo ${sector.flow}`}
+                >
+                  <span className="sector-glow" />
+                  <span className="sector-copy">
+                    <b>{sector.name}</b>
+                    <small>{sector.peopleCount} pessoas</small>
+                  </span>
+                </button>
+              );
+            })}
+            {hasVerticalConnector ? (
+              <div className="vertical-connector">
+                <Building2 size={16} />
+                <span>Conexao vertical</span>
+                <small>Dados estruturais disponiveis neste andar</small>
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div className="floor-empty-state">
+            <span>{floor.special ? <Activity size={24} /> : <MapIcon size={24} />}</span>
+            <h3>{floor.special ? 'Mapeamento do Terraco / Heliponto ainda nao configurado.' : 'Mapeamento deste andar ainda nao disponivel.'}</h3>
+            <p>Os setores e pontos de navegacao serao exibidos apos a configuracao estrutural.</p>
+          </div>
+        )}
       </div>
-      <div className="heatmap-legend">
-        <span><i className="low" />Pouco fluxo</span>
-        <span><i className="medium" />Fluxo medio</span>
-        <span><i className="high" />Fluxo alto</span>
-        <span><i className="critical" />Lotacao critica</span>
-      </div>
+      <footer className="heatmap-foot">
+        <span><Users size={15} />{monitoredPeople} pessoas monitoradas</span>
+        <span><Building2 size={15} />{sectors.length} setores</span>
+        <span><RadioTower size={15} />{onlineBeacons} beacons online</span>
+        <span><Activity size={15} />{highFlow} com fluxo alto</span>
+      </footer>
     </div>
   );
 }
 
-function CallCard({ call, app, reception = false }) {
+function getHeatLevel(count) {
+  if (count <= 5) return 'very-low';
+  if (count >= 75) return 'critical';
+  if (count >= 45) return 'high';
+  if (count >= 18) return 'medium';
+  return 'low';
+}
+
+function heatLevelLabel(level) {
+  return {
+    critical: 'Muito alto',
+    high: 'Alto',
+    medium: 'Medio',
+    low: 'Baixo',
+    'very-low': 'Muito baixo',
+  }[level] || 'Baixo';
+}
+
+function getCallTypeMeta(call) {
+  const type = comparableLocation(call.type);
+  const priority = comparableLocation(call.priority);
+  if (type.includes('sos') || priority.includes('critica')) return { tone: 'critical', Icon: HeartPulse };
+  if (type.includes('ajuda')) return { tone: 'help', Icon: HelpCircle };
+  if (type.includes('medico')) return { tone: 'medical', Icon: Activity };
+  if (type.includes('perdido') || type.includes('locomocao')) return { tone: 'info', Icon: MapIcon };
+  return { tone: 'neutral', Icon: MessageSquare };
+}
+
+function getPriorityBadgeTone(priority) {
+  const normalized = comparableLocation(priority);
+  if (normalized.includes('critica')) return 'critical';
+  if (normalized.includes('alta')) return 'high';
+  if (normalized.includes('media')) return 'medium';
+  if (normalized.includes('baixa')) return 'low';
+  return 'neutral';
+}
+
+function getStatusBadgeTone(status) {
+  const normalized = comparableLocation(status);
+  if (normalized.includes('encerrado') || normalized.includes('cancelado')) return 'closed';
+  if (normalized.includes('atendimento')) return 'attending';
+  if (normalized.includes('aceito') || normalized.includes('acionada')) return 'accepted';
+  if (normalized.includes('pendente') || normalized.includes('aguardando')) return 'pending';
+  return 'neutral';
+}
+
+function CallCard({ call, app, reception = false, adminView = false }) {
   const critical = call.priority === 'Critica' || call.type === 'SOS Emergencia';
+  if (!adminView) {
+    const typeMeta = getCallTypeMeta(call);
+    const TypeIcon = typeMeta.Icon;
+    const closed = call.status === 'Encerrado';
+    const cardTone = closed ? 'closed' : typeMeta.tone;
+    return (
+      <article className={`call-card ${cardTone} ${critical ? 'critical' : ''}`}>
+        <header className="call-card-head">
+          <div className="call-title-row">
+            <span className="call-type-icon" aria-hidden="true"><TypeIcon size={19} /></span>
+            <div>
+              <b>{call.type}</b>
+              <h3>{call.patient}</h3>
+            </div>
+          </div>
+          {call.createdAt ? <span className="call-time"><Clock3 size={14} aria-hidden="true" />{call.createdAt}</span> : null}
+        </header>
+
+        <p>{call.reason}</p>
+        <span className="call-location"><MapIcon size={14} aria-hidden="true" />{call.location} - {call.beacon}</span>
+
+        <div className="badges call-badges">
+          <em className={`call-badge ${getPriorityBadgeTone(call.priority)}`}>{call.priority}</em>
+          <em className={`call-badge ${getStatusBadgeTone(call.status)}`}>{call.status}</em>
+        </div>
+
+        <div className="actions call-actions">
+          <button className="action-neutral" onClick={() => app.openModal('Detalhes do chamado', <CallDetails call={call} />)}><Search size={15} aria-hidden="true" />Ver detalhes</button>
+          <button className="action-success" onClick={() => app.updateCallStatus(call.id, statusOrder.Aceito)}><CheckCircle2 size={15} aria-hidden="true" />Aceitar</button>
+          <button className="action-primary" onClick={() => app.assignTeam(call.id)}><Users size={15} aria-hidden="true" />Acionar equipe</button>
+          <button className="action-warning" onClick={() => app.updateCallStatus(call.id, statusOrder['Em atendimento'])}><Clock3 size={15} aria-hidden="true" />Em atendimento</button>
+          <button className="action-danger" onClick={() => app.closeCall(call.id)}><HeartPulse size={15} aria-hidden="true" />Encerrar</button>
+          {reception ? (
+            <ActionMenu>
+              <button onClick={() => openDoctor(app, call)}>Solicitar medico</button>
+            </ActionMenu>
+          ) : null}
+        </div>
+      </article>
+    );
+  }
+
+  const typeMeta = getCallTypeMeta(call);
+  const TypeIcon = typeMeta.Icon;
+  const closed = call.status === 'Encerrado';
+  const cardTone = closed ? 'closed' : typeMeta.tone;
   return (
-    <article className={`call-card ${critical ? 'critical' : ''}`}>
-      <div><b>{call.type}</b><h3>{call.patient}</h3><p>{call.reason}</p><span>{call.location} - {call.beacon}</span></div>
-      <div className="badges"><em>{call.priority}</em><em>{call.status}</em><em>{call.createdAt}</em></div>
-      <div className="actions">
-        <button onClick={() => app.openModal('Detalhes do chamado', <CallDetails call={call} />)}>Ver detalhes</button>
-        <button onClick={() => app.updateCallStatus(call.id, statusOrder.Aceito)}>Aceitar</button>
-        <button onClick={() => app.assignTeam(call.id)}>Acionar equipe</button>
-        {reception && <button onClick={() => openDoctor(app, call)}>Solicitar medico</button>}
-        <button onClick={() => app.updateCallStatus(call.id, statusOrder['Em atendimento'])}>Em atendimento</button>
-        <button onClick={() => app.closeCall(call.id)}>Encerrar</button>
+    <article className={`call-card ${cardTone} ${critical ? 'critical' : ''}`}>
+      <header className="call-card-head">
+        <div className="call-title-row">
+          <span className="call-type-icon" aria-hidden="true"><TypeIcon size={19} /></span>
+          <div>
+            <b>{call.type}</b>
+            <h3>{call.patient}</h3>
+          </div>
+        </div>
+        {call.createdAt ? <span className="call-time"><Clock3 size={14} aria-hidden="true" />{call.createdAt}</span> : null}
+      </header>
+
+      <p>{call.reason}</p>
+      <span className="call-location"><MapIcon size={14} aria-hidden="true" />{call.location} - {call.beacon}</span>
+
+      <div className="badges call-badges">
+        <em className={`call-badge ${getPriorityBadgeTone(call.priority)}`}>{call.priority}</em>
+        <em className={`call-badge ${getStatusBadgeTone(call.status)}`}>{call.status}</em>
+      </div>
+
+      <div className="actions call-actions">
+        <button className="action-neutral" onClick={() => app.openModal('Detalhes do chamado', <CallDetails call={call} />)}><Search size={15} aria-hidden="true" />Ver detalhes</button>
+        <button className="action-success" onClick={() => app.updateCallStatus(call.id, statusOrder.Aceito)}><CheckCircle2 size={15} aria-hidden="true" />Aceitar</button>
+        <button className="action-primary" onClick={() => app.assignTeam(call.id)}><Users size={15} aria-hidden="true" />Acionar equipe</button>
+        <button className="action-warning" onClick={() => app.updateCallStatus(call.id, statusOrder['Em atendimento'])}><Clock3 size={15} aria-hidden="true" />Em atendimento</button>
+        <button className="action-danger" onClick={() => app.closeCall(call.id)}><HeartPulse size={15} aria-hidden="true" />Encerrar</button>
       </div>
     </article>
   );
@@ -1416,10 +2105,95 @@ function CallCard({ call, app, reception = false }) {
 
 function Table({ rows, columns, actions, rowClass = () => '' }) {
   return (
-    <div className="table">
+    <div className="table" style={{ '--cols': columns.length }}>
       <div className="table-head">{columns.map((col) => <b key={col}>{col}</b>)}<b>Acoes</b></div>
-      {rows.map((row) => <div className={`table-row ${rowClass(row)}`} key={row.id}>{columns.map((col) => <span key={col}>{String(row[col])}</span>)}<div className="actions">{actions(row)}</div></div>)}
+      {rows.map((row) => <div className={`table-row ${rowClass(row)}`} key={row.id}>{columns.map((col) => <span key={col}>{renderCell(col, row[col])}</span>)}<div className="actions">{actions(row)}</div></div>)}
     </div>
+  );
+}
+
+function renderCell(col, value) {
+  if (['status', 'priority', 'role', 'roleLabel'].includes(col)) {
+    return <StatusBadge value={value} />;
+  }
+  if (col === 'battery') return value === undefined || value === null ? 'Nao informado' : `${value}%`;
+  return String(value ?? 'Nao informado');
+}
+
+function StatusBadge({ value }) {
+  const label = String(value || 'Nao informado');
+  const normalized = comparableLocation(label);
+  const tone =
+    normalized.includes('critica') || normalized.includes('sos') || normalized.includes('negado') || normalized.includes('offline') || normalized.includes('bloqueado')
+      ? 'danger'
+      : normalized.includes('pendente') || normalized.includes('aguardando') || normalized.includes('atencao') || normalized.includes('alta')
+        ? 'warning'
+        : normalized.includes('ativo') || normalized.includes('online') || normalized.includes('autorizado') || normalized.includes('encerrado') || normalized.includes('finalizado')
+          ? 'success'
+          : 'neutral';
+  return <em className={`status-badge ${tone}`}>{label}</em>;
+}
+
+function openProfileEditor(app) {
+  app.openModal('Meu perfil', <ProfileForm user={app.currentUser} onSubmit={app.updateCurrentUserProfile} />);
+}
+
+function ProfileForm({ user, onSubmit }) {
+  const [form, setForm] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    phone: user?.phone || '',
+    sector: user?.sector || '',
+    roleLabel: user?.roleLabel || '',
+    avatarDataUrl: user?.avatarDataUrl || '',
+  });
+  const [error, setError] = useState('');
+  const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
+  const pickPhoto = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setError('Selecione uma imagem valida.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Use uma imagem de ate 2 MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      update('avatarDataUrl', String(reader.result || ''));
+      setError('');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <form
+      className="modal-form profile-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit(form);
+      }}
+    >
+      <div className="profile-photo-editor">
+        <LayoutOperatorAvatar user={form} size="lg" />
+        <label className="photo-upload">
+          <Camera size={16} />
+          Alterar foto
+          <input type="file" accept="image/*" onChange={pickPhoto} />
+        </label>
+        {form.avatarDataUrl ? <button type="button" onClick={() => update('avatarDataUrl', '')}>Remover foto</button> : null}
+      </div>
+      {error ? <p className="form-error">{error}</p> : null}
+      <label>Nome exibido<input required value={form.name} onChange={(event) => update('name', event.target.value)} /></label>
+      <label>E-mail<input disabled value={form.email} /></label>
+      <label>Telefone<input value={form.phone} onChange={(event) => update('phone', event.target.value)} /></label>
+      <label>Cargo<input value={form.roleLabel} onChange={(event) => update('roleLabel', event.target.value)} /></label>
+      <label>Setor<input value={form.sector} onChange={(event) => update('sector', event.target.value)} /></label>
+      <p className="form-note">Alteracoes visuais ficam salvas nesta sessao do painel. O e-mail e a permissao continuam vindo da autenticacao real.</p>
+      <button className="primary">Salvar perfil</button>
+    </form>
   );
 }
 
@@ -1440,7 +2214,7 @@ function ReportView({ report }) {
 }
 
 function ReportFooter({ app, report }) {
-  return <><button onClick={() => app.showToast('PDF gerado com sucesso')}>Exportar PDF</button><button onClick={() => app.exportToCSV(`relatorio-${report.period}.csv`, [report])}>Baixar CSV</button></>;
+  return <button onClick={() => app.exportToCSV(`relatorio-${report.period}.csv`, [report])}>Baixar CSV</button>;
 }
 
 function openSector(app, sector) {
@@ -1483,21 +2257,13 @@ function openDenyVisitor(app, visitor) {
 }
 
 function openStaffAccount(app) {
-  app.openModal('Cadastrar funcionario', <StaffAccountForm onSubmit={app.createStaffAccount} />);
-}
-
-function openPasswordReset(app, account) {
-  app.openModal(
-    `Alterar senha - ${account.name}`,
-    <PasswordForm account={account} onSubmit={(password) => app.updateStaffPassword(account.id, password)} />
-  );
+  app.openModal('Adicionar perfil local', <StaffAccountForm onSubmit={app.createStaffAccount} />);
 }
 
 function StaffAccountForm({ onSubmit }) {
   const [form, setForm] = useState({
     name: '',
     email: '',
-    password: '123456',
     role: 'reception',
     sector: 'Recepcao',
     status: 'Ativo',
@@ -1515,7 +2281,6 @@ function StaffAccountForm({ onSubmit }) {
     >
       <label>Nome do funcionario<input required value={form.name} onChange={(event) => update('name', event.target.value)} /></label>
       <label>E-mail de login<input required type="email" value={form.email} onChange={(event) => update('email', event.target.value)} /></label>
-      <label>Senha inicial<input required value={form.password} onChange={(event) => update('password', event.target.value)} /></label>
       <label>Tipo de acesso
         <select value={form.role} onChange={(event) => update('role', event.target.value)}>
           <option value="reception">Recepcao</option>
@@ -1529,24 +2294,8 @@ function StaffAccountForm({ onSubmit }) {
           <option>Inativo</option>
         </select>
       </label>
-      <button className="primary">Cadastrar acesso</button>
-    </form>
-  );
-}
-
-function PasswordForm({ account, onSubmit }) {
-  const [password, setPassword] = useState(account.password);
-
-  return (
-    <form
-      className="modal-form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        onSubmit(password);
-      }}
-    >
-      <label>Nova senha<input required value={password} onChange={(event) => setPassword(event.target.value)} /></label>
-      <button className="primary">Salvar nova senha</button>
+      <p className="form-note">Cadastro local para organizacao do painel. Criacao real de usuario administrativo depende da integracao do backend.</p>
+      <button className="primary">Cadastrar acesso local</button>
     </form>
   );
 }

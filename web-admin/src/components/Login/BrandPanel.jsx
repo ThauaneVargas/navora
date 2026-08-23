@@ -1,26 +1,28 @@
 import React from 'react';
+import { BarChart3, HeartPulse, MapPinned, Sparkles } from 'lucide-react';
+import NavoraBrand from '../branding/NavoraBrand.jsx';
 import FeatureItem from './FeatureItem.jsx';
 
 const features = [
   {
-    icon: 'R',
+    icon: MapPinned,
     title: 'Navegacao inteligente',
     description: 'Rotas otimizadas em tempo real dentro do hospital.',
   },
   {
-    icon: 'S',
+    icon: HeartPulse,
     title: 'SOS em tempo real',
     description: 'Alertas instantaneos e localizacao precisa para emergencias.',
   },
   {
-    icon: 'D',
+    icon: BarChart3,
     title: 'Gestao e relatorios',
     description: 'Dashboards completos para decisoes rapidas e estrategicas.',
   },
   {
-    icon: 'I',
-    title: 'Experiencia humanizada',
-    description: 'Tecnologia a servico de pacientes, familiares e equipes.',
+    icon: Sparkles,
+    title: 'Experiencia integrada',
+    description: 'Recepcao, pacientes e administracao em um so fluxo.',
   },
 ];
 
@@ -32,7 +34,7 @@ export default function BrandPanel() {
       <div className="brand-orbit orbit-two" />
 
       <div className="brand-panel-content">
-        <div className="brand-logo">NAVORA</div>
+        <NavoraBrand variant="login" tone="light" showRole={false} />
 
         <div className="brand-copy">
           <h1>
@@ -49,14 +51,6 @@ export default function BrandPanel() {
           {features.map((feature) => (
             <FeatureItem key={feature.title} {...feature} />
           ))}
-        </div>
-
-        <div className="ai-card">
-          <span>IA</span>
-          <div>
-            <strong>IA Navora</strong>
-            <small>Sempre com voce</small>
-          </div>
         </div>
       </div>
     </section>
