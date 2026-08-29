@@ -70,14 +70,6 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
     }
   };
 
-  const biometric = () => {
-    setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
-      finishFallback();
-    }, 650);
-  };
-
   return (
     <Screen>
       <Header title="Login do paciente" subtitle="Acesse sua conta para continuar." onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
@@ -88,7 +80,7 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
           </View>
           <View style={styles.copy}>
             <Text style={styles.title}>Bem-vinda de volta</Text>
-            <Text style={styles.subtitle}>Use senha ou biometria simulada para entrar rapido.</Text>
+            <Text style={styles.subtitle}>Use sua conta de paciente. Biometria e login social serao conectados somente quando houver suporte real.</Text>
           </View>
         </View>
         <Input icon="account-outline" placeholder="CPF, e-mail ou telefone" value={login} onChangeText={setLogin} />
@@ -96,10 +88,18 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
         <Pressable onPress={submit} disabled={loading} style={({ pressed }) => [styles.primary, pressed && styles.pressed, loading && styles.disabled]}>
           {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>Entrar</Text>}
         </Pressable>
-        <Pressable onPress={biometric} disabled={loading} style={({ pressed }) => [styles.bio, pressed && styles.pressed, loading && styles.disabled]}>
+        <Pressable
+          disabled
+          accessibilityState={{ disabled: true }}
+          style={[styles.bio, styles.disabledFuture]}
+        >
           <MaterialCommunityIcons name="fingerprint" size={30} color={colors.primary} />
-          <Text style={styles.bioText}>Entrar com biometria</Text>
+          <Text style={styles.bioText}>Biometria em preparacao</Text>
         </Pressable>
+        <View style={styles.futureRow}>
+          <FutureProvider icon="google" label="Google" />
+          <FutureProvider icon="apple" label="Apple" />
+        </View>
         <Pressable onPress={() => Alert.alert('Recuperar senha', 'Recuperacao de senha sera enviada para o contato cadastrado.')} style={styles.link}>
           <Text style={styles.linkText}>Esqueci minha senha</Text>
         </Pressable>
@@ -120,6 +120,15 @@ function Input({ icon, ...props }) {
   );
 }
 
+function FutureProvider({ icon, label }) {
+  return (
+    <View style={styles.futureProvider}>
+      <MaterialCommunityIcons name={icon} size={18} color={colors.muted} />
+      <Text style={styles.futureProviderText}>{label} futuro</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   card: { borderRadius: 30, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: 18, marginTop: 4 },
   loginHero: { minHeight: 86, borderRadius: 24, backgroundColor: '#FFF7F8', borderWidth: 1, borderColor: '#FFD2D7', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
@@ -133,6 +142,10 @@ const styles = StyleSheet.create({
   primaryText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
   bio: { height: 54, borderRadius: 18, borderWidth: 1, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10, marginTop: 12 },
   bioText: { color: colors.primary, fontSize: 14, fontWeight: '900' },
+  disabledFuture: { opacity: 0.72, backgroundColor: '#FFF7F8' },
+  futureRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  futureProvider: { flex: 1, height: 44, borderRadius: 15, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7, opacity: 0.72 },
+  futureProviderText: { color: colors.muted, fontSize: 12, fontWeight: '900' },
   link: { minHeight: 42, alignItems: 'center', justifyContent: 'center' },
   linkText: { color: colors.primary, fontSize: 13, fontWeight: '900', textAlign: 'center' },
   disabled: { opacity: 0.7 },

@@ -4,20 +4,22 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import { colors, shadows } from '../theme/colors';
-
-const address = 'Rua Ronaldo Fiuza Manhaes, no 1 - Centro, Vassouras - RJ';
+import { getAreaById } from '../data/routes';
 
 const areaCopy = {
-  private: { title: 'Rota ate o HMC Private', subtitle: 'Entrada pelos fundos' },
-  sus: { title: 'Rota ate o Hospital Marco Capute', subtitle: 'Entrada pela frente' },
-  unknown: { title: 'Vamos te levar ate a recepcao', subtitle: 'A recepcao ira confirmar seu atendimento.' },
+  private: { title: 'Como chegar ao hospital', subtitle: 'Preview externo ate a entrada carregada.' },
+  sus: { title: 'Como chegar ao hospital', subtitle: 'Preview externo ate a entrada carregada.' },
+  unknown: { title: 'Como chegar ao hospital', subtitle: 'A unidade sera confirmada ao chegar.' },
 };
 
-export default function ExternalRouteScreen({ navigate, goBack, routeParams = {} }) {
+export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}, activeHospital }) {
   const area = routeParams.area || 'unknown';
   const copy = areaCopy[area] || areaCopy.unknown;
+  const areaData = area === 'unknown' ? null : getAreaById(area);
+  const address = activeHospital?.address || areaData?.address || 'Endereco do hospital ativo indisponivel';
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
   const wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(address)}&navigate=yes`;
+  const arrivalParams = { area, userType: routeParams.userType };
 
   return (
     <Screen>
@@ -26,20 +28,21 @@ export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}
         <View style={styles.pin}>
           <MaterialCommunityIcons name="map-marker-radius" size={34} color="#FFFFFF" />
         </View>
-        <Text style={styles.title}>Entrada correta selecionada</Text>
-        <Text style={styles.subtitle}>Abra sua rota favorita ou simule a chegada para continuar por dentro do hospital.</Text>
+        <Text style={styles.title}>{activeHospital?.name || 'Hospital ativo'}</Text>
+        <Text style={styles.subtitle}>Abra sua rota favorita fora do Navora. A navegacao indoor continua apenas depois da chegada.</Text>
         <View style={styles.addressBox}>
           <Text style={styles.addressLabel}>Endereco</Text>
           <Text style={styles.address}>{address}</Text>
+          <Text style={styles.addressMeta}>{areaData?.entranceName || 'Entrada confirmada na chegada'}</Text>
         </View>
       </View>
 
       <RouteButton icon="google-maps" title="Abrir no Google Maps" onPress={() => Linking.openURL(mapsUrl)} />
       <RouteButton icon="navigation-variant" title="Abrir no Waze" onPress={() => Linking.openURL(wazeUrl)} />
       <RouteButton icon="format-list-checks" title="Ver instrucoes" onPress={() => navigate('HowToGet', { area })} />
-      <Pressable onPress={() => navigate('ArrivalDetected', { area })} style={({ pressed }) => [styles.arrivalButton, pressed && styles.pressed, shadows.soft]}>
+      <Pressable onPress={() => navigate('ArrivalDetected', arrivalParams)} style={({ pressed }) => [styles.arrivalButton, pressed && styles.pressed, shadows.soft]}>
         <MaterialCommunityIcons name="bluetooth-connect" size={20} color="#FFFFFF" />
-        <Text style={styles.arrivalText}>Simular chegada ao hospital</Text>
+        <Text style={styles.arrivalText}>Continuar ao chegar</Text>
       </Pressable>
     </Screen>
   );
@@ -63,6 +66,7 @@ const styles = StyleSheet.create({
   addressBox: { alignSelf: 'stretch', borderRadius: 18, borderWidth: 1, borderColor: colors.border, backgroundColor: '#FFF7F8', padding: 14, marginTop: 18 },
   addressLabel: { color: colors.primary, fontSize: 11, fontWeight: '900', textTransform: 'uppercase' },
   address: { color: colors.text, fontSize: 13, lineHeight: 19, fontWeight: '800', marginTop: 5 },
+  addressMeta: { color: colors.muted, fontSize: 11, fontWeight: '800', marginTop: 5 },
   button: { minHeight: 60, borderRadius: 22, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 15, marginTop: 10, flexDirection: 'row', alignItems: 'center', gap: 11 },
   buttonText: { flex: 1, color: colors.text, fontSize: 14, fontWeight: '900' },
   arrivalButton: { height: 56, borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 9, marginTop: 16 },

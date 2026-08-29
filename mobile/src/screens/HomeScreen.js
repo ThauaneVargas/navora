@@ -118,8 +118,8 @@ export default function HomeScreen({ navigate, userProfile = { type: 'patient', 
                 <View style={[styles.aiWaveBar, { height: 10 }]} />
               </View>
               <View style={styles.aiTextBox}>
-                <Text style={[styles.aiTitle, { color: appColors.primary }]}>IA Navora</Text>
-                <Text style={[styles.aiText, { color: appColors.muted }]}>Sempre com voce</Text>
+                <Text style={[styles.aiTitle, { color: appColors.primary }]}>Assistente Navora</Text>
+                <Text style={[styles.aiText, { color: appColors.muted }]}>Orientacao guiada</Text>
               </View>
             </Pressable>
           </View>

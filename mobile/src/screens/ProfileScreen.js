@@ -1,11 +1,14 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, View, Text, StyleSheet, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
+import ProfileAvatar from '../components/ProfileAvatar';
 import { colors, shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import { getProfilePhotoUri, removeProfilePhotoUri, saveProfilePhotoUri } from '../services/profilePhotoService';
 
 export default function ProfileScreen({ navigate, goBack, userType = 'patient', userProfile, activeRoute: selectedRoute, onLogout }) {
   const { appColors, isDark, toggleTheme, currentLocation: fallbackLocation, userPreferences: fallbackPreferences, activeRoute: fallbackRoute } = useApp();
@@ -23,6 +26,7 @@ export default function ProfileScreen({ navigate, goBack, userType = 'patient', 
   };
   const activeRoute = selectedRoute || fallbackRoute;
   const displayName = isVisitor ? 'Visitante Navora' : userProfile?.fullName || userProfile?.name || 'Paciente Navora';
+  const [photoUri, setPhotoUri] = useState(null);
   const personalData = [
     ['account-outline', 'Dados pessoais', userProfile?.authSource === 'api' ? 'Backend' : 'Local'],
     ['email-outline', 'E-mail', userProfile?.email || 'Nao informado'],
@@ -34,23 +38,64 @@ export default function ProfileScreen({ navigate, goBack, userType = 'patient', 
     ['elevator-passenger-outline', 'Priorizar elevador', userPreferences.preferElevator ? 'Sim' : 'Nao'],
     ['stairs', 'Evitar escadas', userPreferences.avoidStairs ? 'Sim' : 'Nao'],
     ['volume-high', 'Orientacao por voz', userPreferences.voiceGuidance ? 'Sim' : 'Nao'],
+    ['format-size', 'Texto maior', userPreferences.largerText ? 'Sim' : 'Nao'],
+    ['contrast-circle', 'Alto contraste', userPreferences.highContrast ? 'Sim' : 'Nao'],
+    ['stretcher', 'Apoio com maca', userPreferences.needsStretcher ? 'Sim' : 'Nao'],
   ];
+
+  useEffect(() => {
+    let active = true;
+    getProfilePhotoUri().then((uri) => {
+      if (active) setPhotoUri(uri);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const pickPhoto = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert('Permissao necessaria', 'Autorize o acesso a galeria para escolher sua foto.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.72,
+    });
+
+    if (result.canceled || !result.assets?.[0]?.uri) return;
+    await saveProfilePhotoUri(result.assets[0].uri);
+    setPhotoUri(result.assets[0].uri);
+  };
+
+  const removePhoto = async () => {
+    await removeProfilePhotoUri();
+    setPhotoUri(null);
+  };
 
   return (
     <Screen withBottomTabs>
-      <Header title="Meu perfil" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title="Meu perfil" subtitle="Dados, foto e preferencias" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.userCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
-        <View style={styles.avatar}>
-          <MaterialCommunityIcons name="account" size={34} color="#FFFFFF" />
-        </View>
+        <ProfileAvatar name={displayName} uri={photoUri} onPress={pickPhoto} onRemove={removePhoto} />
         <View style={styles.userCopy}>
           <Text numberOfLines={1} style={[styles.name, { color: appColors.text }]}>
             {displayName}
           </Text>
           <Text style={[styles.role, { color: appColors.muted }]}>{roleLabel}</Text>
+          <Text style={[styles.photoNote, { color: appColors.muted }]}>Foto salva apenas neste dispositivo.</Text>
         </View>
-        <Pressable onPress={() => navigate('PatientRegister')} style={styles.editButton}>
+        <Pressable
+          onPress={() => navigate('PatientRegister')}
+          accessibilityRole="button"
+          accessibilityLabel="Editar cadastro"
+          style={styles.editButton}
+        >
           <MaterialCommunityIcons name="pencil" size={16} color={colors.primary} />
         </Pressable>
       </View>
@@ -61,7 +106,13 @@ export default function ProfileScreen({ navigate, goBack, userType = 'patient', 
           <Text style={[styles.infoLabelStrong, { color: appColors.text }]}>Modo noturno</Text>
           <Text style={[styles.infoMuted, { color: appColors.muted }]}>Melhor para uso a noite</Text>
         </View>
-        <Pressable onPress={toggleTheme} style={[styles.switchTrack, isDark && styles.switchTrackActive]}>
+        <Pressable
+          onPress={toggleTheme}
+          accessibilityRole="switch"
+          accessibilityLabel="Modo noturno"
+          accessibilityState={{ checked: isDark }}
+          style={[styles.switchTrack, isDark && styles.switchTrackActive]}
+        >
           <View style={[styles.switchKnob, isDark && styles.switchKnobActive]} />
         </Pressable>
       </View>
@@ -104,15 +155,20 @@ function NavoraInfoCard({ navigate, currentLocation, userPreferences, activeRout
       <Text style={[styles.sectionTitle, { color: appColors.text }]}>Informacoes usadas pelo Navora</Text>
       <View style={[styles.navoraCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
         <InfoLine icon="map-marker" label="Localizacao atual" value={`${currentLocation.name} - ${currentLocation.corridor} - ${currentLocation.floor}`} appColors={appColors} />
-        <InfoLine icon="bluetooth-connect" label="Beacon detectado" value={currentLocation.beacon} appColors={appColors} />
+        <InfoLine icon="bluetooth-connect" label="Beacon simulado" value={currentLocation.beacon} appColors={appColors} />
         <InfoLine icon="check-circle-outline" label="Status indoor" value={currentLocation.indoorStatus} appColors={appColors} success />
         <InfoLine icon="wheelchair-accessibility" label="Preferencias de rota" value={enabledPrefs.join(', ')} appColors={appColors} />
-        <InfoLine icon="navigation-variant" label="Rota ativa" value={`De: ${activeRoute.origin} / Para: ${activeRoute.destination} / ${activeRoute.distance} - ${activeRoute.time}`} appColors={appColors} />
+        <InfoLine
+          icon="navigation-variant"
+          label="Rota ativa"
+          value={activeRoute?.destination ? `De: ${activeRoute.origin} / Para: ${activeRoute.destination} / ${activeRoute.distance || 'distancia indisponivel'} - ${activeRoute.time || activeRoute.eta || 'tempo indisponivel'}` : 'Nenhuma rota ativa'}
+          appColors={appColors}
+        />
         <Text style={[styles.privacyText, { color: appColors.muted }]}>
           Essas informacoes sao usadas para calcular rotas, acessibilidade e assistencia.
         </Text>
         <Pressable onPress={() => navigate('Accessibility')} style={styles.permissionButton}>
-          <Text style={styles.permissionText}>Gerenciar permissoes</Text>
+          <Text style={styles.permissionText}>Gerenciar acessibilidade</Text>
         </Pressable>
       </View>
     </View>
@@ -189,6 +245,7 @@ const styles = StyleSheet.create({
   userCopy: { flex: 1, minWidth: 0 },
   name: { fontSize: 17, fontWeight: '900' },
   role: { fontSize: 12, fontWeight: '800', marginTop: 4 },
+  photoNote: { fontSize: 11, fontWeight: '700', marginTop: 7, lineHeight: 15 },
   editButton: {
     width: 34,
     height: 34,

@@ -31,8 +31,8 @@ const fallbackVisitorAccess = (payload = {}) => ({
   id: `LOCAL-VIS-${Date.now()}`,
   visitor_name: payload.visitor_name || 'Visitante Navora',
   area_id: payload.area_id || payload.area || 'private',
-  area: payload.area_name || payload.area || 'HMC Private',
-  area_name: payload.area_name || 'HMC Private',
+  area: payload.area_name || payload.area || 'Hospital ativo',
+  area_name: payload.area_name || 'Hospital ativo',
   entrance: payload.entrance || 'Entrada pelos fundos',
   entry: payload.entry || payload.entrance || 'Entrada pelos fundos',
   requested_destination: payload.requested_destination || 'Recepcao',
@@ -127,10 +127,10 @@ async function navigationRequest(path, options = {}, fallbackData, normalizer = 
 
 export const navoraApi = {
   healthCheck: () => request('/health', {}, { status: 'offline', service: 'Navora Backend', demoMode: true }),
-  login: (payload) => request('/auth/login', { method: 'POST', body: JSON.stringify(payload) }, { access_token: 'demo', user: { role: 'PATIENT' }, demoMode: true }),
+  login: (payload) => request('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
   getAuthMe: () => request('/auth/me', { authenticated: true }),
-  registerPatient: (payload) => request('/patients/register', { method: 'POST', body: JSON.stringify(payload) }, { message: 'Paciente registrado localmente', patient: payload, demoMode: true }),
-  getMyPatientProfile: () => request('/patients/me', { authenticated: true }, { name: 'Paciente Navora', demoMode: true }),
+  registerPatient: (payload) => request('/patients/register', { method: 'POST', body: JSON.stringify(payload) }),
+  getMyPatientProfile: () => request('/patients/me', { authenticated: true }),
   updateMyPatientProfile: (payload) => request('/patients/me', { method: 'PUT', authenticated: true, body: JSON.stringify(payload) }),
   updateAccessibility: (payload) =>
     request('/patients/me/accessibility', { method: 'PUT', authenticated: true, body: JSON.stringify(payload) }, { accessibility: payload, demoMode: true }),

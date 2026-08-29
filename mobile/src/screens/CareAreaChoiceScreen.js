@@ -26,8 +26,8 @@ export default function CareAreaChoiceScreen({ navigate, goBack, onAreaDetected 
         <Text style={styles.heroText}>O Navora calcula a entrada certa antes de liberar a navegacao interna.</Text>
       </View>
 
-      <ChoiceCard icon="hospital-building" title="HMC Private" subtitle="Particular e convenio" detail="Entrada pelos fundos" onPress={() => chooseArea('private')} />
-      <ChoiceCard icon="medical-bag" title="Hospital Marco Capute" subtitle="Atendimento SUS" detail="Entrada pela frente" onPress={() => chooseArea('sus')} />
+      <ChoiceCard icon="hospital-building" title="Unidade / entrada A" subtitle="Ambiente carregado pelo hospital ativo" detail="Entrada conforme dados atuais" onPress={() => chooseArea('private')} />
+      <ChoiceCard icon="medical-bag" title="Unidade / entrada B" subtitle="Outro ambiente disponivel no hospital ativo" detail="Entrada conforme dados atuais" onPress={() => chooseArea('sus')} />
       <ChoiceCard icon="help-circle-outline" title="Nao sei meu atendimento" subtitle="Vamos te orientar ate a recepcao" detail="Confirmacao presencial" onPress={() => chooseArea('unknown')} />
 
       <Pressable onPress={() => navigate('Assistant')} style={({ pressed }) => [styles.aiCard, pressed && styles.pressed, shadows.card]}>
@@ -35,7 +35,7 @@ export default function CareAreaChoiceScreen({ navigate, goBack, onAreaDetected 
           <MaterialCommunityIcons name="microphone" size={24} color="#FFFFFF" />
         </View>
         <View style={styles.copy}>
-          <Text style={styles.aiTitle}>IA Navora</Text>
+          <Text style={styles.aiTitle}>Assistente Navora</Text>
           <Text style={styles.aiText}>Posso ajudar voce a escolher a entrada correta.</Text>
         </View>
       </Pressable>

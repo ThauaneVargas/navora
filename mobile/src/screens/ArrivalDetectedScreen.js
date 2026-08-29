@@ -7,15 +7,22 @@ import { colors, shadows } from '../theme/colors';
 import { getAreaById } from '../data/routes';
 import { indoorLocationService } from '../services/indoorLocationService';
 
-export default function ArrivalDetectedScreen({ navigate, goBack, routeParams = {}, onAreaDetected, onBeaconDetected }) {
+export default function ArrivalDetectedScreen({ navigate, goBack, routeParams = {}, userProfile, onAreaDetected, onBeaconDetected }) {
   const area = routeParams.area || 'unknown';
   const knownArea = area !== 'unknown';
   const areaData = knownArea ? getAreaById(area) : null;
+  const selectedType = routeParams.userType || userProfile?.type;
   const showDevControls = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production';
+
+  const nextScreenForType = (nextArea) => {
+    if (selectedType === 'visitor') return navigate('VisitorEntry', { area: nextArea });
+    if (selectedType === 'patient') return navigate('PatientAccessChoice', { area: nextArea });
+    return navigate('ProfileChoice', { area: nextArea });
+  };
 
   const continueKnown = () => {
     onAreaDetected?.(area);
-    navigate('ProfileChoice', { area });
+    nextScreenForType(area);
   };
 
   const simulateBeacon = async (beaconCode) => {
@@ -36,24 +43,19 @@ export default function ArrivalDetectedScreen({ navigate, goBack, routeParams = 
     }
 
     onAreaDetected?.(nextArea, detection);
-    navigate('ProfileChoice', {
-      area: nextArea,
-      areaName: detected?.areaName,
-      entrance: detected?.entrance,
-      originNodeCode: detected?.origin_node_code,
-    });
+    nextScreenForType(nextArea);
   };
 
   const chooseUnknown = (nextArea) => {
     onAreaDetected?.(nextArea === 'unknown' ? 'private' : nextArea);
-    navigate('ProfileChoice', { area: nextArea === 'unknown' ? 'private' : nextArea });
+    nextScreenForType(nextArea === 'unknown' ? 'private' : nextArea);
   };
 
   return (
     <Screen>
       <Header
         title={knownArea ? 'Voce chegou ao hospital' : 'Vamos confirmar seu atendimento'}
-        subtitle={knownArea ? 'Beacon da entrada detectado com sucesso.' : 'Escolha a area para continuarmos.'}
+        subtitle={knownArea ? 'Entrada confirmada no ambiente atual.' : 'No Expo Go, a confirmacao usa simulacao/fallback.'}
         onBack={() => goBack?.()}
         onMenu={() => navigate('Menu')}
       />
@@ -61,25 +63,25 @@ export default function ArrivalDetectedScreen({ navigate, goBack, routeParams = 
         <View style={styles.beacon}>
           <MaterialCommunityIcons name="bluetooth-connect" size={34} color="#FFFFFF" />
         </View>
-        <Text style={styles.kicker}>Beacon detectado</Text>
+        <Text style={styles.kicker}>{knownArea ? 'Chegada confirmada' : 'Deteccao simulada'}</Text>
         <Text style={styles.title}>Voce chegou ao hospital</Text>
         {knownArea ? (
           <>
             <Text style={styles.label}>Entrada detectada:</Text>
             <Text style={styles.area}>{areaData.name}</Text>
             <Text style={styles.entry}>{areaData.entranceName}</Text>
-            <Text style={styles.text}>Estamos conectados ao hospital para te guiar por dentro.</Text>
+            <Text style={styles.text}>Hospital ativo carregado. BLE fisico ainda nao esta habilitado neste app Expo Go.</Text>
             <Pressable onPress={continueKnown} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
-              <Text style={styles.primaryText}>Continuar</Text>
+              <Text style={styles.primaryText}>Continuar no Navora</Text>
               <MaterialCommunityIcons name="arrow-right" size={18} color="#FFFFFF" />
             </Pressable>
           </>
         ) : (
           <>
-            <Text style={styles.text}>Vamos confirmar seu atendimento.</Text>
+            <Text style={styles.text}>Use a simulacao de entrada para desenvolvimento ou siga pela recepcao quando nao souber a unidade.</Text>
             <View style={styles.choices}>
-              <MiniButton title="Simular entrada Private" onPress={() => simulateBeacon('MBM04-01')} />
-              <MiniButton title="Simular entrada Hospital Marco Capute" onPress={() => simulateBeacon('MBM04-10')} />
+              <MiniButton title="Simular entrada A" onPress={() => simulateBeacon('MBM04-01')} />
+              <MiniButton title="Simular entrada B" onPress={() => simulateBeacon('MBM04-10')} />
               {showDevControls ? (
                 <MiniButton title="Dev: simular beacon desconhecido" onPress={() => simulateBeacon('UNKNOWN-BEACON')} />
               ) : null}

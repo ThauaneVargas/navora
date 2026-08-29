@@ -63,9 +63,27 @@ export default function Mode3DScreen({ navigate, goBack, activeRoute: selectedRo
       : currentStep?.instruction || (hasKnownProgress ? 'Sem orientacao disponivel para esta rota.' : 'Continue pelo corredor principal. A proxima curva sera a direita.');
   const waitingDestination = destinationLabel || activeRoute?.destination;
 
+  if (!activeRoute) {
+    return (
+      <Screen withBottomTabs>
+        <Header title="Navegar" subtitle="Escolha um destino para iniciar" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+        <View style={[styles.emptyCard, shadows.card]}>
+          <MaterialCommunityIcons name="cube-scan" size={38} color={colors.primary} />
+          <Text style={styles.emptyTitle}>Visualizacao sem rota</Text>
+          <Text style={styles.emptyText}>A perspectiva 2.5D aparece depois que uma rota indoor e iniciada.</Text>
+          <Pressable onPress={() => navigate('Search')} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
+            <MaterialCommunityIcons name="magnify" size={18} color="#FFFFFF" />
+            <Text style={styles.primaryText}>Buscar destino</Text>
+          </Pressable>
+        </View>
+        <BottomTabs active="Navigate" navigate={navigate} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen withBottomTabs>
-      <Header title="Navegacao 3D" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title="Navegar" subtitle="3D/2.5D esquematico da rota" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.routeCard, shadows.card]}>
         <Info icon="map-marker" label="Destino" value={destinationLabel || 'Destino'} />
@@ -81,6 +99,10 @@ export default function Mode3DScreen({ navigate, goBack, activeRoute: selectedRo
       ) : null}
 
       <View style={[styles.scene, shadows.card]}>
+        <View style={styles.sceneBadge}>
+          <MaterialCommunityIcons name="cube-outline" size={14} color={colors.primary} />
+          <Text style={styles.sceneBadgeText}>Representacao 2.5D</Text>
+        </View>
         <View style={styles.ceiling}>
           <View style={styles.lightStrip} />
           <View style={[styles.lightStrip, styles.lightStripSmall]} />
@@ -132,6 +154,8 @@ export default function Mode3DScreen({ navigate, goBack, activeRoute: selectedRo
       <View style={styles.actions}>
         <Pressable
           onPress={() => navigate('Navigation')}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar para mapa 2D"
           style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
         >
           <MaterialCommunityIcons name="map-outline" size={18} color={colors.primary} />
@@ -140,10 +164,12 @@ export default function Mode3DScreen({ navigate, goBack, activeRoute: selectedRo
 
         <Pressable
           onPress={() => navigate('Assistant')}
+          accessibilityRole="button"
+          accessibilityLabel="Abrir Assistente Navora"
           style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed, shadows.soft]}
         >
           <MaterialCommunityIcons name="microphone" size={18} color="#FFFFFF" />
-          <Text style={styles.primaryText}>Central IA</Text>
+          <Text style={styles.primaryText}>Assistente</Text>
         </Pressable>
       </View>
 
@@ -163,7 +189,7 @@ export default function Mode3DScreen({ navigate, goBack, activeRoute: selectedRo
         <Text style={styles.endText}>Encerrar rota</Text>
       </Pressable>
 
-      <BottomTabs active="Navigation" navigate={navigate} />
+      <BottomTabs active="Navigate" navigate={navigate} />
     </Screen>
   );
 }
@@ -190,6 +216,19 @@ function Info({ icon, label, value }) {
 }
 
 const styles = StyleSheet.create({
+  emptyCard: {
+    minHeight: 260,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    marginTop: 18,
+    padding: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyTitle: { color: colors.text, fontSize: 18, fontWeight: '900', marginTop: 12 },
+  emptyText: { color: colors.muted, fontSize: 13, lineHeight: 19, fontWeight: '700', textAlign: 'center', marginTop: 6, marginBottom: 14 },
   routeCard: {
     minHeight: 86,
     borderRadius: 20,
@@ -260,6 +299,26 @@ const styles = StyleSheet.create({
     marginTop: 14,
     overflow: 'hidden',
     position: 'relative',
+  },
+  sceneBadge: {
+    position: 'absolute',
+    right: 14,
+    top: 14,
+    zIndex: 3,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  sceneBadgeText: {
+    color: colors.primary,
+    fontSize: 10,
+    fontWeight: '900',
   },
   ceiling: {
     position: 'absolute',

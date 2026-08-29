@@ -5,75 +5,80 @@ import Screen from '../components/Screen';
 import Header from '../components/Header';
 import { colors, radii, shadows, spacing, typography } from '../theme/colors';
 
-export default function VisitorEntryScreen({
+export default function PatientIdentificationScreen({
   navigate,
   goBack,
   routeParams = {},
-  onVisitorReady,
-  visitorIdentificationDraft = {},
-  onVisitorIdentificationDraftChange,
+  onPatientReady,
+  patientIdentificationDraft = {},
+  onPatientIdentificationDraftChange,
 }) {
-  const [fullName, setFullName] = useState(visitorIdentificationDraft.fullName || '');
-  const [phone, setPhone] = useState(visitorIdentificationDraft.phone || '');
-  const [birthDate, setBirthDate] = useState(visitorIdentificationDraft.birthDate || '');
+  const [fullName, setFullName] = useState(patientIdentificationDraft.fullName || '');
+  const [birthDate, setBirthDate] = useState(patientIdentificationDraft.birthDate || '');
+  const [document, setDocument] = useState(patientIdentificationDraft.cpf || patientIdentificationDraft.document || '');
   const area = routeParams.area || 'private';
 
   const updateFullName = (value) => {
     setFullName(value);
-    onVisitorIdentificationDraftChange?.({ fullName: value });
-  };
-
-  const updatePhone = (value) => {
-    setPhone(value);
-    onVisitorIdentificationDraftChange?.({ phone: value });
+    onPatientIdentificationDraftChange?.({ fullName: value });
   };
 
   const updateBirthDate = (value) => {
     setBirthDate(value);
-    onVisitorIdentificationDraftChange?.({ birthDate: value });
+    onPatientIdentificationDraftChange?.({ birthDate: value });
   };
 
-  const continueFlow = () => {
+  const updateDocument = (value) => {
+    setDocument(value);
+    onPatientIdentificationDraftChange?.({ cpf: value, document: value });
+  };
+
+  const submit = () => {
     const name = fullName.trim();
     if (!name) {
       Alert.alert('Nome completo', 'Informe seu nome completo para continuar.');
       return;
     }
 
-    onVisitorReady?.({
-      type: 'visitor',
-      profile: 'VISITOR',
+    onPatientReady?.({
+      type: 'patient',
+      profile: 'PATIENT',
       name: name.split(' ')[0],
       fullName: name,
-      phone: phone.trim() || null,
       birthDate: birthDate.trim() || null,
-      arrivalStatus: 'OUTSIDE',
+      cpf: document.trim() || null,
+      document: document.trim() || null,
       area,
+      hasAccount: false,
+      alreadyPatient: false,
+      authSource: 'identified',
+      indoorConfirmed: false,
+      arrivalStatus: 'OUTSIDE',
     });
-    navigate('ArrivalPreparation', { userType: 'visitor', area });
+    navigate('ArrivalPreparation', { userType: 'patient', area });
   };
 
   return (
     <Screen>
       <Header
-        title="Identificacao do visitante"
-        subtitle="O destino da visita sera definido pela recepcao apos validacao presencial."
+        title="Identificacao do paciente"
+        subtitle="Sem cadastro longo. O Navora so precisa reconhecer voce nesta jornada."
         onBack={() => goBack?.('HomeStart')}
         onMenu={() => navigate('Menu')}
       />
 
       <View style={[styles.card, shadows.card]}>
         <View style={styles.icon}>
-          <MaterialCommunityIcons name="account-arrow-right-outline" size={30} color={colors.primary} />
+          <MaterialCommunityIcons name="account-heart-outline" size={30} color={colors.primary} />
         </View>
-        <Text style={styles.title}>Bem-vindo ao Navora</Text>
-        <Text style={styles.text}>Vamos identificar voce e, ao chegar, liberar apenas a rota publica ate a recepcao.</Text>
+        <Text style={styles.title}>Vamos com calma</Text>
+        <Text style={styles.text}>Voce nao precisa ter consulta ou agendamento vinculado para navegar pelo hospital.</Text>
 
-        <Field label="Nome completo" required value={fullName} onChangeText={updateFullName} placeholder="Ex.: Gabriel Lima" />
-        <Field label="Telefone" value={phone} onChangeText={updatePhone} placeholder="Opcional" keyboardType="phone-pad" />
-        <Field label="Data de nascimento" value={birthDate} onChangeText={updateBirthDate} placeholder="Opcional" />
+        <Field label="Nome completo" required value={fullName} onChangeText={updateFullName} placeholder="Ex.: Mariana Souza" />
+        <Field label="Data de nascimento" value={birthDate} onChangeText={updateBirthDate} placeholder="DD/MM/AAAA" />
+        <Field label="CPF" value={document} onChangeText={updateDocument} placeholder="Opcional" keyboardType="numeric" />
 
-        <Pressable onPress={continueFlow} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
+        <Pressable onPress={submit} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
           <Text style={styles.primaryText}>Continuar</Text>
           <MaterialCommunityIcons name="arrow-right" size={18} color="#FFFFFF" />
         </Pressable>

@@ -7,7 +7,9 @@ import {
   Pressable,
   StyleSheet,
   Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {
   RecordingPresets,
@@ -18,19 +20,20 @@ import {
 import * as Speech from 'expo-speech';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
+import BottomTabs from '../components/BottomTabs';
 import { colors, shadows } from '../theme/colors';
-import { getNavoraAssistantResponse } from '../services/navoraAssistant';
+import { assistantProvider, getNavoraAssistantResponse } from '../services/navoraAssistant';
 import { useApp } from '../context/AppContext';
 
 const suggestions = [
   'Como chegar ao hospital',
-  'Estou no SUS',
+  'Estou em outra entrada',
   'Quero visitar alguem',
   'Estou perdido',
   'Banheiro mais proximo',
   'Rota acessivel',
   'Ativar modo noturno',
-  'Solicitar medico',
+  'Apoio clinico',
   'SOS Emergencia',
 ];
 
@@ -38,11 +41,12 @@ const initialMessages = [
   {
     id: 'assistant-welcome',
     role: 'assistant',
-    text: 'Ola, sou a IA Navora. Fale ou escreva como posso ajudar.',
+    text: 'Ola, sou o Assistente Navora. Posso ajudar com destinos, acessibilidade, ajuda e SOS.',
   },
 ];
 
-export default function AssistantScreen({ navigate, goBack, routeParams = {}, userProfile }) {
+export default function AssistantScreen({ navigate, goBack, routeParams = {}, userProfile, visitorAccessRequest }) {
+  const insets = useSafeAreaInsets();
   const { toggleTheme } = useApp();
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState('');
@@ -52,11 +56,17 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
   const scrollRef = useRef(null);
   const autoVoiceStarted = useRef(false);
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const composerBottom = Math.max(insets.bottom, 12) + 78;
+  const composerSpace = composerBottom + 88;
 
   useEffect(() => {
     if (routeParams?.voice && !autoVoiceStarted.current) {
       autoVoiceStarted.current = true;
       handleMicrophonePress();
+    }
+    if (routeParams?.prompt && !autoVoiceStarted.current) {
+      autoVoiceStarted.current = true;
+      processMessage(routeParams.prompt);
     }
   }, [routeParams]);
 
@@ -81,7 +91,7 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
     appendMessage({ role: 'user', text: extraUserText || text });
     setStatus('Processando...');
 
-    const assistantResponse = getNavoraAssistantResponse(text, userProfile);
+    const assistantResponse = getNavoraAssistantResponse(text, userProfile, visitorAccessRequest);
     setTimeout(() => {
       appendMessage({ role: 'assistant', ...assistantResponse });
       setStatus('Pronta para ajudar');
@@ -189,115 +199,123 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
   return (
     <Screen scroll={false} padded={false}>
       <View style={styles.screen}>
-        <Header title="IA Navora" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+        <Header title="Assistente Navora" subtitle="Orientacao guiada" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
-        <ScrollView
-          ref={scrollRef}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
+        <KeyboardAvoidingView
+          style={styles.keyboardArea}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={0}
         >
-          <View style={[styles.aiCard, shadows.card]}>
+          <ScrollView
+            ref={scrollRef}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={[styles.content, { paddingBottom: composerSpace }]}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={[styles.aiCard, shadows.card]}>
+              <Pressable
+                onPress={handleMicrophonePress}
+                style={({ pressed }) => [
+                  styles.aiIcon,
+                  isRecording && styles.aiIconRecording,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={isRecording ? 'stop' : 'microphone'}
+                  size={25}
+                  color="#FFFFFF"
+                />
+              </Pressable>
+              <View style={styles.aiCopy}>
+                <Text style={styles.aiTitle}>Assistente Navora</Text>
+                <Text style={styles.aiText}>Busca destinos e orienta proximos passos. Nao usa IA generativa neste app.</Text>
+                <Text style={styles.providerText}>{assistantProvider.label}</Text>
+                <Text style={styles.statusText}>{status}</Text>
+              </View>
+              <Pressable onPress={stopSpeech} style={styles.stopVoiceButton}>
+                <MaterialCommunityIcons name="volume-off" size={18} color={colors.primary} />
+              </Pressable>
+            </View>
+
+            <View style={styles.suggestions}>
+              {suggestions.map((item) => (
+                <Pressable
+                  key={item}
+                  onPress={() => processMessage(item)}
+                  style={({ pressed }) => [styles.suggestion, pressed && styles.pressed]}
+                >
+                  <Text numberOfLines={1} style={styles.suggestionText}>{item}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <View style={styles.history}>
+              {messages.map((message) => {
+                const isUser = message.role === 'user';
+                return (
+                  <View
+                    key={message.id}
+                    style={[
+                      styles.messageBubble,
+                      isUser ? styles.userBubble : styles.assistantBubble,
+                    ]}
+                  >
+                    <Text style={[styles.messageText, isUser && styles.userText]}>
+                      {message.text}
+                    </Text>
+
+                    {!isUser ? (
+                      <View style={styles.messageActions}>
+                        <Pressable
+                          onPress={() => speakText(message.text)}
+                          style={({ pressed }) => [styles.listenButton, pressed && styles.pressed]}
+                        >
+                          <MaterialCommunityIcons name="volume-high" size={15} color={colors.primary} />
+                          <Text style={styles.listenText}>Ouvir</Text>
+                        </Pressable>
+
+                        {message.actionLabel ? (
+                          <Pressable
+                            onPress={() => runAction(message)}
+                            style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
+                          >
+                            <Text style={styles.actionText}>{message.actionLabel}</Text>
+                          </Pressable>
+                        ) : null}
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
+            </View>
+          </ScrollView>
+
+          <View style={[styles.composer, { bottom: composerBottom }, shadows.card]}>
+            <Pressable onPress={clearConversation} style={styles.smallIconButton}>
+              <MaterialCommunityIcons name="trash-can-outline" size={19} color={colors.muted} />
+            </Pressable>
+            <TextInput
+              value={input}
+              onChangeText={setInput}
+              placeholder="Digite sua mensagem..."
+              placeholderTextColor="#8B8D96"
+              style={styles.input}
+              returnKeyType="send"
+              onSubmitEditing={sendMessage}
+            />
+            <Pressable onPress={sendMessage} style={styles.sendButton}>
+              <MaterialCommunityIcons name="send" size={18} color="#FFFFFF" />
+            </Pressable>
             <Pressable
               onPress={handleMicrophonePress}
-              style={({ pressed }) => [
-                styles.aiIcon,
-                isRecording && styles.aiIconRecording,
-                pressed && styles.pressed,
-              ]}
+              style={[styles.micButton, isRecording && styles.micButtonRecording]}
             >
-              <MaterialCommunityIcons
-                name={isRecording ? 'stop' : 'microphone'}
-                size={25}
-                color="#FFFFFF"
-              />
-            </Pressable>
-            <View style={styles.aiCopy}>
-              <Text style={styles.aiTitle}>IA Navora</Text>
-              <Text style={styles.aiText}>Fale ou escreva como posso ajudar.</Text>
-              <Text style={styles.statusText}>{status}</Text>
-            </View>
-            <Pressable onPress={stopSpeech} style={styles.stopVoiceButton}>
-              <MaterialCommunityIcons name="volume-off" size={18} color={colors.primary} />
+              <MaterialCommunityIcons name={isRecording ? 'stop' : 'microphone'} size={19} color="#FFFFFF" />
             </Pressable>
           </View>
-
-          <View style={styles.suggestions}>
-            {suggestions.map((item) => (
-              <Pressable
-                key={item}
-                onPress={() => processMessage(item)}
-                style={({ pressed }) => [styles.suggestion, pressed && styles.pressed]}
-              >
-                <Text numberOfLines={1} style={styles.suggestionText}>{item}</Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <View style={styles.history}>
-            {messages.map((message) => {
-              const isUser = message.role === 'user';
-              return (
-                <View
-                  key={message.id}
-                  style={[
-                    styles.messageBubble,
-                    isUser ? styles.userBubble : styles.assistantBubble,
-                  ]}
-                >
-                  <Text style={[styles.messageText, isUser && styles.userText]}>
-                    {message.text}
-                  </Text>
-
-                  {!isUser ? (
-                    <View style={styles.messageActions}>
-                      <Pressable
-                        onPress={() => speakText(message.text)}
-                        style={({ pressed }) => [styles.listenButton, pressed && styles.pressed]}
-                      >
-                        <MaterialCommunityIcons name="volume-high" size={15} color={colors.primary} />
-                        <Text style={styles.listenText}>Ouvir</Text>
-                      </Pressable>
-
-                      {message.actionLabel ? (
-                        <Pressable
-                          onPress={() => runAction(message)}
-                          style={({ pressed }) => [styles.actionButton, pressed && styles.pressed]}
-                        >
-                          <Text style={styles.actionText}>{message.actionLabel}</Text>
-                        </Pressable>
-                      ) : null}
-                    </View>
-                  ) : null}
-                </View>
-              );
-            })}
-          </View>
-        </ScrollView>
-
-        <View style={[styles.composer, shadows.card]}>
-          <Pressable onPress={clearConversation} style={styles.smallIconButton}>
-            <MaterialCommunityIcons name="trash-can-outline" size={19} color={colors.muted} />
-          </Pressable>
-          <TextInput
-            value={input}
-            onChangeText={setInput}
-            placeholder="Digite sua mensagem..."
-            placeholderTextColor="#8B8D96"
-            style={styles.input}
-            returnKeyType="send"
-            onSubmitEditing={sendMessage}
-          />
-          <Pressable onPress={sendMessage} style={styles.sendButton}>
-            <MaterialCommunityIcons name="send" size={18} color="#FFFFFF" />
-          </Pressable>
-          <Pressable
-            onPress={handleMicrophonePress}
-            style={[styles.micButton, isRecording && styles.micButtonRecording]}
-          >
-            <MaterialCommunityIcons name={isRecording ? 'stop' : 'microphone'} size={19} color="#FFFFFF" />
-          </Pressable>
-        </View>
+        </KeyboardAvoidingView>
+        <BottomTabs active="Assistant" navigate={navigate} />
       </View>
     </Screen>
   );
@@ -311,9 +329,12 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     backgroundColor: colors.bg,
   },
+  keyboardArea: {
+    flex: 1,
+    position: 'relative',
+  },
   content: {
     paddingHorizontal: 20,
-    paddingBottom: 104,
   },
   aiCard: {
     minHeight: 92,
@@ -363,6 +384,13 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '900',
     marginTop: 7,
+  },
+  providerText: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '900',
+    marginTop: 5,
+    textTransform: 'uppercase',
   },
   stopVoiceButton: {
     width: 38,
@@ -460,7 +488,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 12,
     right: 12,
-    bottom: 12,
     minHeight: 62,
     borderRadius: 22,
     backgroundColor: colors.surface,

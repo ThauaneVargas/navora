@@ -11,11 +11,10 @@ import { navoraApi } from '../services/api';
 
 const helpTypes = [
   'Estou perdido',
+  'Preciso de ajuda',
+  'Queda',
   'Dificuldade de locomocao',
-  'Preciso de orientacao',
-  'Preciso de acompanhante',
-  'Problema na rota',
-  'Outro',
+  'Contato com recepcao',
 ];
 
 export default function HelpScreen({ navigate, goBack, routeParams = {}, userType = 'patient', userProfile, onCreateHelpRequest }) {
@@ -31,7 +30,7 @@ export default function HelpScreen({ navigate, goBack, routeParams = {}, userTyp
     accessibleRoute: Boolean(userProfile?.accessibility?.wheelchair || userProfile?.accessibility?.avoidStairs || fallbackPreferences.accessibleRoute),
   };
   const profileLabel = userProfile?.type === 'visitor' || userType === 'visitor' ? 'Visitante' : 'Paciente';
-  const [selectedType, setSelectedType] = useState(routeParams.type === 'help' ? 'Preciso de orientacao' : helpTypes[0]);
+  const [selectedType, setSelectedType] = useState(routeParams.type === 'help' ? 'Preciso de ajuda' : helpTypes[0]);
   const [helpDescription, setHelpDescription] = useState('');
   const [doctorReason, setDoctorReason] = useState('');
   const [doctorNotes, setDoctorNotes] = useState('');
@@ -97,6 +96,17 @@ export default function HelpScreen({ navigate, goBack, routeParams = {}, userTyp
     }
   };
 
+  const confirmSos = () => {
+    Alert.alert(
+      'Acionar SOS?',
+      'Use SOS apenas em situacao urgente. A equipe recebera sua localizacao atual.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Acionar SOS', style: 'destructive', onPress: () => submit('sos') },
+      ]
+    );
+  };
+
   if (confirmation) {
     return (
       <Screen withBottomTabs>
@@ -119,16 +129,16 @@ export default function HelpScreen({ navigate, goBack, routeParams = {}, userTyp
             <Text style={styles.secondaryText}>Voltar para Home</Text>
           </Pressable>
         </View>
-        <BottomTabs active="Home" navigate={navigate} />
+        <BottomTabs active="Help" navigate={navigate} />
       </Screen>
     );
   }
 
   return (
     <Screen withBottomTabs>
-      <Header title="Ajuda e SOS" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title="Ajuda e SOS" subtitle="Suporte, orientacao e emergencia" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
-      <Card title="Solicitar ajuda" icon="hand-heart-outline" appColors={appColors}>
+      <Card title="Preciso de ajuda" icon="hand-heart-outline" appColors={appColors}>
         <Text style={[styles.cardText, { color: appColors.muted }]}>Informe o tipo de apoio que voce precisa.</Text>
         <View style={styles.chips}>
           {helpTypes.map((item) => {
@@ -157,7 +167,7 @@ export default function HelpScreen({ navigate, goBack, routeParams = {}, userTyp
         </Pressable>
       </Card>
 
-      <Card title="Solicitar medico" icon="stethoscope" appColors={appColors}>
+      <Card title="Queda ou suporte clinico" icon="stethoscope" appColors={appColors}>
         <Text style={[styles.cardText, { color: appColors.muted }]}>Use esta opcao quando precisar de avaliacao ou apoio clinico.</Text>
         <TextInput
           value={doctorReason}
@@ -179,12 +189,12 @@ export default function HelpScreen({ navigate, goBack, routeParams = {}, userTyp
           disabled={Boolean(submittingKind)}
           style={[styles.primaryButton, submittingKind && styles.disabled]}
         >
-          {submittingKind === 'doctor' ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>Solicitar medico</Text>}
+          {submittingKind === 'doctor' ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>Solicitar apoio clinico</Text>}
         </Pressable>
       </Card>
 
-      <Card title="SOS Emergencia" icon="alarm-light-outline" danger appColors={appColors}>
-        <Text style={[styles.cardText, { color: appColors.muted }]}>Atendimento imediato em situacao urgente.</Text>
+      <Card title="Emergencia / SOS" icon="alarm-light-outline" danger appColors={appColors}>
+        <Text style={[styles.cardText, { color: appColors.muted }]}>Atendimento imediato em situacao urgente. O envio pede confirmacao para evitar toque acidental.</Text>
         <View style={styles.sosInfo}>
           <Info label="Localizacao" value={`${currentLocation.name} - ${currentLocation.corridor}`} appColors={appColors} />
           <Info label="Beacon" value={currentLocation.beacon} appColors={appColors} />
@@ -194,8 +204,11 @@ export default function HelpScreen({ navigate, goBack, routeParams = {}, userTyp
           <Info label="Preferencias" value={userPreferences.accessibleRoute ? 'Rota acessivel ativa' : 'Padrao'} appColors={appColors} />
         </View>
         <Pressable
-          onPress={() => submit('sos')}
+          onPress={confirmSos}
           disabled={Boolean(submittingKind)}
+          accessibilityRole="button"
+          accessibilityLabel="Acionar SOS"
+          accessibilityHint="Abre uma confirmacao antes de enviar o chamado urgente"
           style={[styles.sosButton, submittingKind && styles.disabled]}
         >
           {submittingKind === 'sos' ? (
@@ -209,7 +222,7 @@ export default function HelpScreen({ navigate, goBack, routeParams = {}, userTyp
         </Pressable>
       </Card>
 
-      <BottomTabs active="Home" navigate={navigate} />
+      <BottomTabs active="Help" navigate={navigate} />
     </Screen>
   );
 }

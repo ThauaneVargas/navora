@@ -17,6 +17,11 @@ export const hospitalAreas = [
   {
     id: 'private',
     name: 'HMC Private',
+    hospitalId: 'hospital-demo-private',
+    unitName: 'Unidade Private',
+    address: 'Rua Ronaldo Fiuza Manhaes, no 1 - Centro, Vassouras - RJ',
+    latitude: null,
+    longitude: null,
     entranceName: 'Entrada pelos Fundos',
     entry: 'fundos',
     entryLabel: 'Fundos',
@@ -26,6 +31,11 @@ export const hospitalAreas = [
   {
     id: 'sus',
     name: 'Hospital Marco Capute',
+    hospitalId: 'hospital-demo-sus',
+    unitName: 'Unidade Hospitalar',
+    address: 'Rua Ronaldo Fiuza Manhaes, no 1 - Centro, Vassouras - RJ',
+    latitude: null,
+    longitude: null,
     entranceName: 'Entrada pela Frente',
     entry: 'frente',
     entryLabel: 'Frente',
@@ -36,6 +46,61 @@ export const hospitalAreas = [
 
 export const getAreaById = (areaId = 'private') =>
   hospitalAreas.find((area) => area.id === areaId) || hospitalAreas[0];
+
+export const hospitalName = 'Hospital Marcos Capute';
+
+export const entranceMetadata = {
+  PRIVATE_BACK: {
+    id: 'private-back',
+    code: 'PRIVATE_BACK',
+    name: 'Private - Fundos',
+    fullName: 'Entrada Private - Fundos',
+    hospitalArea: 'PRIVATE',
+    areaId: 'private',
+    beaconCodes: ['MBM04-01'],
+  },
+  SUS_FRONT: {
+    id: 'sus-front',
+    code: 'SUS_FRONT',
+    name: 'SUS - Frente',
+    fullName: 'Entrada SUS - Frente',
+    hospitalArea: 'SUS',
+    areaId: 'sus',
+    beaconCodes: ['MBM04-10'],
+  },
+};
+
+export const entrances = Object.values(entranceMetadata);
+
+export const getEntranceByAreaId = (areaId = 'private') =>
+  entrances.find((entrance) => entrance.areaId === areaId) || entranceMetadata.PRIVATE_BACK;
+
+export const getEntranceByBeaconCode = (beaconCode) =>
+  entrances.find((entrance) => entrance.beaconCodes.includes(beaconCode)) || null;
+
+export const getHospitalEnvironment = (areaId = 'private', detection = {}) => {
+  const area = getAreaById(areaId);
+  const entrance = detection.detectedEntrance || getEntranceByAreaId(area.id);
+  return {
+    id: area.hospitalId || area.id,
+    name: hospitalName,
+    unitName: area.unitName,
+    latitude: area.latitude,
+    longitude: area.longitude,
+    address: area.address,
+    entrances: [
+      {
+        id: entrance.id,
+        code: entrance.code,
+        name: entrance.fullName,
+        label: entrance.name,
+        beaconCode: detection.beacon_code || detection.beaconCode || null,
+      },
+    ],
+    floors: [...new Set(destinations.filter((destination) => destination.area === area.id).map((destination) => destination.floor).filter(Boolean))],
+    activeAreaId: area.id,
+  };
+};
 
 export const externalExamAccessWindow = {
   start: '07:00',

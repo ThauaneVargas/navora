@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, BackHandler, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import SplashScreen from './src/screens/SplashScreen';
 import LoginScreen from './src/screens/LoginScreen';
@@ -8,8 +8,11 @@ import HomeStartScreen from './src/screens/HomeStartScreen';
 import CareAreaChoiceScreen from './src/screens/CareAreaChoiceScreen';
 import ExternalRouteScreen from './src/screens/ExternalRouteScreen';
 import ArrivalDetectedScreen from './src/screens/ArrivalDetectedScreen';
+import ArrivalPreparationScreen from './src/screens/ArrivalPreparationScreen';
+import ArrivalConfirmedScreen from './src/screens/ArrivalConfirmedScreen';
 import ProfileChoiceScreen from './src/screens/ProfileChoiceScreen';
 import PatientAccessChoiceScreen from './src/screens/PatientAccessChoiceScreen';
+import PatientIdentificationScreen from './src/screens/PatientIdentificationScreen';
 import PatientLoginScreen from './src/screens/PatientLoginScreen';
 import PatientQuickRegisterScreen from './src/screens/PatientQuickRegisterScreen';
 import PatientAccessibilitySetupScreen from './src/screens/PatientAccessibilitySetupScreen';
@@ -39,6 +42,7 @@ import {
   destinations as fallbackDestinations,
   getAreaById,
   getExternalExamAccessStatus,
+  getHospitalEnvironment,
   getReceptionDestination,
   hospitalAreas as fallbackAreas,
 } from './src/data/routes';
@@ -46,6 +50,7 @@ import { isAuthError, navoraApi } from './src/services/api';
 import { getAuthToken, removeAuthToken } from './src/services/authToken';
 import { indoorLocationService, indoorLog } from './src/services/indoorLocationService';
 import { deriveNavigationProgress } from './src/services/navigationAdapter';
+import { hospitalDetectionService } from './src/services/hospitalDetectionService';
 
 const screens = {
   Splash: SplashScreen,
@@ -53,8 +58,11 @@ const screens = {
   CareAreaChoice: CareAreaChoiceScreen,
   ExternalRoute: ExternalRouteScreen,
   ArrivalDetected: ArrivalDetectedScreen,
+  ArrivalPreparation: ArrivalPreparationScreen,
+  ArrivalConfirmed: ArrivalConfirmedScreen,
   ProfileChoice: ProfileChoiceScreen,
   PatientAccessChoice: PatientAccessChoiceScreen,
+  PatientIdentification: PatientIdentificationScreen,
   PatientLogin: PatientLoginScreen,
   PatientQuickRegister: PatientQuickRegisterScreen,
   PatientQuickAccess: PatientQuickRegisterScreen,
@@ -94,6 +102,10 @@ export default function App() {
   const [userProfile, setUserProfile] = useState(null);
   const [activeRoute, setActiveRoute] = useState(null);
   const [visitorAccessRequest, setVisitorAccessRequest] = useState(null);
+  const [identificationDrafts, setIdentificationDrafts] = useState({
+    patient: {},
+    visitor: {},
+  });
   const [navigationData, setNavigationData] = useState({
     areas: fallbackAreas,
     destinations: fallbackDestinations,
@@ -101,6 +113,7 @@ export default function App() {
   });
   const [navigationSource, setNavigationSource] = useState('fallback');
   const [navigationLoaded, setNavigationLoaded] = useState(false);
+  const [hospitalDetection, setHospitalDetection] = useState(() => hospitalDetectionService.getSnapshot());
   const [sessionRestored, setSessionRestored] = useState(false);
   const [helpRequests, setHelpRequests] = useState(() => [...initialHelpRequests]);
   const lastIndoorResolutionRef = useRef(null);
@@ -110,6 +123,7 @@ export default function App() {
     () => deriveNavigationProgress(activeRoute),
     [activeRoute]
   );
+  const activeHospital = hospitalDetection.activeHospital || (userProfile?.area ? getHospitalEnvironment(userProfile.area) : null);
 
   useEffect(() => {
     let active = true;
@@ -125,6 +139,8 @@ export default function App() {
       active = false;
     };
   }, []);
+
+  useEffect(() => hospitalDetectionService.subscribe(setHospitalDetection), []);
 
   useEffect(() => {
     let active = true;
@@ -145,7 +161,6 @@ export default function App() {
         if (!active) return;
         handlePatientReady({ ...patient, apiUser: authUser, authSource: 'api', hasAccount: true });
         setSessionRestored(true);
-        setScreenStack((current) => (current[current.length - 1] === 'Splash' ? current : ['PatientHome']));
       } catch (error) {
         if (isAuthError(error)) {
           await removeAuthToken();
@@ -173,6 +188,29 @@ export default function App() {
       const next = current.slice(0, -1);
       return next.length ? next : [defaultScreen];
     });
+  };
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return undefined;
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (screenStack.length <= 1) return false;
+      goBack('HomeStart');
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, [screenStack]);
+
+  const updateIdentificationDraft = (profile, patch) => {
+    const key = profile === 'VISITOR' ? 'visitor' : 'patient';
+    setIdentificationDrafts((current) => ({
+      ...current,
+      [key]: {
+        ...current[key],
+        ...patch,
+      },
+    }));
   };
 
   const getCurrentAreaById = (areaId = 'private') =>
@@ -245,6 +283,8 @@ export default function App() {
 
   const handleAreaProfileSelect = ({ area = 'private', type = 'patient' }) => {
     const profile = buildProfile(type, area);
+    const detectionState = hospitalDetectionService.confirmArrival(area);
+    setHospitalDetection(detectionState);
     setUserProfile(profile);
     setActiveRoute(null);
     setVisitorAccessRequest(null);
@@ -253,19 +293,30 @@ export default function App() {
   };
 
   const handleAreaDetected = (area = 'private', detection = {}) => {
+    const detectionState = hospitalDetectionService.confirmArrival(area, detection);
+    setHospitalDetection(detectionState);
     updateLocationFromBeacon(area, detection);
+    setUserProfile((current) => ({
+      ...(current || {}),
+      arrivalStatus: 'INDOOR',
+      detectedEntrance: detectionState.detectedEntrance,
+      hospitalArea: detectionState.detectedEntrance?.hospitalArea,
+    }));
+    return detectionState;
   };
 
   const handleProfileDraft = ({ type = 'patient', area = userProfile?.area || 'private' }) => {
     const areaData = getCurrentAreaById(area);
-    setUserProfile((current) => ({
-      ...(current || {}),
+    setUserProfile({
       type,
+      profile: type === 'visitor' ? 'VISITOR' : 'PATIENT',
       area: areaData.id,
       entry: areaData.entry,
       entryLabel: areaData.entryLabel,
       hasAccount: false,
-    }));
+      arrivalStatus: 'OUTSIDE',
+      visitorAccess: 'NONE',
+    });
   };
 
   const handlePatientReady = (patient) => {
@@ -273,6 +324,7 @@ export default function App() {
     const apiUser = patient?.apiUser || patient?.user;
     setUserProfile({
       type: 'patient',
+      profile: 'PATIENT',
       id: patient?.id,
       userId: apiUser?.id,
       role: apiUser?.role || patient?.role,
@@ -292,6 +344,29 @@ export default function App() {
       accessibility: patient?.accessibility || {},
       lastDestination: patient?.lastDestination,
       emergencyContact: patient?.emergencyContact,
+      cpf: patient?.cpf || patient?.document || null,
+      arrivalStatus: 'OUTSIDE',
+      visitorAccess: 'NONE',
+    });
+    setActiveRoute(null);
+    setVisitorAccessRequest(null);
+  };
+
+  const handleVisitorReady = (visitor = {}) => {
+    const area = getCurrentAreaById(visitor.area || userProfile?.area || 'private');
+    setUserProfile({
+      type: 'visitor',
+      profile: 'VISITOR',
+      name: visitor.name || 'Visitante',
+      fullName: visitor.fullName || visitor.name || 'Visitante Navora',
+      phone: visitor.phone || null,
+      birthDate: visitor.birthDate || null,
+      cpf: '',
+      area: area.id,
+      entry: area.entry,
+      entryLabel: area.entryLabel,
+      arrivalStatus: 'OUTSIDE',
+      visitorAccess: 'NONE',
     });
     setActiveRoute(null);
     setVisitorAccessRequest(null);
@@ -299,6 +374,8 @@ export default function App() {
 
   const handleLoginSuccess = (selectedUserType) => {
     const profile = buildProfile(selectedUserType);
+    const detectionState = hospitalDetectionService.confirmArrival(profile.area);
+    setHospitalDetection(detectionState);
     setUserProfile(profile);
     setRouteParams({});
     setScreenStack(profile.type === 'visitor' ? ['VisitorEntry'] : ['Home']);
@@ -311,7 +388,7 @@ export default function App() {
     setActiveRoute(null);
     setVisitorAccessRequest(null);
     setRouteParams({});
-    setScreenStack(['AreaEntry']);
+    setScreenStack(['HomeStart']);
   };
 
   const handleCreateHelpRequest = (request) => {
@@ -660,6 +737,7 @@ export default function App() {
     }
 
     const recalculation = await recalculateActiveRouteFromBeacon(beaconDetection);
+    const arrivalState = handleAreaDetected(beaconDetection.area || userProfile?.area || 'private', beaconDetection);
     if (recalculation?.reason === 'route-not-found') {
       indoorLog('route_found_false', { originNodeCode: beaconDetection.origin_node_code });
     }
@@ -676,6 +754,7 @@ export default function App() {
       detected: true,
       event: indoorEvent,
       detection: beaconDetection,
+      arrivalState,
       recalculation,
     };
   };
@@ -691,6 +770,31 @@ export default function App() {
 
   const handleStartRoute = (destination) => {
     resolveNavigationAccess(destination);
+  };
+
+  const handleMarkNearHospital = (area = userProfile?.area || 'private') => {
+    const detectionState = hospitalDetectionService.markNearby(area);
+    setHospitalDetection(detectionState);
+    setUserProfile((current) => ({
+      ...(current || {}),
+      arrivalStatus: 'NEAR_HOSPITAL',
+    }));
+    return detectionState;
+  };
+
+  const handleManualEntranceCorrection = (entrance) => {
+    if (!entrance) return null;
+    return handleAreaDetected(entrance.areaId, { detectedEntrance: entrance });
+  };
+
+  const handleArrivalContinue = (profileType = userProfile?.type || 'patient') => {
+    setRouteParams({});
+    if (profileType === 'visitor') {
+      setVisitorAccessRequest(null);
+      setScreenStack(['HomeStart']);
+      return;
+    }
+    setScreenStack(['PatientHome']);
   };
 
   const normalizeVisitorAccessRequest = (request, fallback = {}) => ({
@@ -709,6 +813,10 @@ export default function App() {
     status: request?.status || fallback.status || 'Aguardando autorizacao',
     allowedRoute: request?.allowed_route || fallback.allowedRoute,
     allowedTime: request?.allowed_time || fallback.allowedTime,
+    permissionMinutes: request?.permission_minutes || fallback.permissionMinutes,
+    authorizedAt: request?.authorized_at || fallback.authorizedAt,
+    expiresAt: request?.expires_at || fallback.expiresAt,
+    validUntil: request?.expires_at || fallback.validUntil,
     createdAt: request?.created_at || fallback.createdAt || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
   });
 
@@ -728,7 +836,7 @@ export default function App() {
       destinationId: request?.destination?.numericId,
       reason: request?.reason || 'Visita',
       accessibility: request?.accessibility || 'Nao',
-      status: 'Aguardando autorizacao',
+      status: 'PENDING',
       createdAt: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     };
 
@@ -758,11 +866,17 @@ export default function App() {
     }
   };
 
+  const handleEndRoute = () => {
+    setActiveRoute(null);
+    setRouteParams({});
+    setScreenStack(['Home']);
+  };
+
   if (screen === 'Splash') {
     return (
       <AppProvider>
       <SafeAreaProvider>
-        <SplashScreen onSplashFinish={() => setScreenStack([sessionRestored || userProfile?.authSource === 'api' ? 'PatientHome' : 'HomeStart'])} />
+        <SplashScreen onSplashFinish={() => setScreenStack(['HomeStart'])} />
       </SafeAreaProvider>
       </AppProvider>
     );
@@ -790,21 +904,33 @@ export default function App() {
           activeRoute={activeRoute}
           navigationProgress={navigationProgress}
           visitorAccessRequest={visitorAccessRequest}
+          onVisitorAccessRequestUpdated={setVisitorAccessRequest}
           navigationData={navigationData}
           navigationSource={navigationSource}
           navigationLoaded={navigationLoaded}
+          activeHospital={activeHospital}
+          hospitalDetection={hospitalDetection}
           helpRequests={helpRequests}
           onAreaProfileSelect={handleAreaProfileSelect}
           onAreaDetected={handleAreaDetected}
+          onMarkNearHospital={handleMarkNearHospital}
+          onManualEntranceCorrection={handleManualEntranceCorrection}
+          onArrivalContinue={handleArrivalContinue}
           onBeaconDetected={recalculateActiveRouteFromBeacon}
           onProfileDraft={handleProfileDraft}
           onPatientReady={handlePatientReady}
+          onVisitorReady={handleVisitorReady}
+          patientIdentificationDraft={identificationDrafts.patient}
+          visitorIdentificationDraft={identificationDrafts.visitor}
+          onPatientIdentificationDraftChange={(patch) => updateIdentificationDraft('PATIENT', patch)}
+          onVisitorIdentificationDraftChange={(patch) => updateIdentificationDraft('VISITOR', patch)}
           onStartRoute={handleStartRoute}
           onResolveNavigationAccess={resolveNavigationAccess}
           onCreateVisitorAccessRequest={handleVisitorAccessRequest}
           onCancelVisitorAccessRequest={() => setVisitorAccessRequest(null)}
           onCreateHelpRequest={handleCreateHelpRequest}
           onUpdateHelpRequest={handleUpdateHelpRequest}
+          onEndRoute={handleEndRoute}
           onLogout={handleLogout}
         />
       )}

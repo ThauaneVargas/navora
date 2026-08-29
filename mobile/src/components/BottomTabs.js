@@ -2,14 +2,15 @@ import React from 'react';
 import { Platform, View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, shadows } from '../theme/colors';
+import { colors, radii, shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 
 const tabs = [
-  { key: 'Home', label: 'Inicio', icon: 'home' },
-  { key: 'Navigation', label: 'Mapa', icon: 'map-outline' },
-  { key: 'RouteHistory', label: 'Historico', icon: 'history' },
-  { key: 'Profile', label: 'Perfil', icon: 'account' },
+  { key: 'Home', screen: 'Home', label: 'Inicio', icon: 'home' },
+  { key: 'Navigate', screen: 'Search', label: 'Navegar', icon: 'map-search-outline' },
+  { key: 'Assistant', screen: 'Assistant', label: 'Navora IA', icon: 'message-processing-outline' },
+  { key: 'Help', screen: 'Help', label: 'Ajuda', icon: 'hand-heart-outline' },
+  { key: 'Profile', screen: 'Profile', label: 'Perfil', icon: 'account' },
 ];
 
 export default function BottomTabs({ active = 'Home', navigate, dark = false }) {
@@ -17,7 +18,7 @@ export default function BottomTabs({ active = 'Home', navigate, dark = false }) 
   const { isDark, appColors } = useApp();
   const themedDark = dark || isDark;
   const bottomPadding = Math.max(insets.bottom, 14);
-  const tabHeight = 60 + bottomPadding;
+  const tabHeight = 62 + bottomPadding;
 
   return (
     <View style={[styles.wrap, { paddingBottom: bottomPadding, height: tabHeight, backgroundColor: appColors.surface, borderTopColor: appColors.border }, themedDark && styles.darkWrap, shadows.card]}>
@@ -27,14 +28,19 @@ export default function BottomTabs({ active = 'Home', navigate, dark = false }) 
         return (
           <Pressable
             key={tab.key}
-            onPress={() => navigate(tab.key)}
+            onPress={() => navigate(tab.screen)}
+            accessibilityRole="button"
+            accessibilityLabel={`Abrir ${tab.label}`}
+            accessibilityState={{ selected: isActive }}
             style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
           >
-            <MaterialCommunityIcons
-              name={tab.icon}
-              size={23}
-              color={isActive ? appColors.primary : themedDark ? '#A9ABB8' : colors.lightText}
-            />
+            <View style={[styles.iconWrap, isActive && { backgroundColor: appColors.primarySoft }]}>
+              <MaterialCommunityIcons
+                name={tab.icon}
+                size={22}
+                color={isActive ? appColors.primary : themedDark ? '#A9ABB8' : colors.lightText}
+              />
+            </View>
 
             <Text
               style={[
@@ -47,7 +53,7 @@ export default function BottomTabs({ active = 'Home', navigate, dark = false }) 
               {tab.label}
             </Text>
 
-            {isActive ? <View style={[styles.activeLine, { backgroundColor: appColors.primary }]} /> : null}
+            {isActive ? <View style={[styles.activeDot, { backgroundColor: appColors.primary }]} /> : null}
           </Pressable>
         );
       })}
@@ -61,16 +67,16 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderTopLeftRadius: 18,
-    borderTopRightRadius: 18,
+    borderTopLeftRadius: radii.lg,
+    borderTopRightRadius: radii.lg,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#EFE2E5',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingTop: 6,
+    paddingHorizontal: 8,
+    paddingTop: 7,
     zIndex: 100,
     ...Platform.select({
       android: { elevation: 14 },
@@ -84,8 +90,9 @@ const styles = StyleSheet.create({
   },
 
   tab: {
-    height: 50,
-    minWidth: 68,
+    height: 52,
+    flex: 1,
+    minWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -98,9 +105,9 @@ const styles = StyleSheet.create({
 
   label: {
     color: colors.muted,
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    marginTop: 3,
+    marginTop: 2,
   },
 
   activeText: {
@@ -111,12 +118,20 @@ const styles = StyleSheet.create({
     color: '#A9ABB8',
   },
 
-  activeLine: {
-    position: 'absolute',
-    bottom: 0,
-    height: 3,
+  iconWrap: {
     width: 34,
-    borderRadius: 4,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  activeDot: {
+    position: 'absolute',
+    bottom: -1,
+    height: 3,
+    width: 18,
+    borderRadius: 3,
     backgroundColor: colors.primary,
   },
 });

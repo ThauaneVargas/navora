@@ -13,15 +13,41 @@ const response = (text, actionLabel, actionScreen, actionParams = {}) => ({
 
 const hasAny = (text, terms) => terms.some((term) => text.includes(term));
 
-export function getNavoraAssistantResponse(message, userProfile = {}) {
+export const assistantProvider = {
+  id: 'deterministic-local',
+  label: 'Assistente local guiado',
+  generative: false,
+};
+
+export function getNavoraAssistantResponse(message, userProfile = {}, visitorAccessRequest = null) {
   const text = normalize(message);
   const userArea = userProfile.area || 'private';
   const isVisitor = userProfile.type === 'visitor';
+  const visitorApproved = isVisitor && ['APPROVED', 'AUTHORIZED'].includes(visitorAccessRequest?.status);
+  const authorizedDestination = normalize(visitorAccessRequest?.requestedDestination || visitorAccessRequest?.destinationName || '');
+
+  if (isVisitor && hasAny(text, ['quarto', 'internacao', 'ala', 'leito'])) {
+    if (!visitorApproved) {
+      return response(
+        'Antes da liberacao presencial, seu acesso permite apenas recepcao, banheiro e areas publicas.',
+        'Ir para recepcao',
+        'VisitorReceptionRoute'
+      );
+    }
+
+    if (authorizedDestination && !text.includes(authorizedDestination)) {
+      return response(
+        'Seu acesso esta autorizado apenas para o destino definido pela recepcao.',
+        'Ver visita ativa',
+        'VisitorAccessStatus'
+      );
+    }
+  }
 
   if (hasAny(text, ['estou no sus', 'hospital marco capute', 'entrada da frente'])) {
     return response(
-      'Voce esta no Hospital Marco Capute. Vou mostrar apenas rotas permitidas para essa area.',
-      'Ver destinos SUS',
+      'Voce esta em outro ambiente do hospital ativo. Vou mostrar apenas rotas permitidas para essa area.',
+      'Ver destinos desta area',
       'Search',
       { area: 'sus' }
     );
@@ -29,8 +55,8 @@ export function getNavoraAssistantResponse(message, userProfile = {}) {
 
   if (hasAny(text, ['private', 'hmc private', 'entrada dos fundos', 'entrada de fundos'])) {
     return response(
-      'Voce esta no HMC Private. Vou mostrar apenas rotas permitidas para essa area.',
-      'Ver destinos Private',
+      'Voce esta no ambiente confirmado do hospital ativo. Vou mostrar apenas rotas permitidas para essa area.',
+      'Ver destinos desta area',
       'Search',
       { area: 'private' }
     );
@@ -39,10 +65,11 @@ export function getNavoraAssistantResponse(message, userProfile = {}) {
   if (hasAny(text, ['quero visitar alguem', 'visitar paciente', 'preciso de autorizacao', 'internacao', 'quero ir para internacao'])) {
     if (isVisitor) {
       return response(
-        'Esse destino precisa de liberacao da recepcao. Vou te orientar ate a recepcao correta.',
-        'Solicitar autorizacao',
-        'Search',
-        { category: 'Visita' }
+        visitorApproved
+          ? 'Vou respeitar apenas o destino liberado pela recepcao para sua visita.'
+          : 'Esse destino precisa de liberacao presencial. Vou te orientar ate a recepcao correta.',
+        visitorApproved ? 'Ver visita ativa' : 'Ir para recepcao',
+        visitorApproved ? 'VisitorAccessStatus' : 'VisitorReceptionRoute'
       );
     }
 
@@ -65,7 +92,7 @@ export function getNavoraAssistantResponse(message, userProfile = {}) {
   if (hasAny(text, ['medico', 'doutor', 'enfermeiro', 'solicitar medico', 'preciso de medico'])) {
     return response(
       'Vou abrir a solicitacao medica para a equipe receber seu motivo e sua localizacao.',
-      'Solicitar medico',
+      'Solicitar apoio clinico',
       'Help',
       { type: 'doctor' }
     );
@@ -91,7 +118,7 @@ export function getNavoraAssistantResponse(message, userProfile = {}) {
   if (hasAny(text, ['tomografia', 'tomo'])) {
     if (userArea === 'sus') {
       return response(
-        'Tomografia Private pertence ao HMC Private. Voce esta no Hospital Marco Capute. Procure a recepcao para orientacao.',
+        'Tomografia pertence a outro ambiente do hospital ativo. Procure a recepcao para orientacao.',
         'Ir para recepcao',
         'Search',
         { query: 'Recepcao' }
@@ -99,7 +126,7 @@ export function getNavoraAssistantResponse(message, userProfile = {}) {
     }
 
     return response(
-      'Encontrei Tomografia Private. Exames com atendimento externo seguem o horario de 07h as 17h.',
+      'Encontrei Tomografia. Exames com atendimento externo seguem o horario de 07h as 17h.',
       'Ver tomografia',
       'Search',
       { query: 'Tomografia' }
@@ -145,11 +172,11 @@ export function getNavoraAssistantResponse(message, userProfile = {}) {
   if (hasAny(text, ['exame de sangue', 'sangue', 'laboratorio'])) {
     return response(
       userArea === 'sus'
-        ? 'Encontrei Laboratorio SUS. O atendimento externo de exames funciona das 07h as 17h.'
-        : 'Encontrei Laboratorio Private. O atendimento externo de exames funciona das 07h as 17h.',
+        ? 'Encontrei o laboratorio deste ambiente. O atendimento externo de exames funciona das 07h as 17h.'
+        : 'Encontrei o laboratorio deste ambiente. O atendimento externo de exames funciona das 07h as 17h.',
       'Ver laboratorio',
       'Search',
-      { query: userArea === 'sus' ? 'Laboratorio SUS' : 'Laboratorio Private' }
+      { query: 'Laboratorio' }
     );
   }
 
@@ -224,8 +251,8 @@ export function getNavoraAssistantResponse(message, userProfile = {}) {
   if (hasAny(text, ['recepcao'])) {
     return response(
       userArea === 'sus'
-        ? 'Voce esta no Hospital Marco Capute. Posso te orientar ate a Recepcao Hospital Marco Capute.'
-        : 'Voce esta no HMC Private. Posso te orientar ate a Recepcao Private.',
+        ? 'Voce esta no ambiente confirmado do hospital ativo. Posso te orientar ate a recepcao adequada.'
+        : 'Voce esta no ambiente confirmado do hospital ativo. Posso te orientar ate a recepcao adequada.',
       'Abrir mapa',
       'Search',
       { query: 'Recepcao' }

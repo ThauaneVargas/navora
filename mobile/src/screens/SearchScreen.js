@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, Pressable, TextInput, Alert } from 'react-nativ
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
+import BottomTabs from '../components/BottomTabs';
 import { colors, shadows } from '../theme/colors';
 import {
   canAccessDestination,
@@ -22,6 +23,7 @@ export default function SearchScreen({
   goBack,
   routeParams = {},
   userProfile = { type: 'patient', area: 'private' },
+  visitorAccessRequest,
   onStartRoute,
   onResolveNavigationAccess,
   onCreateVisitorAccessRequest,
@@ -30,19 +32,43 @@ export default function SearchScreen({
 }) {
   const [query, setQuery] = useState(routeParams.query || '');
   const [filter, setFilter] = useState(routeParams.category || 'Todos');
+  const [selectedDestination, setSelectedDestination] = useState(null);
   const area = getAreaById(userProfile.area);
   const profileLabel = userProfile.type === 'visitor' ? 'Visitante' : 'Paciente';
   const sourceDestinations = navigationSource === 'api' ? navigationData?.destinations || destinations : destinations;
+  const isVisitor = userProfile.type === 'visitor';
+  const visitorApproved = isVisitor && ['APPROVED', 'AUTHORIZED'].includes(visitorAccessRequest?.status);
+  const visitorAllowedNames = new Set(
+    [
+      visitorAccessRequest?.requestedDestination,
+      visitorAccessRequest?.destinationName,
+      'Recepcao',
+      'Banheiro',
+      'Sala de espera',
+      'Saida',
+    ]
+      .filter(Boolean)
+      .map(normalize)
+  );
+
+  const visitorCanSeeDestination = (destination) => {
+    if (!isVisitor) return true;
+    if (destination.accessLevel === 'public' || destination.accessLevel === 'visitor_allowed') return true;
+    if (!visitorApproved) return false;
+    const destinationText = normalize(`${destination.name} ${destination.category}`);
+    return [...visitorAllowedNames].some((allowed) => allowed && destinationText.includes(allowed));
+  };
 
   const visibleDestinations = useMemo(() => {
     const q = normalize(query);
     return sourceDestinations.filter((destination) => {
-      const matchesAccess = navigationSource === 'api' ? true : canAccessDestination(destination, userProfile);
+      const baseAccess = navigationSource === 'api' ? true : canAccessDestination(destination, userProfile);
+      const matchesAccess = baseAccess && visitorCanSeeDestination(destination);
       const matchesFilter = filter === 'Todos' || destination.category === filter;
       const matchesQuery = !q || normalize(`${destination.name} ${destination.category}`).includes(q);
       return matchesAccess && matchesFilter && matchesQuery;
     });
-  }, [filter, navigationSource, query, sourceDestinations, userProfile]);
+  }, [filter, navigationSource, query, sourceDestinations, userProfile, visitorApproved, visitorAccessRequest]);
 
   const wrongAreaDestination = useMemo(() => {
     if (navigationSource === 'api') return null;
@@ -61,14 +87,11 @@ export default function SearchScreen({
     if (!destination) return;
     const currentReception = getReceptionDestination(userProfile.area);
     const destinationArea = getAreaById(destination.area);
-    const message =
-      userProfile.area === 'private'
-        ? 'Este destino pertence ao Hospital Marco Capute.\nVoce esta na area HMC Private.\nProcure a recepcao para orientacao.'
-        : 'Este destino pertence ao HMC Private.\nVoce esta no Hospital Marco Capute.\nProcure a recepcao para orientacao.';
+    const message = `Este destino pertence a outro ambiente do hospital ativo.\nVoce esta em ${area.name}.\nProcure a recepcao para orientacao segura.`;
 
     Alert.alert(destinationArea.name, message, [
       { text: `Levar ate ${currentReception?.name}`, onPress: () => onStartRoute?.(currentReception) },
-      { text: 'Falar com IA', onPress: () => navigate('Assistant') },
+      { text: 'Abrir assistente', onPress: () => navigate('Assistant') },
       { text: 'Cancelar', style: 'cancel' },
     ]);
   };
@@ -87,7 +110,7 @@ export default function SearchScreen({
     );
   };
 
-  const selectDestination = (destination) => {
+  const startSelectedDestination = (destination) => {
     if (navigationSource === 'api') {
       onResolveNavigationAccess?.(destination);
       return;
@@ -119,9 +142,13 @@ export default function SearchScreen({
     onStartRoute?.(destination);
   };
 
+  const selectDestination = (destination) => {
+    setSelectedDestination(destination);
+  };
+
   return (
-    <Screen>
-      <Header title="Para onde vamos?" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+    <Screen withBottomTabs>
+      <Header title="Navegar" subtitle="Buscar destino, revisar rota e iniciar" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.areaCard, shadows.card]}>
         <MaterialCommunityIcons name="map-marker-radius-outline" size={20} color={colors.primary} />
@@ -137,9 +164,10 @@ export default function SearchScreen({
           value={query}
           onChangeText={setQuery}
           onSubmitEditing={() => wrongAreaDestination && openWrongAreaAlert()}
-          placeholder="Buscar destino"
+          placeholder="Buscar setor, servico ou destino"
           placeholderTextColor="#8B8D96"
           style={styles.input}
+          accessibilityLabel="Buscar destino"
         />
         <MaterialCommunityIcons name="tune-variant" size={21} color={colors.primary} />
       </View>
@@ -149,6 +177,17 @@ export default function SearchScreen({
           <MaterialCommunityIcons name="alert-circle-outline" size={18} color={colors.primary} />
           <Text style={styles.warningText}>Destino de outra area. Toque para orientacao.</Text>
         </Pressable>
+      ) : null}
+
+      {isVisitor ? (
+        <View style={styles.accessNotice}>
+          <MaterialCommunityIcons name="shield-check-outline" size={17} color={colors.primary} />
+          <Text style={styles.accessNoticeText}>
+            {visitorApproved
+              ? 'Apenas areas autorizadas estao disponiveis para navegacao.'
+              : 'Antes da liberacao, apenas recepcao, banheiro e areas publicas aparecem aqui.'}
+          </Text>
+        </View>
       ) : null}
 
       <View style={styles.filters}>
@@ -164,11 +203,21 @@ export default function SearchScreen({
           const externalAccess = getExternalExamAccessStatus(item);
           const outsideExternalHours =
             navigationSource !== 'api' && userProfile.type !== 'visitor' && externalAccess.controlled && !externalAccess.allowed;
+          const accessLabel = item.accessLevel === 'visitor_authorization'
+            ? 'Precisa autorizacao'
+            : item.accessLevel === 'restricted'
+              ? 'Acesso restrito'
+              : outsideExternalHours
+                ? 'Fora do horario'
+                : 'Rota disponivel';
 
           return (
             <Pressable
               key={item.id}
               onPress={() => selectDestination(item)}
+              accessibilityRole="button"
+              accessibilityLabel={`Destino ${item.name}`}
+              accessibilityHint={accessLabel}
               style={({ pressed }) => [styles.row, outsideExternalHours && styles.rowMuted, pressed && styles.pressed]}
             >
               <View style={styles.iconBox}>
@@ -180,20 +229,73 @@ export default function SearchScreen({
               </View>
               <View style={styles.copy}>
                 <Text numberOfLines={1} style={styles.name}>{item.name}</Text>
-                <Text numberOfLines={1} style={styles.type}>{externalAccess.label || item.category}</Text>
-                <Text numberOfLines={1} style={styles.floor}>{item.floor}</Text>
+                <Text numberOfLines={1} style={styles.type}>{item.category} - {item.sector || 'Setor informado pela rota'}</Text>
+                <Text numberOfLines={1} style={styles.floor}>{item.floor || 'Andar nao informado'}</Text>
               </View>
               <View style={styles.metaBox}>
                 <Text numberOfLines={1} style={[styles.meta, outsideExternalHours && styles.metaMuted]}>{item.distance}</Text>
-                <Text numberOfLines={1} style={styles.time}>{outsideExternalHours ? 'Fora do horario' : item.time}</Text>
-                {item.accessLevel === 'visitor_authorization' ? <Text style={styles.auth}>Autorizar</Text> : null}
+                <Text numberOfLines={1} style={styles.time}>{item.time || 'Tempo indisponivel'}</Text>
+                <Text numberOfLines={1} style={[styles.auth, outsideExternalHours && styles.metaMuted]}>{accessLabel}</Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={18} color={colors.muted} />
             </Pressable>
           );
         })}
+        {!visibleDestinations.length ? (
+          <View style={styles.emptyState}>
+            <MaterialCommunityIcons name="map-search-outline" size={32} color={colors.primary} />
+            <Text style={styles.emptyTitle}>Destino nao encontrado</Text>
+            <Text style={styles.emptyText}>Tente outro termo ou procure a recepcao para orientacao.</Text>
+          </View>
+        ) : null}
       </View>
+
+      {selectedDestination ? (
+        <View style={[styles.previewCard, shadows.card]}>
+          <View style={styles.previewHeader}>
+            <View style={styles.previewIcon}>
+              <MaterialCommunityIcons name="routes" size={22} color={colors.primary} />
+            </View>
+            <View style={styles.copy}>
+              <Text style={styles.previewKicker}>Pre-rota</Text>
+              <Text style={styles.previewTitle}>{selectedDestination.name}</Text>
+            </View>
+            <Pressable onPress={() => setSelectedDestination(null)} style={styles.closePreview}>
+              <MaterialCommunityIcons name="close" size={18} color={colors.muted} />
+            </Pressable>
+          </View>
+          <View style={styles.previewGrid}>
+            <PreviewInfo label="Origem" value={userProfile.currentLocation || area.entryLabel || 'Entrada atual'} />
+            <PreviewInfo label="Destino" value={selectedDestination.name} />
+            <PreviewInfo label="Andar" value={selectedDestination.floor || 'Nao informado'} />
+            <PreviewInfo label="Estimativa" value={[selectedDestination.distance, selectedDestination.time].filter(Boolean).join(' - ') || 'Indisponivel'} />
+          </View>
+          <View style={styles.accessRow}>
+            <MaterialCommunityIcons name="wheelchair-accessibility" size={17} color={colors.primary} />
+            <Text style={styles.accessText}>
+              {userProfile?.accessibility?.avoidStairs || userProfile?.accessibility?.wheelchair
+                ? 'Preferencias acessiveis consideradas quando a rota suporta.'
+                : 'Acessibilidade pode ser ajustada no Perfil ou durante a rota.'}
+            </Text>
+          </View>
+          <Pressable onPress={() => startSelectedDestination(selectedDestination)} style={({ pressed }) => [styles.startButton, pressed && styles.pressed]}>
+            <Text style={styles.startText}>Iniciar navegacao</Text>
+            <MaterialCommunityIcons name="navigation-variant" size={18} color="#FFFFFF" />
+          </Pressable>
+        </View>
+      ) : null}
+
+      <BottomTabs active="Navigate" navigate={navigate} />
     </Screen>
+  );
+}
+
+function PreviewInfo({ label, value }) {
+  return (
+    <View style={styles.previewInfo}>
+      <Text style={styles.previewLabel}>{label}</Text>
+      <Text numberOfLines={2} style={styles.previewValue}>{value}</Text>
+    </View>
   );
 }
 
@@ -238,6 +340,19 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   warningText: { color: colors.primary, fontSize: 12, fontWeight: '900' },
+  accessNotice: {
+    minHeight: 42,
+    borderRadius: 15,
+    backgroundColor: '#FFF7F8',
+    borderWidth: 1,
+    borderColor: '#FFD2D7',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    marginTop: 10,
+  },
+  accessNoticeText: { flex: 1, color: colors.primary, fontSize: 12, lineHeight: 16, fontWeight: '900' },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12, marginBottom: 8 },
   filter: {
     height: 34,
@@ -288,5 +403,30 @@ const styles = StyleSheet.create({
   metaMuted: { color: colors.muted },
   time: { color: colors.muted, fontSize: 10, fontWeight: '800', marginTop: 1 },
   auth: { color: colors.primary, fontSize: 9, fontWeight: '900', marginTop: 2 },
+  emptyState: { minHeight: 160, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  emptyTitle: { color: colors.text, fontSize: 16, fontWeight: '900', marginTop: 10 },
+  emptyText: { color: colors.muted, fontSize: 12, lineHeight: 18, fontWeight: '700', textAlign: 'center', marginTop: 5 },
   pressed: { opacity: 0.86, transform: [{ scale: 0.985 }] },
+  previewCard: {
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    padding: 14,
+    marginTop: 14,
+    marginBottom: 10,
+  },
+  previewHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  previewIcon: { width: 44, height: 44, borderRadius: 16, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  previewKicker: { color: colors.primary, fontSize: 10, fontWeight: '900', textTransform: 'uppercase' },
+  previewTitle: { color: colors.text, fontSize: 16, fontWeight: '900', marginTop: 2 },
+  closePreview: { width: 36, height: 36, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  previewGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
+  previewInfo: { width: '48%', minHeight: 58, borderRadius: 15, backgroundColor: '#FFF7F8', borderWidth: 1, borderColor: colors.border, padding: 10 },
+  previewLabel: { color: colors.muted, fontSize: 9, fontWeight: '900', textTransform: 'uppercase' },
+  previewValue: { color: colors.text, fontSize: 12, lineHeight: 16, fontWeight: '900', marginTop: 4 },
+  accessRow: { minHeight: 38, borderRadius: 15, backgroundColor: colors.primarySoft, paddingHorizontal: 11, marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  accessText: { flex: 1, color: colors.primary, fontSize: 11, lineHeight: 15, fontWeight: '900' },
+  startButton: { height: 52, borderRadius: 17, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, marginTop: 12 },
+  startText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
 });

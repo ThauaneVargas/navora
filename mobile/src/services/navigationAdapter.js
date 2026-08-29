@@ -17,7 +17,7 @@ export const normalizeArea = (area = {}) => ({
   id: area.code || area.id || 'private',
   numericId: area.id,
   code: area.code || area.id || 'private',
-  name: area.name || area.area_name || 'HMC Private',
+  name: area.name || area.area_name || 'Hospital ativo',
   entranceName: area.entrances?.[0]?.name || area.entranceName || defaultEntranceName(area.code || area.id),
   entry: area.entrances?.[0]?.entryKey || area.entry || defaultEntry(area.code || area.id),
   entryLabel: area.entrances?.[0]?.entryKey || area.entryLabel || defaultEntryLabel(area.code || area.id),
@@ -230,7 +230,7 @@ export const normalizeRoutePreview = (preview = {}, source = 'api', fallbackDest
 export const fallbackRoutePreview = (payload = {}, destination) => {
   const reception = localReceptionForArea(destination?.area || 'private');
   const target = destination || reception;
-  const origin = payload.origin_node_code?.includes('sus') ? 'Entrada Hospital Marco Capute' : reception?.name || 'Recepcao';
+  const origin = payload.origin_node_code?.includes('sus') ? 'Entrada do hospital ativo' : reception?.name || 'Recepcao';
 
   return {
     route_found: true,

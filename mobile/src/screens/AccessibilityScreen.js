@@ -6,20 +6,21 @@ import Header from '../components/Header';
 import { colors, shadows } from '../theme/colors';
 
 const options = [
-  { key: 'accessible', title: 'Rota acessivel', desc: 'Usar caminhos com melhor acessibilidade.', icon: 'wheelchair-accessibility' },
-  { key: 'stairs', title: 'Evitar escadas', desc: 'Remover escadas das rotas sugeridas.', icon: 'stairs' },
-  { key: 'elevator', title: 'Priorizar elevador', desc: 'Preferir elevadores mesmo que a rota seja maior.', icon: 'elevator-passenger-outline' },
-  { key: 'voice', title: 'Orientacao por voz', desc: 'Receber instrucoes faladas durante a navegacao.', icon: 'volume-high' },
-  { key: 'contrast', title: 'Alto contraste', desc: 'Aumentar contraste visual do app.', icon: 'contrast-circle' },
-  { key: 'text', title: 'Texto maior', desc: 'Usar textos maiores nas telas principais.', icon: 'format-size' },
-  { key: 'stretcher', title: 'Auxilio de maqueiro', desc: 'Sinalizar necessidade de apoio da equipe.', icon: 'stretcher' },
+  { key: 'mobility', title: 'Tenho dificuldade de locomocao', desc: 'O app procura caminhos mais confortaveis e seguros.', icon: 'walk' },
+  { key: 'wheelchair', title: 'Uso cadeira de rodas', desc: 'Prioriza rotas acessiveis para cadeira de rodas.', icon: 'wheelchair-accessibility' },
+  { key: 'avoidStairs', title: 'Evitar escadas', desc: 'Remove escadas das rotas sempre que houver alternativa.', icon: 'stairs' },
+  { key: 'preferElevator', title: 'Priorizar elevador', desc: 'Prefere elevador mesmo se o caminho for um pouco maior.', icon: 'elevator-passenger-outline' },
+  { key: 'needsStretcher', title: 'Preciso de maca ou equipe', desc: 'Sinaliza necessidade de apoio para deslocamento.', icon: 'stretcher' },
+  { key: 'voiceGuidance', title: 'Orientacao por voz', desc: 'Permite instrucoes faladas durante a navegacao.', icon: 'volume-high' },
+  { key: 'highContrast', title: 'Alto contraste', desc: 'Aumenta a separacao visual entre textos e botoes.', icon: 'contrast-circle' },
+  { key: 'largerText', title: 'Texto maior', desc: 'Usa textos maiores nas telas principais.', icon: 'format-size' },
 ];
 
 export default function AccessibilityScreen({ navigate, goBack }) {
   const [activeOptions, setActiveOptions] = useState({
-    accessible: true,
-    stairs: true,
-    elevator: true,
+    mobility: true,
+    avoidStairs: true,
+    preferElevator: true,
   });
 
   const toggle = (key) => {
@@ -28,7 +29,7 @@ export default function AccessibilityScreen({ navigate, goBack }) {
 
   return (
     <Screen>
-      <Header title="Acessibilidade" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title="Acessibilidade" subtitle="Preferencias para uma rota segura" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.heroCard, shadows.card]}>
         <View style={styles.heroIcon}>
@@ -50,6 +51,10 @@ export default function AccessibilityScreen({ navigate, goBack }) {
             <Pressable
               key={option.key}
               onPress={() => toggle(option.key)}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: Boolean(active) }}
+              accessibilityLabel={option.title}
+              accessibilityHint={option.desc}
               style={({ pressed }) => [styles.option, active && styles.optionActive, pressed && styles.pressed, shadows.card]}
             >
               <View style={styles.iconBox}>

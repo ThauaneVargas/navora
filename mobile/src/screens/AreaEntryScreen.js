@@ -49,14 +49,8 @@ export default function AreaEntryScreen({ navigate, onAreaProfileSelect, onStart
 
 function AreaCard({ area: sourceArea, onChoose }) {
   const area = sourceArea || getAreaById('private');
-  const welcome =
-    area.id === 'private'
-      ? 'Bem-vindo ao HMC Private'
-      : 'Bem-vindo ao Hospital Marco Capute';
-  const routing =
-    area.id === 'private'
-      ? 'Suas rotas serao direcionadas apenas para a area Private.'
-      : 'Suas rotas serao direcionadas apenas para o atendimento SUS.';
+  const welcome = `Bem-vindo a ${area.name}`;
+  const routing = 'Suas rotas serao direcionadas apenas para o ambiente hospitalar confirmado.';
 
   return (
     <View style={[styles.areaCard, shadows.card]}>

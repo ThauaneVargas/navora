@@ -4,11 +4,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
-import { colors, shadows } from '../theme/colors';
+import { colors, radii, shadows, spacing, typography } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import { deriveNavigationProgress, normalizeRouteCoordinates } from '../services/navigationAdapter';
 
-export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute, navigationProgress: selectedProgress }) {
+export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute, navigationProgress: selectedProgress, onEndRoute }) {
   const { activeRoute: fallbackRoute, appColors, isDark } = useApp();
   const activeRoute = selectedRoute || fallbackRoute;
   const pan = useRef(new Animated.ValueXY()).current;
@@ -68,9 +68,27 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
     }).start();
   };
 
+  if (!activeRoute) {
+    return (
+      <Screen withBottomTabs>
+        <Header title="Navegar" subtitle="Escolha um destino para iniciar" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+        <View style={[styles.emptyRouteState, styles.emptyRouteCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
+          <MaterialCommunityIcons name="map-search-outline" size={38} color={appColors.primary} />
+          <Text style={[styles.emptyRouteTitle, { color: appColors.text }]}>Nenhuma rota ativa</Text>
+          <Text style={[styles.emptyRouteText, { color: appColors.muted }]}>Busque um setor, servico ou destino para visualizar a rota 2D/3D.</Text>
+          <Pressable onPress={() => navigate('Search')} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed, shadows.soft]}>
+            <MaterialCommunityIcons name="magnify" size={18} color="#FFFFFF" />
+            <Text style={styles.primaryText}>Buscar destino</Text>
+          </Pressable>
+        </View>
+        <BottomTabs active="Navigate" navigate={navigate} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen withBottomTabs>
-      <Header title="Navegacao" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title="Navegar" subtitle="2D esquematico da rota" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.routeCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
         <View style={[styles.routeIcon, { backgroundColor: appColors.iconBg }]}>
@@ -166,6 +184,12 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
             <MaterialCommunityIcons name="crosshairs-gps" size={18} color={appColors.primary} />
           </Pressable>
         </View>
+
+        <View style={[styles.legend, { backgroundColor: isDark ? 'rgba(21,21,27,0.92)' : 'rgba(255,255,255,0.94)', borderColor: appColors.border }]}>
+          <LegendDot color={appColors.primary} label="Rota" />
+          <LegendDot color={colors.blue} label="Voce" />
+          <LegendDot color={colors.success} label="Destino" />
+        </View>
       </View>
 
       <View style={[styles.instructionCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
@@ -187,7 +211,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
 
       <View style={styles.actionRow}>
         <Pressable
-          onPress={() => navigate('Home')}
+          onPress={() => (onEndRoute ? onEndRoute() : navigate('Home'))}
           style={({ pressed }) => [
             styles.secondaryButton,
             { backgroundColor: appColors.surface, borderColor: appColors.borderStrong || appColors.border },
@@ -202,7 +226,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
           style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed, shadows.soft]}
         >
           <MaterialCommunityIcons name="microphone" size={18} color="#FFFFFF" />
-          <Text style={styles.primaryText}>Central IA</Text>
+          <Text style={styles.primaryText}>Assistente</Text>
         </Pressable>
       </View>
 
@@ -217,7 +241,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
         </View>
       </Pressable>
 
-      <BottomTabs active="Navigation" navigate={navigate} />
+      <BottomTabs active="Navigate" navigate={navigate} />
     </Screen>
   );
 }
@@ -507,6 +531,9 @@ function Control({ label, active, onPress, appColors }) {
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label === '3D' ? 'Alternar para visualizacao 3D' : label === '2D' ? 'Visualizacao 2D ativa' : `Controle do mapa ${label}`}
+      accessibilityState={{ selected: Boolean(active) }}
       style={({ pressed }) => [
         styles.controlButton,
         {
@@ -521,23 +548,32 @@ function Control({ label, active, onPress, appColors }) {
   );
 }
 
+function LegendDot({ color, label }) {
+  return (
+    <View style={styles.legendItem}>
+      <View style={[styles.legendDot, { backgroundColor: color }]} />
+      <Text style={styles.legendText}>{label}</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   routeCard: {
-    minHeight: 104,
-    borderRadius: 20,
+    minHeight: 82,
+    borderRadius: radii.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 14,
+    padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 13,
-    marginTop: 8,
+    marginTop: spacing.sm,
   },
   routeIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 17,
+    width: 42,
+    height: 42,
+    borderRadius: radii.md,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
@@ -549,16 +585,15 @@ const styles = StyleSheet.create({
   label: {
     color: colors.muted,
     fontSize: 11,
-    fontWeight: '900',
-    textTransform: 'uppercase',
+    fontWeight: '700',
   },
   toLabel: {
     marginTop: 8,
   },
   place: {
     color: colors.text,
-    fontSize: 15,
-    fontWeight: '900',
+    fontSize: 14,
+    fontWeight: '800',
     marginTop: 2,
   },
   routeStats: {
@@ -567,19 +602,19 @@ const styles = StyleSheet.create({
   },
   statValue: {
     color: colors.primary,
-    fontSize: 17,
-    fontWeight: '900',
+    fontSize: 15,
+    fontWeight: '800',
   },
   statLabel: {
     color: colors.muted,
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
     marginBottom: 8,
   },
   mapViewport: {
-    height: 390,
-    marginTop: 14,
-    borderRadius: 24,
+    height: 500,
+    marginTop: spacing.md,
+    borderRadius: radii.xl,
     backgroundColor: '#F7F5F5',
     borderWidth: 1,
     borderColor: colors.border,
@@ -595,7 +630,7 @@ const styles = StyleSheet.create({
   },
   dynamicMap: {
     flex: 1,
-    padding: 14,
+    padding: spacing.md,
   },
   mapHeader: {
     minHeight: 44,
@@ -606,17 +641,16 @@ const styles = StyleSheet.create({
   },
   mapKicker: {
     fontSize: 10,
-    fontWeight: '900',
-    textTransform: 'uppercase',
+    fontWeight: '700',
   },
   mapFloorTitle: {
     fontSize: 17,
-    fontWeight: '900',
+    fontWeight: '800',
     marginTop: 2,
   },
   floorTabs: {
     minHeight: 38,
-    borderRadius: 15,
+    borderRadius: radii.md,
     borderWidth: 1,
     flexDirection: 'row',
     padding: 3,
@@ -634,11 +668,11 @@ const styles = StyleSheet.create({
   },
   floorTabText: {
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   floorTabBadge: {
     fontSize: 9,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   redirectPill: {
     minHeight: 34,
@@ -653,7 +687,7 @@ const styles = StyleSheet.create({
   redirectText: {
     flex: 1,
     fontSize: 11,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   arrivalBanner: {
     minHeight: 36,
@@ -674,7 +708,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderRadius: 18,
+    borderRadius: radii.lg,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -683,6 +717,12 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  emptyRouteCard: {
+    minHeight: 260,
+    borderRadius: 24,
+    borderWidth: 1,
+    marginTop: 18,
   },
   emptyRouteTitle: {
     fontSize: 17,
@@ -853,6 +893,33 @@ const styles = StyleSheet.create({
     top: 70,
     gap: 8,
   },
+  legend: {
+    position: 'absolute',
+    left: 12,
+    bottom: 12,
+    minHeight: 36,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  legendDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+  },
+  legendText: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: '900',
+  },
   controlButton: {
     width: 44,
     height: 38,
@@ -876,21 +943,21 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   instructionCard: {
-    minHeight: 82,
-    marginTop: 14,
-    borderRadius: 20,
+    minHeight: 78,
+    marginTop: spacing.md,
+    borderRadius: radii.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 14,
+    padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
   instructionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
+    width: 42,
+    height: 42,
+    borderRadius: radii.md,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center',
@@ -900,30 +967,30 @@ const styles = StyleSheet.create({
   },
   instructionTitle: {
     color: colors.text,
-    fontSize: 16,
-    fontWeight: '900',
+    ...typography.subtitle,
+    fontWeight: '800',
   },
   instructionText: {
     color: colors.muted,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '500',
     lineHeight: 18,
     marginTop: 3,
   },
   distance: {
     color: colors.primary,
     fontSize: 14,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   actionRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 14,
+    gap: spacing.md,
+    marginTop: spacing.md,
   },
   secondaryButton: {
     flex: 1,
     height: 50,
-    borderRadius: 16,
+    borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.borderStrong,
     backgroundColor: colors.surface,
@@ -935,7 +1002,7 @@ const styles = StyleSheet.create({
   primaryButton: {
     flex: 1,
     height: 50,
-    borderRadius: 16,
+    borderRadius: radii.md,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -945,16 +1012,16 @@ const styles = StyleSheet.create({
   secondaryText: {
     color: colors.primary,
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   primaryText: {
     color: '#FFFFFF',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '800',
   },
   arrivedButton: {
     minHeight: 58,
-    borderRadius: 18,
+    borderRadius: radii.lg,
     backgroundColor: colors.primary,
     marginTop: 12,
     paddingHorizontal: 16,
