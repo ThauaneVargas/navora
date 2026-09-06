@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, Text, View, StyleSheet } from 'react-native';
-import { colors, shadows } from '../theme/colors';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors, radii, shadows, spacing, states, typography } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 
 export default function ActionCard({ icon, title, subtitle, onPress, wide = false, tint = false }) {
@@ -16,12 +17,12 @@ export default function ActionCard({ icon, title, subtitle, onPress, wide = fals
           borderColor: tint ? appColors.borderStrong || appColors.border : appColors.border,
         },
         wide && styles.wide,
-        pressed && styles.pressed,
+        pressed && states.pressed,
         shadows.card,
       ]}
     >
       <View style={[styles.iconCircle, { backgroundColor: appColors.iconBg }]}>
-        <Text style={styles.icon}>{icon}</Text>
+        <MaterialCommunityIcons name={icon || 'shape-outline'} size={24} color={appColors.primary} />
       </View>
       <View style={styles.textBox}>
         <Text style={[styles.title, { color: appColors.text }]}>{title}</Text>
@@ -35,9 +36,9 @@ const styles = StyleSheet.create({
   card: {
     width: '48%',
     minHeight: 118,
-    borderRadius: 24,
+    borderRadius: radii.xl,
     backgroundColor: colors.surface,
-    padding: 16,
+    padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
     justifyContent: 'space-between'
@@ -47,36 +48,26 @@ const styles = StyleSheet.create({
     minHeight: 90,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14
-  },
-  pressed: {
-    opacity: 0.86,
-    transform: [{ scale: 0.985 }]
+    gap: spacing.md
   },
   iconCircle: {
     width: 52,
     height: 52,
-    borderRadius: 18,
+    borderRadius: radii.lg,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center'
-  },
-  icon: {
-    fontSize: 26
   },
   textBox: {
     flex: 1
   },
   title: {
     color: colors.text,
-    fontWeight: '900',
-    fontSize: 16,
-    lineHeight: 20
+    ...typography.subtitle,
   },
   subtitle: {
     color: colors.muted,
-    fontWeight: '700',
-    fontSize: 13,
-    marginTop: 4
+    ...typography.caption,
+    marginTop: spacing.xs
   }
 });

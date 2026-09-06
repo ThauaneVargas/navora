@@ -4,7 +4,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
-import { colors, shadows } from '../theme/colors';
+import { shadows } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 import {
   canAccessDestination,
   destinations,
@@ -30,6 +31,8 @@ export default function SearchScreen({
   navigationData,
   navigationSource = 'fallback',
 }) {
+  const { appColors } = useApp();
+  const styles = useMemo(() => createStyles(appColors), [appColors]);
   const [query, setQuery] = useState(routeParams.query || '');
   const [filter, setFilter] = useState(routeParams.category || 'Todos');
   const [selectedDestination, setSelectedDestination] = useState(null);
@@ -127,9 +130,14 @@ export default function SearchScreen({
       return;
     }
 
+    if (userProfile.type === 'patient') {
+      Alert.alert('Acesso restrito', 'Este destino nao esta liberado para sua area atual. Siga para a recepcao ou use apenas servicos da unidade ativa.');
+      return;
+    }
+
     if (userProfile.type === 'visitor' && destination.accessLevel === 'visitor_authorization') {
       onCreateVisitorAccessRequest?.({
-        visitorName: 'Visitante Navora',
+        visitorName: userProfile.fullName || userProfile.name || 'Visitante Navora',
         destination,
         destinationCode: destination.code || destination.id,
         requestedDestination: destination.name,
@@ -144,6 +152,7 @@ export default function SearchScreen({
 
   const selectDestination = (destination) => {
     setSelectedDestination(destination);
+    startSelectedDestination(destination);
   };
 
   return (
@@ -151,7 +160,7 @@ export default function SearchScreen({
       <Header title="Navegar" subtitle="Buscar destino, revisar rota e iniciar" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.areaCard, shadows.card]}>
-        <MaterialCommunityIcons name="map-marker-radius-outline" size={20} color={colors.primary} />
+        <MaterialCommunityIcons name="map-marker-radius-outline" size={20} color={appColors.primary} />
         <View style={styles.copy}>
           <Text style={styles.areaTitle}>Area atual: {area.name}</Text>
           <Text style={styles.areaMeta}>Entrada: {area.entryLabel} - Perfil: {profileLabel}</Text>
@@ -159,29 +168,29 @@ export default function SearchScreen({
       </View>
 
       <View style={[styles.searchBox, shadows.card]}>
-        <MaterialCommunityIcons name="magnify" size={22} color={colors.muted} />
+        <MaterialCommunityIcons name="magnify" size={22} color={appColors.muted} />
         <TextInput
           value={query}
           onChangeText={setQuery}
           onSubmitEditing={() => wrongAreaDestination && openWrongAreaAlert()}
           placeholder="Buscar setor, servico ou destino"
-          placeholderTextColor="#8B8D96"
+          placeholderTextColor={appColors.lightText}
           style={styles.input}
           accessibilityLabel="Buscar destino"
         />
-        <MaterialCommunityIcons name="tune-variant" size={21} color={colors.primary} />
+        <MaterialCommunityIcons name="tune-variant" size={21} color={appColors.primary} />
       </View>
 
       {wrongAreaDestination ? (
         <Pressable onPress={() => openWrongAreaAlert()} style={styles.warningBox}>
-          <MaterialCommunityIcons name="alert-circle-outline" size={18} color={colors.primary} />
+          <MaterialCommunityIcons name="alert-circle-outline" size={18} color={appColors.primary} />
           <Text style={styles.warningText}>Destino de outra area. Toque para orientacao.</Text>
         </Pressable>
       ) : null}
 
       {isVisitor ? (
         <View style={styles.accessNotice}>
-          <MaterialCommunityIcons name="shield-check-outline" size={17} color={colors.primary} />
+          <MaterialCommunityIcons name="shield-check-outline" size={17} color={appColors.primary} />
           <Text style={styles.accessNoticeText}>
             {visitorApproved
               ? 'Apenas areas autorizadas estao disponiveis para navegacao.'
@@ -224,7 +233,7 @@ export default function SearchScreen({
                 <MaterialCommunityIcons
                   name={outsideExternalHours ? 'clock-alert-outline' : item.icon}
                   size={21}
-                  color={outsideExternalHours ? colors.muted : colors.primary}
+                  color={outsideExternalHours ? appColors.muted : appColors.primary}
                 />
               </View>
               <View style={styles.copy}>
@@ -237,13 +246,13 @@ export default function SearchScreen({
                 <Text numberOfLines={1} style={styles.time}>{item.time || 'Tempo indisponivel'}</Text>
                 <Text numberOfLines={1} style={[styles.auth, outsideExternalHours && styles.metaMuted]}>{accessLabel}</Text>
               </View>
-              <MaterialCommunityIcons name="chevron-right" size={18} color={colors.muted} />
+              <MaterialCommunityIcons name="chevron-right" size={18} color={appColors.muted} />
             </Pressable>
           );
         })}
         {!visibleDestinations.length ? (
           <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="map-search-outline" size={32} color={colors.primary} />
+            <MaterialCommunityIcons name="map-search-outline" size={32} color={appColors.primary} />
             <Text style={styles.emptyTitle}>Destino nao encontrado</Text>
             <Text style={styles.emptyText}>Tente outro termo ou procure a recepcao para orientacao.</Text>
           </View>
@@ -254,14 +263,14 @@ export default function SearchScreen({
         <View style={[styles.previewCard, shadows.card]}>
           <View style={styles.previewHeader}>
             <View style={styles.previewIcon}>
-              <MaterialCommunityIcons name="routes" size={22} color={colors.primary} />
+              <MaterialCommunityIcons name="routes" size={22} color={appColors.primary} />
             </View>
             <View style={styles.copy}>
               <Text style={styles.previewKicker}>Pre-rota</Text>
               <Text style={styles.previewTitle}>{selectedDestination.name}</Text>
             </View>
             <Pressable onPress={() => setSelectedDestination(null)} style={styles.closePreview}>
-              <MaterialCommunityIcons name="close" size={18} color={colors.muted} />
+              <MaterialCommunityIcons name="close" size={18} color={appColors.muted} />
             </Pressable>
           </View>
           <View style={styles.previewGrid}>
@@ -271,7 +280,7 @@ export default function SearchScreen({
             <PreviewInfo label="Estimativa" value={[selectedDestination.distance, selectedDestination.time].filter(Boolean).join(' - ') || 'Indisponivel'} />
           </View>
           <View style={styles.accessRow}>
-            <MaterialCommunityIcons name="wheelchair-accessibility" size={17} color={colors.primary} />
+            <MaterialCommunityIcons name="wheelchair-accessibility" size={17} color={appColors.primary} />
             <Text style={styles.accessText}>
               {userProfile?.accessibility?.avoidStairs || userProfile?.accessibility?.wheelchair
                 ? 'Preferencias acessiveis consideradas quando a rota suporta.'
@@ -291,6 +300,8 @@ export default function SearchScreen({
 }
 
 function PreviewInfo({ label, value }) {
+  const { appColors } = useApp();
+  const styles = useMemo(() => createStyles(appColors), [appColors]);
   return (
     <View style={styles.previewInfo}>
       <Text style={styles.previewLabel}>{label}</Text>
@@ -299,7 +310,7 @@ function PreviewInfo({ label, value }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   areaCard: {
     minHeight: 64,
     borderRadius: 18,
@@ -315,7 +326,7 @@ const styles = StyleSheet.create({
   areaTitle: { color: colors.text, fontSize: 13, fontWeight: '900' },
   areaMeta: { color: colors.muted, fontSize: 11, fontWeight: '800', marginTop: 2 },
   searchBox: {
-    height: 54,
+    minHeight: 54,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: colors.border,
@@ -330,9 +341,9 @@ const styles = StyleSheet.create({
   warningBox: {
     minHeight: 42,
     borderRadius: 15,
-    backgroundColor: '#FFF7F8',
+    backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
-    borderColor: '#FFD2D7',
+    borderColor: colors.borderStrong,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -343,9 +354,9 @@ const styles = StyleSheet.create({
   accessNotice: {
     minHeight: 42,
     borderRadius: 15,
-    backgroundColor: '#FFF7F8',
+    backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
-    borderColor: '#FFD2D7',
+    borderColor: colors.borderStrong,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
@@ -355,7 +366,7 @@ const styles = StyleSheet.create({
   accessNoticeText: { flex: 1, color: colors.primary, fontSize: 12, lineHeight: 16, fontWeight: '900' },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12, marginBottom: 8 },
   filter: {
-    height: 34,
+    minHeight: 34,
     borderRadius: 17,
     paddingHorizontal: 12,
     alignItems: 'center',
@@ -385,12 +396,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  rowMuted: { backgroundColor: '#FAFAFB' },
+  rowMuted: { backgroundColor: colors.backgroundSoft },
   iconBox: {
     width: 38,
     height: 38,
     borderRadius: 14,
-    backgroundColor: '#FFF6F7',
+    backgroundColor: colors.iconBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -422,11 +433,11 @@ const styles = StyleSheet.create({
   previewTitle: { color: colors.text, fontSize: 16, fontWeight: '900', marginTop: 2 },
   closePreview: { width: 36, height: 36, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   previewGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  previewInfo: { width: '48%', minHeight: 58, borderRadius: 15, backgroundColor: '#FFF7F8', borderWidth: 1, borderColor: colors.border, padding: 10 },
+  previewInfo: { width: '48%', minHeight: 58, borderRadius: 15, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, padding: 10 },
   previewLabel: { color: colors.muted, fontSize: 9, fontWeight: '900', textTransform: 'uppercase' },
   previewValue: { color: colors.text, fontSize: 12, lineHeight: 16, fontWeight: '900', marginTop: 4 },
   accessRow: { minHeight: 38, borderRadius: 15, backgroundColor: colors.primarySoft, paddingHorizontal: 11, marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 8 },
   accessText: { flex: 1, color: colors.primary, fontSize: 11, lineHeight: 15, fontWeight: '900' },
-  startButton: { height: 52, borderRadius: 17, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, marginTop: 12 },
+  startButton: { minHeight: 52, borderRadius: 17, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, marginTop: 12 },
   startText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
 });

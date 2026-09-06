@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
-import { colors, shadows } from '../theme/colors';
+import { shadows } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 
 export default function PatientQuickRegisterScreen({ navigate, goBack, routeParams = {}, onPatientReady }) {
+  const { appColors } = useApp();
+  const styles = useMemo(() => createStyles(appColors), [appColors]);
   const area = routeParams.area || 'private';
   const quick = routeParams.quick || false;
   const [name, setName] = useState(quick ? 'Paciente Navora' : '');
@@ -13,6 +16,7 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
   const [birth, setBirth] = useState('');
   const [alreadyPatient, setAlreadyPatient] = useState(false);
   const [needsAccessibility, setNeedsAccessibility] = useState(false);
+  const [selectedArea, setSelectedArea] = useState(area || 'private');
 
   const continueFlow = () => {
     if (!quick && !name.trim()) {
@@ -23,7 +27,7 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
       type: 'patient',
       name: name.trim().split(' ')[0] || 'Paciente',
       fullName: name.trim() || 'Paciente Navora',
-      area,
+      area: selectedArea || area || 'private',
       hasAccount: false,
       quick,
       phone,
@@ -34,10 +38,10 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
     };
     onPatientReady?.(patient);
     if (needsAccessibility) {
-      navigate('PatientAccessibilitySetup', { area, mode: 'register', patient });
+      navigate('PatientAccessibilitySetup', { area: selectedArea || area || 'private', mode: 'register', patient });
       return;
     }
-    navigate('PatientHome', { area });
+    navigate('PatientHome');
   };
 
   return (
@@ -58,6 +62,26 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
             <Text style={styles.subtitle}>Precisamos de algumas informacoes para te guiar melhor.</Text>
           </View>
         </View>
+        <View style={styles.authorizationCard}>
+          <Text style={styles.authorizationTitle}>Autorizacao e area</Text>
+          <Text style={styles.authorizationText}>Informe em qual unidade voce esta: HMC Marco Capute (SUS) ou HMC Private. Se nao souber, voce pode continuar para a home principal.</Text>
+          <View style={styles.areaOptions}>
+            {[
+              { value: 'sus', label: 'HMC Marco Capute (SUS)' },
+              { value: 'private', label: 'HMC Private' },
+              { value: 'unknown', label: 'Nao sei / continuar' },
+            ].map((option) => (
+              <Pressable
+                key={option.value}
+                onPress={() => setSelectedArea(option.value === 'unknown' ? 'private' : option.value)}
+                style={[styles.areaOption, selectedArea === (option.value === 'unknown' ? 'private' : option.value) && styles.areaOptionActive]}
+              >
+                <Text style={[styles.areaOptionText, selectedArea === (option.value === 'unknown' ? 'private' : option.value) && styles.areaOptionTextActive]}>{option.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
         <Input label="Nome completo" value={name} onChangeText={setName} placeholder="Seu nome completo" />
         <Input label="Telefone opcional" value={phone} onChangeText={setPhone} placeholder="(00) 00000-0000" />
         <Input label="Data de nascimento opcional" value={birth} onChangeText={setBirth} placeholder="DD/MM/AAAA" />
@@ -84,26 +108,30 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
 }
 
 function Input({ label, ...props }) {
+  const { appColors } = useApp();
+  const styles = useMemo(() => createStyles(appColors), [appColors]);
   return (
     <View style={styles.field}>
       <Text style={styles.label}>{label}</Text>
-      <TextInput placeholderTextColor="#8B8D96" style={styles.input} {...props} />
+      <TextInput placeholderTextColor={appColors.lightText} style={styles.input} {...props} />
     </View>
   );
 }
 
 function CheckRow({ title, active, onPress }) {
+  const { appColors } = useApp();
+  const styles = useMemo(() => createStyles(appColors), [appColors]);
   return (
     <Pressable onPress={onPress} style={styles.checkRow}>
-      <MaterialCommunityIcons name={active ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} color={colors.primary} />
+      <MaterialCommunityIcons name={active ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} color={appColors.primary} />
       <Text style={styles.checkText}>{title}</Text>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   card: { borderRadius: 30, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: 18, marginTop: 4 },
-  intro: { minHeight: 82, borderRadius: 24, backgroundColor: '#FFF7F8', borderWidth: 1, borderColor: '#FFD2D7', padding: 13, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+  intro: { minHeight: 82, borderRadius: 24, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.borderStrong, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
   introIcon: { width: 52, height: 52, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', ...shadows.soft },
   copy: { flex: 1, minWidth: 0 },
   title: { color: colors.text, fontSize: 18, lineHeight: 23, fontWeight: '900' },
@@ -113,6 +141,14 @@ const styles = StyleSheet.create({
   input: { height: 52, borderRadius: 17, borderWidth: 1, borderColor: colors.border, color: colors.text, paddingHorizontal: 13, fontSize: 14, fontWeight: '700', backgroundColor: colors.surface },
   checkRow: { minHeight: 46, flexDirection: 'row', alignItems: 'center', gap: 9, marginTop: 12 },
   checkText: { color: colors.text, fontSize: 13, fontWeight: '800' },
+  authorizationCard: { borderRadius: 24, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surfaceAlt, padding: 14, marginTop: 10, marginBottom: 6 },
+  authorizationTitle: { color: colors.text, fontSize: 14, fontWeight: '900', marginBottom: 4 },
+  authorizationText: { color: colors.muted, fontSize: 12, lineHeight: 18, fontWeight: '700' },
+  areaOptions: { flexDirection: 'column', gap: 8, marginTop: 12 },
+  areaOption: { borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, backgroundColor: colors.surface },
+  areaOptionActive: { borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  areaOptionText: { color: colors.text, fontSize: 12, fontWeight: '800' },
+  areaOptionTextActive: { color: colors.primary },
   question: { color: colors.text, fontSize: 14, fontWeight: '900', marginTop: 12 },
   binary: { flexDirection: 'row', gap: 10, marginTop: 9 },
   binaryButton: { flex: 1, height: 46, borderRadius: 16, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },

@@ -31,7 +31,8 @@ export function getNavoraAssistantResponse(message, userProfile = {}, visitorAcc
       return response(
         'Antes da liberacao presencial, seu acesso permite apenas recepcao, banheiro e areas publicas.',
         'Ir para recepcao',
-        'VisitorReceptionRoute'
+        'Search',
+        { query: 'Recepcao' }
       );
     }
 
@@ -69,7 +70,8 @@ export function getNavoraAssistantResponse(message, userProfile = {}, visitorAcc
           ? 'Vou respeitar apenas o destino liberado pela recepcao para sua visita.'
           : 'Esse destino precisa de liberacao presencial. Vou te orientar ate a recepcao correta.',
         visitorApproved ? 'Ver visita ativa' : 'Ir para recepcao',
-        visitorApproved ? 'VisitorAccessStatus' : 'VisitorReceptionRoute'
+        visitorApproved ? 'VisitorAccessStatus' : 'Search',
+        visitorApproved ? {} : { query: 'Recepcao' }
       );
     }
 

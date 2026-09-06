@@ -41,9 +41,9 @@ export default function HowToGetScreen({ navigate, goBack }) {
       </View>
 
       <View style={[styles.infoCard, shadows.card]}>
-        <MaterialCommunityIcons name="bluetooth-connect" size={22} color={colors.primary} />
+        <MaterialCommunityIcons name="map-marker-check-outline" size={22} color={colors.primary} />
         <Text style={styles.infoText}>
-          Ao chegar no hospital, o Navora ira detectar os beacons MBM04 e a navegacao interna sera ativada.
+          Ao chegar no hospital, confirme sua entrada no Navora para liberar a navegacao interna.
         </Text>
       </View>
     </Screen>

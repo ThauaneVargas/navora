@@ -30,7 +30,7 @@ export const hospitalAreas = [
   },
   {
     id: 'sus',
-    name: 'Hospital Marco Capute',
+    name: 'HMC Marco Capute',
     hospitalId: 'hospital-demo-sus',
     unitName: 'Unidade Hospitalar',
     address: 'Rua Ronaldo Fiuza Manhaes, no 1 - Centro, Vassouras - RJ',

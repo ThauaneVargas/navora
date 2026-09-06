@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import NavoraButton from '../components/NavoraButton';
 import InfoCard from '../components/InfoCard';
-import { colors, shadows } from '../theme/colors';
+import { shadows } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 
 export default function LostScreen({ navigate, goBack }) {
+  const { appColors } = useApp();
+  const styles = useMemo(() => createStyles(appColors), [appColors]);
+
   return (
     <Screen>
       <Header title="Estou perdido" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
@@ -14,7 +18,7 @@ export default function LostScreen({ navigate, goBack }) {
         icon="pin"
         title="Voce esta em"
         value="Recepcao"
-        note="Corredor Principal - beacon MBM04-ENTRADA"
+        note="Corredor Principal - entrada confirmada"
       />
 
       <View style={[styles.card, shadows.card]}>
@@ -40,7 +44,7 @@ export default function LostScreen({ navigate, goBack }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   card: {
     marginTop: 22,
     backgroundColor: colors.surface,

@@ -1,41 +1,48 @@
 import React from 'react';
 import { Pressable, Text, StyleSheet } from 'react-native';
-import { colors, shadows } from '../theme/colors';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { buttons, colors, shadows, states } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 
 export default function NavoraButton({ title, onPress, variant = 'primary', style, icon }) {
+  const { appColors } = useApp();
   const isSecondary = variant === 'secondary';
   const isGhost = variant === 'ghost';
+  const color = isGhost || isSecondary ? appColors.primary : '#FFFFFF';
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
         styles.button,
+        { backgroundColor: appColors.primary },
         isSecondary && styles.secondary,
         isGhost && styles.ghost,
+        isSecondary && { backgroundColor: appColors.surface, borderColor: appColors.borderStrong },
         !isGhost && shadows.soft,
-        pressed && styles.pressed,
+        pressed && states.pressed,
         style
       ]}
     >
-      <Text style={[styles.text, isSecondary && styles.secondaryText, isGhost && styles.ghostText]}>
-        {icon ? `${icon}  ` : ''}{title}
-      </Text>
+      {icon ? <MaterialCommunityIcons name={icon} size={18} color={color} /> : null}
+      <Text style={[styles.text, { color }, isGhost && styles.ghostText]}>{title}</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 60,
-    borderRadius: 22,
+    minHeight: buttons.height,
+    borderRadius: buttons.radius,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 18
+    paddingHorizontal: 18,
+    flexDirection: 'row',
+    gap: 8,
   },
   secondary: {
     backgroundColor: colors.surface,
-    borderWidth: 1.4,
+    borderWidth: 1,
     borderColor: colors.borderStrong,
     shadowOpacity: 0.04
   },
@@ -43,20 +50,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     minHeight: 44
   },
-  pressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.985 }]
-  },
   text: {
     color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '900'
-  },
-  secondaryText: {
-    color: colors.primary
+    fontSize: 15,
+    fontWeight: '700'
   },
   ghostText: {
-    color: colors.primary,
-    fontSize: 15
+    fontSize: 14
   }
 });

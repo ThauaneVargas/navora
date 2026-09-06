@@ -31,7 +31,7 @@ export default function WaitingModeScreen({ navigate, goBack, routeParams = {}, 
         </View>
         <Text style={styles.heroTitle}>Voce chegou em {destination}</Text>
         <Text style={styles.heroText}>
-          O Navora continua acompanhando sua localizacao e pode chamar ajuda se voce precisar.
+          O Navora mantem sua rota ativa e pode chamar ajuda se voce precisar.
         </Text>
         <View style={styles.statusPill}>
           <View style={styles.statusDot} />
@@ -47,7 +47,7 @@ export default function WaitingModeScreen({ navigate, goBack, routeParams = {}, 
       <View style={[styles.infoCard, shadows.card]}>
         <Text style={styles.sectionTitle}>Informacoes para a equipe</Text>
         <InfoRow icon="map-marker" label="Ultima posicao" value={`${currentLocation.name} - ${currentLocation.floor}`} />
-        <InfoRow icon="bluetooth" label="Beacon detectado" value={currentLocation.beacon} />
+        <InfoRow icon="map-marker-check-outline" label="Entrada confirmada" value={currentLocation.name} />
         <InfoRow icon="walk" label="Preferencia de rota" value="Acessivel, com elevador e voz" />
       </View>
 

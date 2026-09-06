@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
-import { colors, shadows } from '../theme/colors';
+import { shadows } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 import { isAuthError, navoraApi } from '../services/api';
 import { saveAuthToken } from '../services/authToken';
 
@@ -26,6 +27,8 @@ export const mockPatient = (area = 'private') => ({
 });
 
 export default function PatientLoginScreen({ navigate, goBack, routeParams = {}, onPatientReady }) {
+  const { appColors } = useApp();
+  const styles = useMemo(() => createStyles(appColors), [appColors]);
   const area = routeParams.area || 'private';
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
@@ -34,7 +37,7 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
   const finishFallback = () => {
     const patient = mockPatient(area);
     onPatientReady?.({ ...patient, authSource: 'fallback' });
-    navigate('PatientHome', { area });
+    navigate('PatientHome');
   };
 
   const submit = async () => {
@@ -58,7 +61,7 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
       const authUser = await navoraApi.getAuthMe();
       const patient = await navoraApi.getMyPatientProfile();
       onPatientReady?.({ ...patient, apiUser: authUser, authSource: 'api', hasAccount: true });
-      navigate('PatientHome', { area });
+      navigate('PatientHome');
     } catch (error) {
       if (isAuthError(error)) {
         Alert.alert('Credenciais invalidas', 'Confira seu e-mail e senha para continuar.');
@@ -76,7 +79,7 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
       <View style={[styles.card, shadows.card]}>
         <View style={styles.loginHero}>
           <View style={styles.fingerprint}>
-            <MaterialCommunityIcons name="fingerprint" size={42} color={colors.primary} />
+            <MaterialCommunityIcons name="fingerprint" size={42} color={appColors.primary} />
           </View>
           <View style={styles.copy}>
             <Text style={styles.title}>Bem-vinda de volta</Text>
@@ -93,7 +96,7 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
           accessibilityState={{ disabled: true }}
           style={[styles.bio, styles.disabledFuture]}
         >
-          <MaterialCommunityIcons name="fingerprint" size={30} color={colors.primary} />
+          <MaterialCommunityIcons name="fingerprint" size={30} color={appColors.primary} />
           <Text style={styles.bioText}>Biometria em preparacao</Text>
         </Pressable>
         <View style={styles.futureRow}>
@@ -112,27 +115,31 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
 }
 
 function Input({ icon, ...props }) {
+  const { appColors } = useApp();
+  const styles = useMemo(() => createStyles(appColors), [appColors]);
   return (
     <View style={styles.inputBox}>
-      <MaterialCommunityIcons name={icon} size={21} color={colors.muted} />
-      <TextInput placeholderTextColor="#8B8D96" style={styles.input} {...props} />
+      <MaterialCommunityIcons name={icon} size={21} color={appColors.muted} />
+      <TextInput placeholderTextColor={appColors.lightText} style={styles.input} {...props} />
     </View>
   );
 }
 
 function FutureProvider({ icon, label }) {
+  const { appColors } = useApp();
+  const styles = useMemo(() => createStyles(appColors), [appColors]);
   return (
     <View style={styles.futureProvider}>
-      <MaterialCommunityIcons name={icon} size={18} color={colors.muted} />
+      <MaterialCommunityIcons name={icon} size={18} color={appColors.muted} />
       <Text style={styles.futureProviderText}>{label} futuro</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   card: { borderRadius: 30, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: 18, marginTop: 4 },
-  loginHero: { minHeight: 86, borderRadius: 24, backgroundColor: '#FFF7F8', borderWidth: 1, borderColor: '#FFD2D7', padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
-  fingerprint: { width: 58, height: 58, borderRadius: 24, backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center', ...shadows.card },
+  loginHero: { minHeight: 86, borderRadius: 24, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.borderStrong, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 4 },
+  fingerprint: { width: 58, height: 58, borderRadius: 24, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', ...shadows.card },
   copy: { flex: 1, minWidth: 0 },
   title: { color: colors.text, fontSize: 20, fontWeight: '900' },
   subtitle: { color: colors.muted, fontSize: 13, lineHeight: 19, fontWeight: '700', marginTop: 5 },
@@ -142,7 +149,7 @@ const styles = StyleSheet.create({
   primaryText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
   bio: { height: 54, borderRadius: 18, borderWidth: 1, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 10, marginTop: 12 },
   bioText: { color: colors.primary, fontSize: 14, fontWeight: '900' },
-  disabledFuture: { opacity: 0.72, backgroundColor: '#FFF7F8' },
+  disabledFuture: { opacity: 0.72, backgroundColor: colors.surfaceAlt },
   futureRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
   futureProvider: { flex: 1, height: 44, borderRadius: 15, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7, opacity: 0.72 },
   futureProviderText: { color: colors.muted, fontSize: 12, fontWeight: '900' },

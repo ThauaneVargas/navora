@@ -227,8 +227,8 @@ export default function HomeScreen({ navigate, userProfile = { type: 'patient', 
               </View>
             </View>
             <View style={[styles.beaconRow, { backgroundColor: isDark ? '#13271D' : '#F0FBF4', borderTopColor: isDark ? '#21452F' : '#DDF2E6' }]}>
-              <MaterialCommunityIcons name="bluetooth-connect" size={14} color={appColors.success} />
-              <Text style={[styles.beaconText, { color: appColors.success }]}>Beacons MBM04 detectados</Text>
+              <MaterialCommunityIcons name="map-marker-check-outline" size={14} color={appColors.success} />
+              <Text style={[styles.beaconText, { color: appColors.success }]}>Entrada confirmada manualmente</Text>
             </View>
           </Pressable>
 

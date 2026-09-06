@@ -1,359 +1,1200 @@
-import React, { useState } from 'react';
-import { ActivityIndicator, Alert, View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import React, {
+  useMemo,
+  useState,
+} from 'react';
+
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+
+import {
+  MaterialCommunityIcons,
+} from '@expo/vector-icons';
+
+import {
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
+
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
-import { colors, shadows } from '../theme/colors';
-import { useApp } from '../context/AppContext';
-import { getAreaById } from '../data/routes';
-import { navoraApi } from '../services/api';
 
-const helpTypes = [
-  'Estou perdido',
-  'Preciso de ajuda',
-  'Queda',
-  'Dificuldade de locomocao',
-  'Contato com recepcao',
-];
+import {
+  shadows,
+} from '../theme/colors';
 
-export default function HelpScreen({ navigate, goBack, routeParams = {}, userType = 'patient', userProfile, onCreateHelpRequest }) {
-  const { appColors, currentLocation: fallbackLocation, userPreferences: fallbackPreferences } = useApp();
+import {
+  useApp,
+} from '../context/AppContext';
+
+import {
+  getAreaById,
+} from '../data/routes';
+
+import {
+  navoraApi,
+} from '../services/api';
+
+
+export default function HelpScreen({
+  navigate,
+  routeParams = {},
+  userType = 'patient',
+  userProfile,
+  onCreateHelpRequest,
+}) {
+  const insets =
+    useSafeAreaInsets();
+
+  const {
+    appColors,
+    currentLocation:
+      fallbackLocation,
+  } = useApp();
+
+  const styles =
+    useMemo(
+      () =>
+        createStyles(
+          appColors
+        ),
+      [appColors]
+    );
+
+  const [
+    lastRequest,
+    setLastRequest,
+  ] = useState(null);
+
+  const [
+    submittingKind,
+    setSubmittingKind,
+  ] = useState(null);
+
+
   const currentLocation = {
     ...fallbackLocation,
-    name: userProfile?.currentLocation || fallbackLocation.name,
-    beacon: userProfile?.currentBeacon || fallbackLocation.beacon,
-  };
-  const userPreferences = {
-    ...fallbackPreferences,
-    ...(userProfile?.accessibility || {}),
-    accessibleRoute: Boolean(userProfile?.accessibility?.wheelchair || userProfile?.accessibility?.avoidStairs || fallbackPreferences.accessibleRoute),
-  };
-  const profileLabel = userProfile?.type === 'visitor' || userType === 'visitor' ? 'Visitante' : 'Paciente';
-  const [selectedType, setSelectedType] = useState(routeParams.type === 'help' ? 'Preciso de ajuda' : helpTypes[0]);
-  const [helpDescription, setHelpDescription] = useState('');
-  const [doctorReason, setDoctorReason] = useState('');
-  const [doctorNotes, setDoctorNotes] = useState('');
-  const [confirmation, setConfirmation] = useState(null);
-  const [submittingKind, setSubmittingKind] = useState(null);
 
-  const submit = async (kind) => {
-    if (submittingKind) return;
+    name:
+      userProfile?.currentLocation ||
+      fallbackLocation.name,
 
-    const isSos = kind === 'sos';
-    const isDoctor = kind === 'doctor';
-    setSubmittingKind(kind);
-    const area = getAreaById(userProfile?.area || 'private');
-    const callType = isSos ? 'SOS' : isDoctor ? 'DOCTOR' : 'HELP';
-    const priority = isSos ? 'CRITICAL' : isDoctor ? 'HIGH' : 'MEDIUM';
+    beacon:
+      userProfile?.currentBeacon ||
+      fallbackLocation.beacon,
+  };
+
+
+  const profileLabel =
+    userProfile?.type ===
+      'visitor' ||
+    userType ===
+      'visitor'
+      ? 'Visitante'
+      : 'Paciente';
+
+
+  const latestRequest =
+    lastRequest || {
+      title:
+        'Aguardando atendimento',
+
+      subtitle:
+        routeParams.type ===
+        'sos'
+          ? 'Solicitação urgente em andamento'
+          : 'Solicitada há 2 min',
+    };
+
+
+  const submit = async (
+    kind,
+    reason
+  ) => {
+    if (submittingKind) {
+      return;
+    }
+
+    const isSos =
+      kind === 'sos';
+
+    setSubmittingKind(
+      kind
+    );
+
+    const area =
+      getAreaById(
+        userProfile?.area ||
+          'private'
+      );
+
+
     const localRequest = {
-      tipo: isSos ? 'SOS Emergencia' : isDoctor ? 'Solicitacao medica' : 'Pedido de ajuda',
-      motivo: isSos ? 'Atendimento imediato' : isDoctor ? doctorReason || 'Avaliacao clinica' : selectedType,
-      queixa: isDoctor ? doctorNotes : helpDescription,
-      urgente: isSos || isDoctor,
-      perfil: profileLabel,
-      status: 'Pendente',
-      local: currentLocation.name,
-      setor: currentLocation.corridor,
-    };
-    const payload = {
-      user_type: userProfile?.type || userType || 'patient',
-      user_name: userProfile?.name || (profileLabel === 'Visitante' ? 'Visitante Navora' : 'Paciente Navora'),
-      area: area.id,
-      area_name: area.name,
-      patient_name: userProfile?.name || (profileLabel === 'Visitante' ? 'Visitante Navora' : 'Paciente Navora'),
-      call_type: callType,
-      reason: isSos ? 'Atendimento imediato' : isDoctor ? doctorReason || 'Avaliacao clinica' : selectedType,
-      location: currentLocation.name,
-      sector: currentLocation.corridor,
-      beacon_code: currentLocation.beacon,
-      message: isDoctor ? doctorNotes || doctorReason : helpDescription || selectedType,
-      priority,
-    };
-    try {
-      const apiResponse = isSos
-        ? await navoraApi.createSos(payload)
-        : isDoctor
-          ? await navoraApi.createCall(payload)
-          : await navoraApi.createHelpRequest(payload);
-      const request = apiResponse?.demoMode ? onCreateHelpRequest?.(localRequest) : null;
+      tipo:
+        isSos
+          ? 'SOS Emergência'
+          : 'Pedido de ajuda',
 
-      setConfirmation({
-        kind,
-        title: isSos ? 'SOS enviado' : isDoctor ? 'Solicitacao medica enviada' : 'Pedido de ajuda enviado',
-        text: apiResponse?.demoMode
-          ? 'API indisponivel: solicitacao registrada localmente para demonstracao.'
-          : 'Solicitacao enviada para a recepcao.',
-        protocol: apiResponse?.id || request?.id || 'NAVORA',
+      motivo:
+        reason,
+
+      urgente:
+        isSos,
+
+      perfil:
+        profileLabel,
+
+      status:
+        'Pendente',
+
+      local:
+        currentLocation.name,
+
+      setor:
+        currentLocation.corridor,
+    };
+
+
+    const payload = {
+      user_type:
+        userProfile?.type ||
+        userType ||
+        'patient',
+
+      user_name:
+        userProfile?.name ||
+        (profileLabel ===
+        'Visitante'
+          ? 'Visitante Navora'
+          : 'Paciente Navora'),
+
+      area:
+        area.id,
+
+      area_name:
+        area.name,
+
+      patient_name:
+        userProfile?.name ||
+        (profileLabel ===
+        'Visitante'
+          ? 'Visitante Navora'
+          : 'Paciente Navora'),
+
+      call_type:
+        isSos
+          ? 'SOS'
+          : 'HELP',
+
+      reason,
+
+      location:
+        currentLocation.name,
+
+      sector:
+        currentLocation.corridor,
+
+      beacon_code:
+        currentLocation.beacon,
+
+      message:
+        reason,
+
+      priority:
+        isSos
+          ? 'CRITICAL'
+          : 'MEDIUM',
+    };
+
+
+    try {
+      const apiResponse =
+        isSos
+          ? await navoraApi.createSos(
+              payload
+            )
+          : await navoraApi.createHelpRequest(
+              payload
+            );
+
+
+      const request =
+        apiResponse?.demoMode
+          ? onCreateHelpRequest?.(
+              localRequest
+            )
+          : apiResponse;
+
+
+      setLastRequest({
+        title:
+          isSos
+            ? 'SOS enviado'
+            : 'Aguardando atendimento',
+
+        subtitle:
+          request?.id
+            ? `Protocolo ${request.id}`
+            : 'Solicitada agora',
       });
     } catch (error) {
       Alert.alert(
-        'Nao foi possivel enviar',
-        'Confira a conexao e tente novamente. Se for urgente, procure a recepcao imediatamente.'
+        'Não foi possível enviar',
+        'Confira a conexão e tente novamente. Se for urgente, procure a recepção imediatamente.'
       );
     } finally {
-      setSubmittingKind(null);
+      setSubmittingKind(
+        null
+      );
     }
   };
+
 
   const confirmSos = () => {
     Alert.alert(
       'Acionar SOS?',
-      'Use SOS apenas em situacao urgente. A equipe recebera sua localizacao atual.',
+      'Use o SOS apenas em situação urgente. A equipe receberá sua localização atual.',
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Acionar SOS', style: 'destructive', onPress: () => submit('sos') },
+        {
+          text: 'Cancelar',
+          style: 'cancel',
+        },
+
+        {
+          text:
+            'Acionar SOS',
+
+          style:
+            'destructive',
+
+          onPress: () =>
+            submit(
+              'sos',
+              'Atendimento imediato'
+            ),
+        },
       ]
     );
   };
 
-  if (confirmation) {
-    return (
-      <Screen withBottomTabs>
-        <Header title="Ajuda e SOS" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
-        <View style={[styles.confirmCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
-          <View style={[styles.confirmIcon, confirmation.kind === 'sos' && styles.confirmIconDanger]}>
-            <MaterialCommunityIcons
-              name={confirmation.kind === 'sos' ? 'alarm-light-outline' : 'check-circle-outline'}
-              size={58}
-              color={confirmation.kind === 'sos' ? colors.danger : colors.success}
-            />
-          </View>
-          <Text style={[styles.confirmTitle, { color: appColors.text }]}>{confirmation.title}</Text>
-          <Text style={[styles.confirmText, { color: appColors.muted }]}>{confirmation.text}</Text>
-          <Text style={styles.protocol}>Protocolo: {confirmation.protocol}</Text>
-          <Pressable onPress={() => navigate('Notifications')} style={[styles.primaryButton, shadows.soft]}>
-            <Text style={styles.primaryText}>Ver notificacoes</Text>
-          </Pressable>
-          <Pressable onPress={() => navigate('Home')} style={styles.secondaryButton}>
-            <Text style={styles.secondaryText}>Voltar para Home</Text>
-          </Pressable>
-        </View>
-        <BottomTabs active="Help" navigate={navigate} />
-      </Screen>
-    );
-  }
+
+  const actions = {
+    help: () =>
+      submit(
+        'help',
+        'Preciso de ajuda'
+      ),
+
+    sos:
+      confirmSos,
+
+    lost: () =>
+      navigate('Lost'),
+
+    accessibility: () =>
+      navigate(
+        'Accessibility'
+      ),
+
+    reception: () =>
+      submit(
+        'help',
+        'Contato com recepção'
+      ),
+
+    request: () =>
+      navigate(
+        'Notifications'
+      ),
+  };
+
 
   return (
-    <Screen withBottomTabs>
-      <Header title="Ajuda e SOS" subtitle="Suporte, orientacao e emergencia" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+    <Screen
+      scroll={false}
+      padded={false}
+    >
+      <View
+        style={
+          styles.stage
+        }
+      >
+        {/* CABEÇALHO PADRÃO */}
 
-      <Card title="Preciso de ajuda" icon="hand-heart-outline" appColors={appColors}>
-        <Text style={[styles.cardText, { color: appColors.muted }]}>Informe o tipo de apoio que voce precisa.</Text>
-        <View style={styles.chips}>
-          {helpTypes.map((item) => {
-            const active = selectedType === item;
-            return (
-              <Pressable key={item} onPress={() => setSelectedType(item)} style={[styles.chip, active && styles.chipActive]}>
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{item}</Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <TextInput
-          value={helpDescription}
-          onChangeText={setHelpDescription}
-          placeholder="Ex.: estou proximo a recepcao e nao encontro o setor de imagem."
-          placeholderTextColor="#8B8D96"
-          multiline
-          style={[styles.input, { color: appColors.text, borderColor: appColors.border }]}
+        <Header
+          title="Ajuda e SOS"
+          centerTitle
+          onMenu={() =>
+            navigate('Menu')
+          }
+          onNotifications={() =>
+            navigate(
+              'Notifications'
+            )
+          }
         />
-        <Pressable
-          onPress={() => submit('help')}
-          disabled={Boolean(submittingKind)}
-          style={[styles.primaryButton, submittingKind && styles.disabled]}
-        >
-          {submittingKind === 'help' ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>Enviar pedido de ajuda</Text>}
-        </Pressable>
-      </Card>
 
-      <Card title="Queda ou suporte clinico" icon="stethoscope" appColors={appColors}>
-        <Text style={[styles.cardText, { color: appColors.muted }]}>Use esta opcao quando precisar de avaliacao ou apoio clinico.</Text>
-        <TextInput
-          value={doctorReason}
-          onChangeText={setDoctorReason}
-          placeholder="Motivo: tontura, dor, mal-estar, falta de ar..."
-          placeholderTextColor="#8B8D96"
-          style={[styles.input, styles.singleInput, { color: appColors.text, borderColor: appColors.border }]}
+
+        <ScrollView
+          showsVerticalScrollIndicator={
+            false
+          }
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={[
+            styles.content,
+
+            {
+              paddingBottom:
+                Math.max(
+                  insets.bottom,
+                  14
+                ) + 104,
+            },
+          ]}
+        >
+          {/* COMEÇA DIRETO NO CONTEÚDO */}
+
+          <View
+            style={
+              styles.sectionIntro
+            }
+          >
+            <Text
+              style={
+                styles.heroTitle
+              }
+            >
+              Como podemos ajudar?
+            </Text>
+
+            <Text
+              style={
+                styles.sectionText
+              }
+            >
+              Escolha a opção que melhor se aplica à sua necessidade.
+            </Text>
+          </View>
+
+
+          <View
+            style={
+              styles.mainGrid
+            }
+          >
+            <ActionTile
+              icon="headphones"
+              title="Preciso de ajuda"
+              subtitle="Falar com a equipe"
+              onPress={
+                actions.help
+              }
+              loading={
+                submittingKind ===
+                'help'
+              }
+              appColors={
+                appColors
+              }
+              styles={styles}
+            />
+
+            <ActionTile
+              icon="alarm-light-outline"
+              title="SOS - Emergência"
+              subtitle="Atendimento imediato"
+              emergency
+              onPress={
+                actions.sos
+              }
+              loading={
+                submittingKind ===
+                'sos'
+              }
+              appColors={
+                appColors
+              }
+              styles={styles}
+            />
+          </View>
+
+
+          <View
+            style={
+              styles.section
+            }
+          >
+            <Text
+              style={
+                styles.sectionTitle
+              }
+            >
+              Ajuda rápida
+            </Text>
+
+            <Text
+              style={
+                styles.sectionText
+              }
+            >
+              Acesso rápido para as necessidades mais comuns.
+            </Text>
+          </View>
+
+
+          <View
+            style={
+              styles.quickGrid
+            }
+          >
+            <SmallTile
+              icon="map-marker-outline"
+              title="Estou perdido"
+              onPress={
+                actions.lost
+              }
+              appColors={
+                appColors
+              }
+              styles={styles}
+            />
+
+            <SmallTile
+              icon="wheelchair-accessibility"
+              title="Acessibilidade"
+              onPress={
+                actions.accessibility
+              }
+              appColors={
+                appColors
+              }
+              styles={styles}
+            />
+          </View>
+
+
+          <WideTile
+            icon="account-group-outline"
+            title="Falar com a recepção"
+            onPress={
+              actions.reception
+            }
+            loading={
+              submittingKind ===
+              'help'
+            }
+            appColors={
+              appColors
+            }
+            styles={styles}
+          />
+
+
+          <View
+            style={
+              styles.section
+            }
+          >
+            <Text
+              style={
+                styles.sectionTitle
+              }
+            >
+              Sua solicitação
+            </Text>
+
+            <Text
+              style={
+                styles.sectionText
+              }
+            >
+              Acompanhe o status do seu pedido de ajuda.
+            </Text>
+          </View>
+
+
+          <Pressable
+            onPress={
+              actions.request
+            }
+            accessibilityRole="button"
+            accessibilityLabel="Abrir status da solicitação"
+            style={({ pressed }) => [
+              styles.statusCard,
+
+              shadows.card,
+
+              pressed &&
+                styles.pressed,
+            ]}
+          >
+            <View
+              style={
+                styles.statusIconWrap
+              }
+            >
+              <MaterialCommunityIcons
+                name="clipboard-text-outline"
+                size={22}
+                color={
+                  appColors.primary
+                }
+              />
+            </View>
+
+
+            <View
+              style={
+                styles.statusDot
+              }
+            />
+
+
+            <View
+              style={
+                styles.statusCopy
+              }
+            >
+              <Text
+                style={
+                  styles.statusTitle
+                }
+              >
+                {
+                  latestRequest.title
+                }
+              </Text>
+
+              <Text
+                style={
+                  styles.statusText
+                }
+              >
+                {
+                  latestRequest.subtitle
+                }
+              </Text>
+            </View>
+
+
+            <Chevron
+              appColors={
+                appColors
+              }
+              styles={styles}
+            />
+          </Pressable>
+        </ScrollView>
+
+
+        <BottomTabs
+          active="Help"
+          navigate={navigate}
         />
-        <TextInput
-          value={doctorNotes}
-          onChangeText={setDoctorNotes}
-          placeholder="Observacoes e detalhes importantes."
-          placeholderTextColor="#8B8D96"
-          multiline
-          style={[styles.input, { color: appColors.text, borderColor: appColors.border }]}
-        />
-        <Pressable
-          onPress={() => submit('doctor')}
-          disabled={Boolean(submittingKind)}
-          style={[styles.primaryButton, submittingKind && styles.disabled]}
-        >
-          {submittingKind === 'doctor' ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>Solicitar apoio clinico</Text>}
-        </Pressable>
-      </Card>
-
-      <Card title="Emergencia / SOS" icon="alarm-light-outline" danger appColors={appColors}>
-        <Text style={[styles.cardText, { color: appColors.muted }]}>Atendimento imediato em situacao urgente. O envio pede confirmacao para evitar toque acidental.</Text>
-        <View style={styles.sosInfo}>
-          <Info label="Localizacao" value={`${currentLocation.name} - ${currentLocation.corridor}`} appColors={appColors} />
-          <Info label="Beacon" value={currentLocation.beacon} appColors={appColors} />
-          <Info label="Horario" value={new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} appColors={appColors} />
-          <Info label="Prioridade" value="Critica" appColors={appColors} danger />
-          <Info label="Perfil" value={profileLabel} appColors={appColors} />
-          <Info label="Preferencias" value={userPreferences.accessibleRoute ? 'Rota acessivel ativa' : 'Padrao'} appColors={appColors} />
-        </View>
-        <Pressable
-          onPress={confirmSos}
-          disabled={Boolean(submittingKind)}
-          accessibilityRole="button"
-          accessibilityLabel="Acionar SOS"
-          accessibilityHint="Abre uma confirmacao antes de enviar o chamado urgente"
-          style={[styles.sosButton, submittingKind && styles.disabled]}
-        >
-          {submittingKind === 'sos' ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <>
-              <MaterialCommunityIcons name="alarm-light-outline" size={20} color="#FFFFFF" />
-              <Text style={styles.primaryText}>ACIONAR SOS AGORA</Text>
-            </>
-          )}
-        </Pressable>
-      </Card>
-
-      <BottomTabs active="Help" navigate={navigate} />
+      </View>
     </Screen>
   );
 }
 
-function Card({ title, icon, danger, appColors, children }) {
+
+function ActionTile({
+  icon,
+  title,
+  subtitle,
+  emergency,
+  loading,
+  onPress,
+  appColors,
+  styles,
+}) {
   return (
-    <View style={[styles.card, { backgroundColor: appColors.surface, borderColor: danger ? '#FFD2D7' : appColors.border }, shadows.card]}>
-      <View style={styles.cardHeader}>
-        <View style={[styles.cardIcon, danger && styles.cardIconDanger]}>
-          <MaterialCommunityIcons name={icon} size={24} color={danger ? colors.danger : colors.primary} />
-        </View>
-        <Text style={[styles.cardTitle, { color: appColors.text }]}>{title}</Text>
+    <Pressable
+      onPress={onPress}
+      disabled={loading}
+      accessibilityRole="button"
+      accessibilityLabel={
+        title
+      }
+      style={({ pressed }) => [
+        styles.actionTile,
+
+        emergency &&
+          styles.actionTileEmergency,
+
+        shadows.card,
+
+        (pressed ||
+          loading) &&
+          styles.pressed,
+      ]}
+    >
+      <View
+        style={[
+          styles.tileIconWrap,
+
+          emergency &&
+            styles.tileIconEmergency,
+        ]}
+      >
+        {loading ? (
+          <ActivityIndicator
+            color={
+              appColors.primary
+            }
+          />
+        ) : (
+          <MaterialCommunityIcons
+            name={icon}
+            size={23}
+            color={
+              appColors.primary
+            }
+          />
+        )}
       </View>
-      {children}
-    </View>
+
+
+      <View
+        style={
+          styles.tileBottom
+        }
+      >
+        <View
+          style={
+            styles.tileCopy
+          }
+        >
+          <Text
+            style={[
+              styles.tileTitle,
+
+              emergency &&
+                styles.emergencyText,
+            ]}
+          >
+            {title}
+          </Text>
+
+          <Text
+            style={
+              styles.tileSubtitle
+            }
+          >
+            {subtitle}
+          </Text>
+        </View>
+
+        <Chevron
+          active={emergency}
+          appColors={
+            appColors
+          }
+          styles={styles}
+        />
+      </View>
+    </Pressable>
   );
 }
 
-function Info({ label, value, appColors, danger }) {
+
+function SmallTile({
+  icon,
+  title,
+  onPress,
+  appColors,
+  styles,
+}) {
   return (
-    <View style={styles.infoRow}>
-      <Text style={[styles.infoLabel, { color: appColors.muted }]}>{label}</Text>
-      <Text style={[styles.infoValue, { color: danger ? colors.danger : appColors.text }]}>{value}</Text>
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={
+        title
+      }
+      style={({ pressed }) => [
+        styles.smallTile,
+
+        shadows.card,
+
+        pressed &&
+          styles.pressed,
+      ]}
+    >
+      <View
+        style={
+          styles.smallIconWrap
+        }
+      >
+        <MaterialCommunityIcons
+          name={icon}
+          size={22}
+          color={
+            appColors.primary
+          }
+        />
+      </View>
+
+      <Text
+        numberOfLines={2}
+        style={
+          styles.smallTitle
+        }
+      >
+        {title}
+      </Text>
+
+      <Chevron
+        appColors={
+          appColors
+        }
+        styles={styles}
+      />
+    </Pressable>
+  );
+}
+
+
+function WideTile({
+  icon,
+  title,
+  loading,
+  onPress,
+  appColors,
+  styles,
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={loading}
+      accessibilityRole="button"
+      accessibilityLabel={
+        title
+      }
+      style={({ pressed }) => [
+        styles.wideTile,
+
+        shadows.card,
+
+        (pressed ||
+          loading) &&
+          styles.pressed,
+      ]}
+    >
+      <View
+        style={
+          styles.smallIconWrap
+        }
+      >
+        {loading ? (
+          <ActivityIndicator
+            color={
+              appColors.primary
+            }
+          />
+        ) : (
+          <MaterialCommunityIcons
+            name={icon}
+            size={23}
+            color={
+              appColors.primary
+            }
+          />
+        )}
+      </View>
+
+      <Text
+        style={
+          styles.wideTitle
+        }
+      >
+        {title}
+      </Text>
+
+      <Chevron
+        appColors={
+          appColors
+        }
+        styles={styles}
+      />
+    </Pressable>
+  );
+}
+
+
+function Chevron({
+  active = false,
+  appColors,
+  styles,
+}) {
+  return (
+    <View
+      style={[
+        styles.chevron,
+
+        active &&
+          styles.chevronActive,
+      ]}
+    >
+      <MaterialCommunityIcons
+        name="chevron-right"
+        size={20}
+        color={
+          appColors.primary
+        }
+      />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: 24,
-    borderWidth: 1,
-    padding: 16,
-    marginTop: 14,
-  },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 11 },
-  cardIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 17,
-    backgroundColor: colors.primarySoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardIconDanger: { backgroundColor: '#FFE8EC' },
-  cardTitle: { fontSize: 18, fontWeight: '900' },
-  cardText: { fontSize: 13, lineHeight: 19, fontWeight: '700', marginTop: 10 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12 },
-  chip: {
-    minHeight: 34,
-    borderRadius: 17,
-    paddingHorizontal: 11,
-    backgroundColor: '#FFF7F8',
-    borderWidth: 1,
-    borderColor: '#F3D7DC',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { color: colors.primary, fontSize: 11, fontWeight: '900' },
-  chipTextActive: { color: '#FFFFFF' },
-  input: {
-    minHeight: 72,
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 12,
-    marginTop: 12,
-    textAlignVertical: 'top',
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  singleInput: { minHeight: 48 },
-  primaryButton: {
-    height: 52,
-    borderRadius: 17,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 14,
-    flexDirection: 'row',
-    gap: 8,
-  },
-  primaryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
-  secondaryButton: {
-    height: 50,
-    borderRadius: 17,
-    borderWidth: 1,
-    borderColor: colors.borderStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-  },
-  secondaryText: { color: colors.primary, fontSize: 14, fontWeight: '900' },
-  sosInfo: { gap: 8, marginTop: 12 },
-  infoRow: {
-    minHeight: 34,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  infoLabel: { fontSize: 12, fontWeight: '800' },
-  infoValue: { flex: 1, textAlign: 'right', fontSize: 12, fontWeight: '900' },
-  sosButton: {
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: colors.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 14,
-    flexDirection: 'row',
-    gap: 9,
-  },
-  confirmCard: {
-    marginTop: 22,
-    borderRadius: 24,
-    borderWidth: 1,
-    padding: 24,
-    alignItems: 'center',
-  },
-  confirmIcon: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    backgroundColor: '#EAF8F0',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  confirmIconDanger: { backgroundColor: '#FFF1F2' },
-  confirmTitle: { fontSize: 24, fontWeight: '900', marginTop: 18, textAlign: 'center' },
-  confirmText: { fontSize: 14, lineHeight: 21, fontWeight: '700', textAlign: 'center', marginTop: 7 },
-  protocol: { color: colors.primary, fontSize: 13, fontWeight: '900', marginTop: 12 },
-  pressed: { opacity: 0.86, transform: [{ scale: 0.985 }] },
-  disabled: { opacity: 0.72 },
-});
+
+function createStyles(
+  appColors
+) {
+  return StyleSheet.create({
+    stage: {
+      flex: 1,
+
+      backgroundColor:
+        appColors.background,
+    },
+
+    content: {
+      width: '100%',
+      maxWidth: 430,
+
+      alignSelf: 'center',
+
+      paddingHorizontal: 20,
+    },
+
+    sectionIntro: {
+      marginTop: 14,
+      marginBottom: 10,
+    },
+
+    heroTitle: {
+      color:
+        appColors.text,
+
+      fontSize: 22,
+      lineHeight: 28,
+
+      fontWeight: '900',
+    },
+
+    section: {
+      marginTop: 20,
+      marginBottom: 10,
+    },
+
+    sectionTitle: {
+      color:
+        appColors.text,
+
+      fontSize: 18,
+      lineHeight: 23,
+
+      fontWeight: '900',
+    },
+
+    sectionText: {
+      color:
+        appColors.muted,
+
+      fontSize: 12,
+      lineHeight: 17,
+
+      fontWeight: '600',
+
+      marginTop: 2,
+    },
+
+    mainGrid: {
+      flexDirection: 'row',
+
+      gap: 10,
+    },
+
+    actionTile: {
+      flex: 1,
+      minWidth: 0,
+
+      minHeight: 104,
+
+      borderRadius: 18,
+      borderWidth: 1,
+
+      borderColor:
+        appColors.border,
+
+      backgroundColor:
+        appColors.surface,
+
+      padding: 12,
+
+      justifyContent:
+        'space-between',
+    },
+
+    actionTileEmergency: {
+      backgroundColor:
+        appColors.surfaceAlt,
+
+      borderColor:
+        appColors.borderStrong ||
+        appColors.border,
+    },
+
+    tileIconWrap: {
+      width: 40,
+      height: 40,
+
+      borderRadius: 14,
+
+      backgroundColor:
+        appColors.iconBg,
+
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    tileIconEmergency: {
+      backgroundColor:
+        appColors.iconBg,
+    },
+
+    tileBottom: {
+      flexDirection: 'row',
+      alignItems: 'center',
+
+      gap: 7,
+    },
+
+    tileCopy: {
+      flex: 1,
+      minWidth: 0,
+    },
+
+    tileTitle: {
+      color:
+        appColors.text,
+
+      fontSize: 13,
+      lineHeight: 17,
+
+      fontWeight: '900',
+    },
+
+    emergencyText: {
+      color:
+        appColors.primaryDark,
+    },
+
+    tileSubtitle: {
+      color:
+        appColors.muted,
+
+      fontSize: 11,
+      lineHeight: 14,
+
+      fontWeight: '600',
+
+      marginTop: 1,
+    },
+
+    quickGrid: {
+      flexDirection: 'row',
+
+      gap: 10,
+    },
+
+    smallTile: {
+      flex: 1,
+      minWidth: 0,
+
+      minHeight: 62,
+
+      borderRadius: 15,
+      borderWidth: 1,
+
+      borderColor:
+        appColors.border,
+
+      backgroundColor:
+        appColors.surface,
+
+      paddingHorizontal: 10,
+
+      flexDirection: 'row',
+      alignItems: 'center',
+
+      gap: 8,
+    },
+
+    smallIconWrap: {
+      width: 40,
+      height: 40,
+
+      borderRadius: 14,
+
+      backgroundColor:
+        appColors.iconBg,
+
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    smallTitle: {
+      flex: 1,
+      minWidth: 0,
+
+      color:
+        appColors.text,
+
+      fontSize: 12,
+      lineHeight: 16,
+
+      fontWeight: '900',
+    },
+
+    wideTile: {
+      minHeight: 62,
+
+      borderRadius: 15,
+      borderWidth: 1,
+
+      borderColor:
+        appColors.border,
+
+      backgroundColor:
+        appColors.surface,
+
+      paddingHorizontal: 12,
+
+      marginTop: 10,
+
+      flexDirection: 'row',
+      alignItems: 'center',
+
+      gap: 10,
+    },
+
+    wideTitle: {
+      flex: 1,
+      minWidth: 0,
+
+      color:
+        appColors.text,
+
+      fontSize: 13,
+      lineHeight: 17,
+
+      fontWeight: '900',
+    },
+
+    statusCard: {
+      minHeight: 64,
+
+      borderRadius: 15,
+      borderWidth: 1,
+
+      borderColor:
+        appColors.border,
+
+      backgroundColor:
+        appColors.surface,
+
+      paddingHorizontal: 12,
+
+      flexDirection: 'row',
+      alignItems: 'center',
+
+      gap: 10,
+
+      marginBottom: 4,
+    },
+
+    statusIconWrap: {
+      width: 40,
+      height: 40,
+
+      borderRadius: 14,
+
+      backgroundColor:
+        appColors.iconBg,
+
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    statusDot: {
+      width: 10,
+      height: 10,
+
+      borderRadius: 5,
+
+      backgroundColor:
+        appColors.success,
+
+      alignSelf:
+        'flex-start',
+
+      marginTop: 17,
+    },
+
+    statusCopy: {
+      flex: 1,
+      minWidth: 0,
+    },
+
+    statusTitle: {
+      color:
+        appColors.text,
+
+      fontSize: 12,
+      lineHeight: 16,
+
+      fontWeight: '900',
+    },
+
+    statusText: {
+      color:
+        appColors.muted,
+
+      fontSize: 11,
+      lineHeight: 15,
+
+      fontWeight: '600',
+
+      marginTop: 1,
+    },
+
+    chevron: {
+      width: 30,
+      height: 30,
+
+      borderRadius: 15,
+
+      backgroundColor:
+        appColors.surfaceAlt,
+
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    chevronActive: {
+      backgroundColor:
+        appColors.iconBg,
+    },
+
+    pressed: {
+      opacity: 0.82,
+    },
+  });
+}

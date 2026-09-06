@@ -4,46 +4,23 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import { colors, shadows } from '../theme/colors';
-import { getAreaById } from '../data/routes';
-import { indoorLocationService } from '../services/indoorLocationService';
+import { getAreaById, hospitalAreas } from '../data/routes';
 
-export default function ArrivalDetectedScreen({ navigate, goBack, routeParams = {}, userProfile, onAreaDetected, onBeaconDetected }) {
+export default function ArrivalDetectedScreen({ navigate, goBack, routeParams = {}, userProfile, onAreaDetected }) {
   const area = routeParams.area || 'unknown';
   const knownArea = area !== 'unknown';
   const areaData = knownArea ? getAreaById(area) : null;
   const selectedType = routeParams.userType || userProfile?.type;
-  const showDevControls = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production';
 
   const nextScreenForType = (nextArea) => {
     if (selectedType === 'visitor') return navigate('VisitorEntry', { area: nextArea });
-    if (selectedType === 'patient') return navigate('PatientAccessChoice', { area: nextArea });
+    if (selectedType === 'patient') return navigate('PatientIdentification', { area: nextArea });
     return navigate('ProfileChoice', { area: nextArea });
   };
 
   const continueKnown = () => {
     onAreaDetected?.(area);
     nextScreenForType(area);
-  };
-
-  const simulateBeacon = async (beaconCode) => {
-    const [result] = await indoorLocationService.emitSimulatedDetection({
-      identifier: beaconCode,
-      rssi: -58,
-    });
-    const detected = result?.detection;
-    if (!result?.detected || !detected) {
-      return;
-    }
-    const nextArea = detected?.area || 'private';
-    const detection = { ...detected, beacon_code: beaconCode };
-    const recalculation = result?.recalculation;
-
-    if (recalculation?.reason && recalculation.reason !== 'no-active-route') {
-      return;
-    }
-
-    onAreaDetected?.(nextArea, detection);
-    nextScreenForType(nextArea);
   };
 
   const chooseUnknown = (nextArea) => {
@@ -54,23 +31,23 @@ export default function ArrivalDetectedScreen({ navigate, goBack, routeParams = 
   return (
     <Screen>
       <Header
-        title={knownArea ? 'Voce chegou ao hospital' : 'Vamos confirmar seu atendimento'}
-        subtitle={knownArea ? 'Entrada confirmada no ambiente atual.' : 'No Expo Go, a confirmacao usa simulacao/fallback.'}
+        title={knownArea ? 'Voce chegou ao hospital' : 'Escolha sua entrada'}
+        subtitle={knownArea ? 'Entrada confirmada para esta jornada.' : 'Confirme manualmente por onde voce entrou.'}
         onBack={() => goBack?.()}
         onMenu={() => navigate('Menu')}
       />
       <View style={[styles.card, shadows.card]}>
         <View style={styles.beacon}>
-          <MaterialCommunityIcons name="bluetooth-connect" size={34} color="#FFFFFF" />
+          <MaterialCommunityIcons name="map-marker-check-outline" size={34} color="#FFFFFF" />
         </View>
-        <Text style={styles.kicker}>{knownArea ? 'Chegada confirmada' : 'Deteccao simulada'}</Text>
+        <Text style={styles.kicker}>Chegada manual</Text>
         <Text style={styles.title}>Voce chegou ao hospital</Text>
         {knownArea ? (
           <>
-            <Text style={styles.label}>Entrada detectada:</Text>
+            <Text style={styles.label}>Entrada escolhida:</Text>
             <Text style={styles.area}>{areaData.name}</Text>
             <Text style={styles.entry}>{areaData.entranceName}</Text>
-            <Text style={styles.text}>Hospital ativo carregado. BLE fisico ainda nao esta habilitado neste app Expo Go.</Text>
+            <Text style={styles.text}>Hospital ativo carregado a partir da entrada escolhida.</Text>
             <Pressable onPress={continueKnown} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
               <Text style={styles.primaryText}>Continuar no Navora</Text>
               <MaterialCommunityIcons name="arrow-right" size={18} color="#FFFFFF" />
@@ -78,13 +55,11 @@ export default function ArrivalDetectedScreen({ navigate, goBack, routeParams = 
           </>
         ) : (
           <>
-            <Text style={styles.text}>Use a simulacao de entrada para desenvolvimento ou siga pela recepcao quando nao souber a unidade.</Text>
+            <Text style={styles.text}>Selecione uma das entradas disponiveis para continuar.</Text>
             <View style={styles.choices}>
-              <MiniButton title="Simular entrada A" onPress={() => simulateBeacon('MBM04-01')} />
-              <MiniButton title="Simular entrada B" onPress={() => simulateBeacon('MBM04-10')} />
-              {showDevControls ? (
-                <MiniButton title="Dev: simular beacon desconhecido" onPress={() => simulateBeacon('UNKNOWN-BEACON')} />
-              ) : null}
+              {hospitalAreas.map((option) => (
+                <MiniButton key={option.id} title={option.name} onPress={() => chooseUnknown(option.id)} />
+              ))}
               <MiniButton title="Nao sei, levar ate recepcao" onPress={() => chooseUnknown('unknown')} />
             </View>
           </>

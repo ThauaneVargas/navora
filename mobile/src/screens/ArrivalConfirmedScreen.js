@@ -18,18 +18,19 @@ export default function ArrivalConfirmedScreen({
   const detectedEntrance = routeParams.detectedEntrance || userProfile?.detectedEntrance || hospitalDetection?.detectedEntrance;
   const correcting = Boolean(routeParams.correcting);
   const profile = routeParams.userType || userProfile?.type || 'patient';
+  const area = routeParams.area || detectedEntrance?.areaId || userProfile?.area || 'private';
 
   const chooseEntrance = (entrance) => {
     onManualEntranceCorrection?.(entrance);
-    navigate('ArrivalConfirmed', { userType: profile, detectedEntrance: entrance });
+    navigate('ArrivalConfirmed', { area: entrance.areaId, userType: profile, detectedEntrance: entrance });
   };
 
   if (correcting) {
     return (
       <Screen>
         <Header
-          title="Corrigir entrada"
-          subtitle="Use somente se a entrada detectada nao estiver correta."
+          title="Alterar entrada"
+          subtitle="Escolha a entrada correta para esta jornada."
           onBack={() => goBack?.('ArrivalConfirmed')}
           onMenu={() => navigate('Menu')}
         />
@@ -60,17 +61,17 @@ export default function ArrivalConfirmedScreen({
         </View>
         <Text style={styles.title}>Voce chegou</Text>
         <Text style={styles.hospital}>{hospitalName}</Text>
-        <Text style={styles.label}>Entrada identificada</Text>
-        <Text style={styles.entrance}>{detectedEntrance?.name || 'Entrada identificada'}</Text>
+        <Text style={styles.label}>Entrada escolhida</Text>
+        <Text style={styles.entrance}>{detectedEntrance?.fullName || detectedEntrance?.name || 'Entrada escolhida'}</Text>
         <View style={styles.statusPill}>
           <MaterialCommunityIcons name="check-circle-outline" size={17} color={colors.primary} />
-          <Text style={styles.statusText}>Modo interno ativado</Text>
+          <Text style={styles.statusText}>Entrada confirmada</Text>
         </View>
-        <Pressable onPress={() => onArrivalContinue?.(profile)} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
+        <Pressable onPress={() => onArrivalContinue?.(profile, area)} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
           <Text style={styles.primaryText}>Continuar</Text>
           <MaterialCommunityIcons name="arrow-right" size={18} color="#FFFFFF" />
         </Pressable>
-        <Pressable onPress={() => navigate('ArrivalConfirmed', { userType: profile, correcting: true, detectedEntrance })} style={styles.discreet}>
+        <Pressable onPress={() => navigate('ArrivalConfirmed', { area, userType: profile, correcting: true, detectedEntrance })} style={styles.discreet}>
           <Text style={styles.discreetText}>Nao e esta entrada?</Text>
         </Pressable>
       </View>

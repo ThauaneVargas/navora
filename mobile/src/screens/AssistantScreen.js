@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ScrollView,
   Text,
@@ -21,7 +21,7 @@ import * as Speech from 'expo-speech';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
-import { colors, shadows } from '../theme/colors';
+import { shadows } from '../theme/colors';
 import { assistantProvider, getNavoraAssistantResponse } from '../services/navoraAssistant';
 import { useApp } from '../context/AppContext';
 
@@ -47,7 +47,8 @@ const initialMessages = [
 
 export default function AssistantScreen({ navigate, goBack, routeParams = {}, userProfile, visitorAccessRequest }) {
   const insets = useSafeAreaInsets();
-  const { toggleTheme } = useApp();
+  const { appColors, toggleTheme } = useApp();
+  const styles = useMemo(() => createStyles(appColors), [appColors]);
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState('');
   const [status, setStatus] = useState('Pronta para ajudar');
@@ -234,7 +235,7 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
                 <Text style={styles.statusText}>{status}</Text>
               </View>
               <Pressable onPress={stopSpeech} style={styles.stopVoiceButton}>
-                <MaterialCommunityIcons name="volume-off" size={18} color={colors.primary} />
+                <MaterialCommunityIcons name="volume-off" size={18} color={appColors.primary} />
               </Pressable>
             </View>
 
@@ -271,7 +272,7 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
                           onPress={() => speakText(message.text)}
                           style={({ pressed }) => [styles.listenButton, pressed && styles.pressed]}
                         >
-                          <MaterialCommunityIcons name="volume-high" size={15} color={colors.primary} />
+                          <MaterialCommunityIcons name="volume-high" size={15} color={appColors.primary} />
                           <Text style={styles.listenText}>Ouvir</Text>
                         </Pressable>
 
@@ -293,13 +294,13 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
 
           <View style={[styles.composer, { bottom: composerBottom }, shadows.card]}>
             <Pressable onPress={clearConversation} style={styles.smallIconButton}>
-              <MaterialCommunityIcons name="trash-can-outline" size={19} color={colors.muted} />
+              <MaterialCommunityIcons name="trash-can-outline" size={19} color={appColors.muted} />
             </Pressable>
             <TextInput
               value={input}
               onChangeText={setInput}
               placeholder="Digite sua mensagem..."
-              placeholderTextColor="#8B8D96"
+              placeholderTextColor={appColors.lightText}
               style={styles.input}
               returnKeyType="send"
               onSubmitEditing={sendMessage}
@@ -321,7 +322,7 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   screen: {
     flex: 1,
     width: '100%',
@@ -409,7 +410,7 @@ const styles = StyleSheet.create({
   suggestion: {
     minHeight: 34,
     borderRadius: 17,
-    backgroundColor: '#FFF7F8',
+    backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: 11,

@@ -1,129 +1,258 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, radii, shadows } from '../theme/colors';
-import { useApp } from '../context/AppContext';
 
-const logo = require('../../assets/images/navora_symbol.png');
+import {
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
-export default function AppHeader({ navigate }) {
-  const insets = useSafeAreaInsets();
-  const { appColors, isDark } = useApp();
-  const topPadding = insets.top;
-  const headerBaseHeight = 58;
+import {
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
+
+import {
+  MaterialCommunityIcons,
+} from '@expo/vector-icons';
+
+import {
+  useApp,
+} from '../context/AppContext';
+
+const logo =
+  require('../../assets/images/navora_symbol.png');
+
+export default function AppHeader({
+  navigate,
+  notificationCount = 0,
+}) {
+  const insets =
+    useSafeAreaInsets();
+
+  const { appColors } =
+    useApp();
+
+  const topPadding =
+    Math.max(
+      insets.top,
+      8
+    );
 
   return (
-    <View style={[styles.header, { paddingTop: topPadding, height: headerBaseHeight + topPadding, backgroundColor: appColors.bg, borderBottomColor: appColors.border }]}>
-      <Pressable
-        onPress={() => navigate('Menu')}
-        accessibilityRole="button"
-        accessibilityLabel="Abrir menu"
-        style={({ pressed }) => [
-          styles.iconButton,
-          { backgroundColor: appColors.surface, borderColor: appColors.border },
-          pressed && styles.pressed,
-        ]}
-      >
-            <MaterialCommunityIcons name="menu" size={24} color={appColors.text} />
-      </Pressable>
+    <View
+      style={[
+        styles.header,
+        {
+          paddingTop:
+            topPadding,
 
-      <View style={styles.brand}>
-        <View style={[styles.logoPill, isDark && styles.logoPillDark]}>
-          <Image source={logo} style={styles.logo} resizeMode="contain" />
+          backgroundColor:
+            appColors.surface,
+
+          borderBottomColor:
+            appColors.border,
+        },
+      ]}
+    >
+      <View style={styles.row}>
+        <Pressable
+          onPress={() =>
+            navigate('Menu')
+          }
+          accessibilityRole="button"
+          accessibilityLabel="Abrir menu"
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.iconButton,
+            {
+              backgroundColor:
+                appColors.surface,
+
+              borderColor:
+                appColors.border,
+            },
+
+            pressed &&
+              styles.pressed,
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="menu"
+            size={23}
+            color={appColors.text}
+          />
+        </Pressable>
+
+        <View
+          pointerEvents="none"
+          style={styles.brand}
+        >
+          <Image
+            source={logo}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+
+          <Text
+            style={[
+              styles.brandName,
+              {
+                color:
+                  appColors.text,
+              },
+            ]}
+          >
+            Navora
+          </Text>
         </View>
-        <Text style={[styles.brandName, { color: appColors.text }]}>Navora</Text>
+
+        <Pressable
+          onPress={() =>
+            navigate(
+              'Notifications'
+            )
+          }
+          accessibilityRole="button"
+          accessibilityLabel="Abrir notificações"
+          hitSlop={8}
+          style={({ pressed }) => [
+            styles.iconButton,
+            {
+              backgroundColor:
+                appColors.surface,
+
+              borderColor:
+                appColors.border,
+            },
+
+            pressed &&
+              styles.pressed,
+          ]}
+        >
+          <MaterialCommunityIcons
+            name="bell-outline"
+            size={22}
+            color={appColors.text}
+          />
+
+          {notificationCount > 0 ? (
+            <View
+              style={[
+                styles.badge,
+                {
+                  backgroundColor:
+                    appColors.primary,
+                },
+              ]}
+            >
+              <Text
+                style={
+                  styles.badgeText
+                }
+              >
+                {notificationCount > 9
+                  ? '9+'
+                  : notificationCount}
+              </Text>
+            </View>
+          ) : null}
+        </Pressable>
       </View>
-
-      <Pressable
-        onPress={() => navigate('Notifications')}
-        accessibilityRole="button"
-        accessibilityLabel="Abrir notificacoes"
-        style={({ pressed }) => [
-          styles.iconButton,
-          { backgroundColor: appColors.surface, borderColor: appColors.border },
-          pressed && styles.pressed,
-        ]}
-      >
-        <MaterialCommunityIcons name="bell-outline" size={24} color={appColors.text} />
-        <View style={[styles.badge, { backgroundColor: appColors.primary }]}>
-          <Text style={styles.badgeText}>2</Text>
-        </View>
-      </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  header: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 120,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1E4E6',
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    ...shadows.card,
-  },
-  brand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  logoPill: {
-    width: 32,
-    height: 32,
-    borderRadius: radii.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoPillDark: {
-    backgroundColor: '#FFFFFF',
-  },
-  logo: {
-    width: 24,
-    height: 24,
-  },
-  brandName: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: 0,
-  },
-  badge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '900',
-  },
-  pressed: {
-    opacity: 0.82,
-    transform: [{ scale: 0.985 }],
-  },
-});
+const styles =
+  StyleSheet.create({
+    header: {
+      width: '100%',
+      borderBottomWidth: 1,
+
+      paddingHorizontal: 16,
+      paddingBottom: 8,
+
+      zIndex: 100,
+    },
+
+    row: {
+      height: 46,
+
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent:
+        'space-between',
+    },
+
+    iconButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+
+      borderWidth: 1,
+
+      alignItems: 'center',
+      justifyContent: 'center',
+
+      position: 'relative',
+    },
+
+    brand: {
+      position: 'absolute',
+
+      left: 52,
+      right: 52,
+
+      height: 46,
+
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+
+      gap: 6,
+    },
+
+    logo: {
+      width: 24,
+      height: 24,
+    },
+
+    brandName: {
+      fontSize: 16,
+      lineHeight: 20,
+      fontWeight: '900',
+      letterSpacing: -0.2,
+    },
+
+    badge: {
+      position: 'absolute',
+
+      top: -3,
+      right: -3,
+
+      minWidth: 17,
+      height: 17,
+      borderRadius: 9,
+
+      paddingHorizontal: 4,
+
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    badgeText: {
+      color: '#FFFFFF',
+      fontSize: 9,
+      fontWeight: '900',
+    },
+
+    pressed: {
+      opacity: 0.72,
+
+      transform: [
+        {
+          scale: 0.97,
+        },
+      ],
+    },
+  });

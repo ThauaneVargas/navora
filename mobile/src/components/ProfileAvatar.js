@@ -1,7 +1,8 @@
 import React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, shadows } from '../theme/colors';
+import { colors, radii, shadows, spacing, states, typography } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 
 function initialsFromName(name = 'Paciente Navora') {
   return name
@@ -13,6 +14,7 @@ function initialsFromName(name = 'Paciente Navora') {
 }
 
 export default function ProfileAvatar({ name, uri, onPress, onRemove }) {
+  const { appColors } = useApp();
   return (
     <View style={styles.wrap}>
       <Pressable
@@ -20,14 +22,14 @@ export default function ProfileAvatar({ name, uri, onPress, onRemove }) {
         accessibilityRole="button"
         accessibilityLabel="Alterar foto de perfil"
         accessibilityHint="Abre a galeria para escolher uma foto local"
-        style={({ pressed }) => [styles.avatar, pressed && styles.pressed, shadows.soft]}
+        style={({ pressed }) => [styles.avatar, { backgroundColor: appColors.primary }, pressed && states.pressed, shadows.soft]}
       >
         {uri ? (
           <Image source={{ uri }} style={styles.photo} resizeMode="cover" />
         ) : (
           <Text style={styles.initials}>{initialsFromName(name)}</Text>
         )}
-        <View style={styles.cameraBadge}>
+        <View style={[styles.cameraBadge, { backgroundColor: appColors.primaryDark, borderColor: appColors.surface }]}>
           <MaterialCommunityIcons name="camera" size={15} color="#FFFFFF" />
         </View>
       </Pressable>
@@ -36,9 +38,9 @@ export default function ProfileAvatar({ name, uri, onPress, onRemove }) {
           onPress={onRemove}
           accessibilityRole="button"
           accessibilityLabel="Remover foto de perfil"
-          style={({ pressed }) => [styles.removeButton, pressed && styles.pressed]}
+          style={({ pressed }) => [styles.removeButton, { backgroundColor: appColors.surfaceAlt }, pressed && states.pressed]}
         >
-          <Text style={styles.removeText}>Remover</Text>
+          <Text style={[styles.removeText, { color: appColors.danger }]}>Remover</Text>
         </Pressable>
       ) : null}
     </View>
@@ -48,12 +50,12 @@ export default function ProfileAvatar({ name, uri, onPress, onRemove }) {
 const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
-    gap: 8,
+    gap: spacing.sm,
   },
   avatar: {
     width: 78,
     height: 78,
-    borderRadius: 39,
+    borderRadius: radii.pill,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
@@ -62,12 +64,12 @@ const styles = StyleSheet.create({
   photo: {
     width: 78,
     height: 78,
-    borderRadius: 39,
+    borderRadius: radii.pill,
   },
   initials: {
     color: '#FFFFFF',
     fontSize: 24,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   cameraBadge: {
     position: 'absolute',
@@ -88,15 +90,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFF6F7',
+    backgroundColor: colors.surfaceSoft,
   },
   removeText: {
     color: colors.danger,
-    fontSize: 11,
-    fontWeight: '900',
-  },
-  pressed: {
-    opacity: 0.86,
-    transform: [{ scale: 0.985 }],
+    ...typography.caption,
+    fontWeight: '700',
   },
 });

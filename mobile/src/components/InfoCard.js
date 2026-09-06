@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, shadows } from '../theme/colors';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { colors, radii, shadows, spacing, typography } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 
 export default function InfoCard({ icon, title, value, note, right }) {
@@ -8,7 +9,9 @@ export default function InfoCard({ icon, title, value, note, right }) {
 
   return (
     <View style={[styles.card, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
-      <View style={[styles.iconCircle, { backgroundColor: appColors.iconBg }]}><Text style={styles.icon}>{icon}</Text></View>
+      <View style={[styles.iconCircle, { backgroundColor: appColors.iconBg }]}>
+        <MaterialCommunityIcons name={icon || 'information-outline'} size={26} color={appColors.primary} />
+      </View>
       <View style={styles.content}>
         <Text style={[styles.title, { color: appColors.muted }]}>{title}</Text>
         <Text style={[styles.value, { color: appColors.text }]}>{value}</Text>
@@ -22,44 +25,40 @@ export default function InfoCard({ icon, title, value, note, right }) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: 28,
-    padding: 18,
+    borderRadius: radii.xl,
+    padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14
+    gap: spacing.md
   },
   iconCircle: {
     width: 66,
     height: 66,
-    borderRadius: 24,
+    borderRadius: radii.xl,
     backgroundColor: colors.primarySoft,
     alignItems: 'center',
     justifyContent: 'center'
   },
-  icon: { fontSize: 30 },
   content: { flex: 1 },
   title: {
     color: colors.muted,
-    fontSize: 14,
-    fontWeight: '800'
+    ...typography.caption,
   },
   value: {
     color: colors.text,
-    fontSize: 24,
-    fontWeight: '900',
+    ...typography.title,
     marginTop: 2
   },
   note: {
     color: colors.muted,
-    fontSize: 13,
-    fontWeight: '700',
+    ...typography.caption,
     marginTop: 4
   },
   right: {
     color: colors.primary,
-    fontWeight: '900',
-    fontSize: 13
+    ...typography.caption,
+    fontWeight: '700'
   }
 });

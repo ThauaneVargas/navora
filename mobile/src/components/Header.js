@@ -1,243 +1,536 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, radii, typography } from '../theme/colors';
-import { useApp } from '../context/AppContext';
 
-const logo = require('../../assets/images/navora_symbol.png');
+import {
+  Image,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+
+import {
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
+
+import {
+  MaterialCommunityIcons,
+} from '@expo/vector-icons';
+
+import {
+  useApp,
+} from '../context/AppContext';
+
+import {
+  APP_MAX_WIDTH,
+  horizontalPaddingFor,
+  IS_WEB,
+} from '../theme/layout';
+
+const logo =
+  require('../../assets/images/navora_symbol.png');
 
 export default function Header({
   title,
   subtitle,
-  onBack,
-  rightText,
-  rightIcon,
-  onRightPress,
-  dark = false,
   centerTitle = false,
+
+  onBack,
   onMenu,
+
+  onNotifications,
+  onRightPress,
+
+  notificationCount = 0,
 }) {
-  const insets = useSafeAreaInsets();
-  const internal = centerTitle;
-  const { appColors } = useApp();
+  const insets =
+    useSafeAreaInsets();
+
+  const { width } =
+    useWindowDimensions();
+
+  const {
+    appColors,
+  } = useApp();
+
+  const availableWidth =
+    IS_WEB
+      ? Math.min(
+          width,
+          APP_MAX_WIDTH
+        )
+      : width;
+
+  const horizontalPadding =
+    horizontalPaddingFor(
+      availableWidth
+    );
+
+  const topPadding =
+    Math.max(
+      insets.top,
+      8
+    );
+
+  /*
+   * Não mostra seta nas páginas
+   * principais que usam centerTitle.
+   *
+   * Em Android o usuário pode usar
+   * o botão voltar do próprio celular.
+   */
+  const showBackButton =
+    !centerTitle &&
+    Platform.OS === 'ios' &&
+    Boolean(onBack);
+
+  const openNotifications =
+    () => {
+      if (onNotifications) {
+        onNotifications();
+        return;
+      }
+
+      if (onRightPress) {
+        onRightPress();
+      }
+    };
 
   return (
     <View
       style={[
-        styles.container,
-        internal && styles.internal,
-        { paddingTop: Math.max(insets.top, 12), backgroundColor: internal ? appColors.surface : 'transparent', borderBottomColor: internal ? appColors.border : 'transparent' },
+        styles.wrapper,
+        {
+          marginHorizontal:
+            -horizontalPadding,
+        },
       ]}
     >
-      <View style={styles.topRow}>
-        {onBack ? (
-          <Pressable
-            onPress={onBack}
-            accessibilityRole="button"
-            accessibilityLabel="Voltar"
-            accessibilityHint="Retorna para a tela anterior"
-            hitSlop={8}
-            style={({ pressed }) => [styles.iconButton, { backgroundColor: appColors.surface, borderColor: appColors.border }, pressed && styles.pressed]}
-          >
-            <MaterialCommunityIcons name="chevron-left" size={26} color={appColors.primary} />
-          </Pressable>
-        ) : (
-          <View style={styles.brand}>
-            <Image source={logo} style={styles.logo} resizeMode="contain" />
-            {!centerTitle ? <Text style={[styles.brandName, dark && styles.white]}>navora</Text> : null}
-          </View>
-        )}
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop:
+              topPadding,
 
-        {centerTitle ? (
-          <View style={styles.centerCopy}>
-            <Text numberOfLines={1} style={[styles.centerTitle, { color: appColors.text }, dark && styles.white]}>{title}</Text>
-            {subtitle ? <Text numberOfLines={1} style={[styles.centerSubtitle, { color: appColors.muted }]}>{subtitle}</Text> : null}
-          </View>
-        ) : (
-          <View />
-        )}
+            paddingHorizontal:
+              horizontalPadding,
 
-        {rightText ? (
-          <View style={[styles.pill, dark && styles.darkPill]}>
-            <Text style={[styles.pillText, dark && styles.white]}>{rightText}</Text>
-          </View>
-        ) : (
+            backgroundColor:
+              appColors.surface,
+
+            borderBottomColor:
+              appColors.border,
+          },
+        ]}
+      >
+        <View
+          style={
+            styles.row
+          }
+        >
+          {/* MENU */}
+
           <Pressable
-            onPress={onRightPress || onMenu}
-            disabled={!onRightPress && !onMenu}
-            accessibilityRole="button"
-            accessibilityLabel={onRightPress ? 'Acao da tela' : onMenu ? 'Abrir menu' : 'Mais opcoes'}
+            onPress={onMenu}
+            disabled={!onMenu}
             hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir menu"
             style={({ pressed }) => [
-              styles.bellButton,
-              { backgroundColor: appColors.surface, borderColor: appColors.border },
-              pressed && (onRightPress || onMenu) && styles.pressed,
+              styles.iconButton,
+
+              {
+                backgroundColor:
+                  appColors.surface,
+
+                borderColor:
+                  appColors.border,
+              },
+
+              pressed &&
+                onMenu &&
+                styles.pressed,
             ]}
           >
-            <MaterialCommunityIcons name={rightIcon || (onMenu ? 'menu' : 'dots-horizontal')} size={22} color={appColors.text} />
+            <MaterialCommunityIcons
+              name="menu"
+              size={23}
+              color={
+                appColors.text
+              }
+            />
           </Pressable>
-        )}
+
+
+          {/* CENTRO */}
+
+          <View
+            pointerEvents="none"
+            style={
+              styles.centerArea
+            }
+          >
+            {centerTitle ? (
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.centerTitle,
+                  {
+                    color:
+                      appColors.text,
+                  },
+                ]}
+              >
+                {title}
+              </Text>
+            ) : (
+              <View
+                style={
+                  styles.brand
+                }
+              >
+                <Image
+                  source={logo}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+
+                <Text
+                  style={[
+                    styles.brandName,
+                    {
+                      color:
+                        appColors.text,
+                    },
+                  ]}
+                >
+                  Navora
+                </Text>
+              </View>
+            )}
+          </View>
+
+
+          {/* NOTIFICAÇÕES */}
+
+          <Pressable
+            onPress={
+              openNotifications
+            }
+            disabled={
+              !onNotifications &&
+              !onRightPress
+            }
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Abrir notificações"
+            style={({ pressed }) => [
+              styles.iconButton,
+
+              {
+                backgroundColor:
+                  appColors.surface,
+
+                borderColor:
+                  appColors.border,
+              },
+
+              pressed &&
+                (onNotifications ||
+                  onRightPress) &&
+                styles.pressed,
+            ]}
+          >
+            <MaterialCommunityIcons
+              name="bell-outline"
+              size={22}
+              color={
+                appColors.text
+              }
+            />
+
+            {notificationCount >
+            0 ? (
+              <View
+                style={[
+                  styles.badge,
+
+                  {
+                    backgroundColor:
+                      appColors.primary,
+                  },
+                ]}
+              >
+                <Text
+                  style={
+                    styles.badgeText
+                  }
+                >
+                  {notificationCount >
+                  9
+                    ? '9+'
+                    : notificationCount}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
+        </View>
       </View>
 
-      {!centerTitle ? (
-        <>
-          <Text style={[styles.title, dark && styles.white]}>{title}</Text>
-          {subtitle ? <Text style={[styles.subtitle, dark && styles.darkSubtitle]}>{subtitle}</Text> : null}
-        </>
+
+      {/* TÍTULO SECUNDÁRIO PARA TELAS INTERNAS */}
+
+      {!centerTitle &&
+      (title ||
+        subtitle ||
+        showBackButton) ? (
+        <View
+          style={[
+            styles.pageHeader,
+
+            {
+              paddingHorizontal:
+                horizontalPadding,
+            },
+          ]}
+        >
+          {showBackButton ? (
+            <Pressable
+              onPress={onBack}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Voltar"
+              style={({ pressed }) => [
+                styles.backButton,
+
+                {
+                  backgroundColor:
+                    appColors.surface,
+
+                  borderColor:
+                    appColors.border,
+                },
+
+                pressed &&
+                  styles.pressed,
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="chevron-left"
+                size={23}
+                color={
+                  appColors.text
+                }
+              />
+            </Pressable>
+          ) : null}
+
+
+          <View
+            style={
+              styles.titleCopy
+            }
+          >
+            {title ? (
+              <Text
+                numberOfLines={2}
+                style={[
+                  styles.pageTitle,
+
+                  {
+                    color:
+                      appColors.text,
+                  },
+                ]}
+              >
+                {title}
+              </Text>
+            ) : null}
+
+            {subtitle ? (
+              <Text
+                numberOfLines={2}
+                style={[
+                  styles.subtitle,
+
+                  {
+                    color:
+                      appColors.muted,
+                  },
+                ]}
+              >
+                {subtitle}
+              </Text>
+            ) : null}
+          </View>
+        </View>
       ) : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    paddingTop: 12,
-    paddingBottom: 12,
-  },
-  internal: {
-    backgroundColor: colors.surface,
-    marginHorizontal: -20,
-    marginTop: -6,
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-    borderBottomWidth: 1,
-  },
+const styles =
+  StyleSheet.create({
+    wrapper: {
+      width: 'auto',
+    },
 
-  topRow: {
-    height: 48,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-  },
+    header: {
+      width: '100%',
+      borderBottomWidth: 1,
+      paddingBottom: 8,
+    },
 
-  brand: {
-    minWidth: 84,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
+    row: {
+      height: 46,
 
-  logo: {
-    width: 31,
-    height: 31,
-  },
+      flexDirection: 'row',
+      alignItems: 'center',
 
-  brandName: {
-    color: colors.text,
-    fontSize: 17,
-    fontWeight: '800',
-    letterSpacing: 0,
-  },
+      justifyContent:
+        'space-between',
+    },
 
-  iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  internalButton: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderColor: 'rgba(255,255,255,0.18)',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
+    iconButton: {
+      width: 40,
+      height: 40,
 
-  pressed: {
-    opacity: 0.75,
-    transform: [{ scale: 0.98 }],
-  },
+      borderRadius: 20,
+      borderWidth: 1,
 
-  bellButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    position: 'relative',
-  },
+      alignItems: 'center',
+      justifyContent: 'center',
 
-  badge: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    minWidth: 19,
-    height: 19,
-    borderRadius: 10,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 5,
-  },
+      position: 'relative',
+    },
 
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '900',
-  },
+    centerArea: {
+      position: 'absolute',
 
-  centerTitle: {
-    color: colors.text,
-    ...typography.subtitle,
-    fontWeight: '800',
-  },
-  centerCopy: {
-    flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: 8,
-  },
-  centerSubtitle: {
-    ...typography.caption,
-    fontWeight: '600',
-    marginTop: 2,
-  },
+      left: 54,
+      right: 54,
 
-  title: {
-    color: colors.text,
-    ...typography.headline,
-    marginTop: 12,
-  },
+      height: 46,
 
-  subtitle: {
-    color: colors.muted,
-    ...typography.subtitle,
-    marginTop: 10,
-    fontWeight: '500',
-  },
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
 
-  pill: {
-    backgroundColor: colors.surfaceSoft,
-    borderRadius: radii.md,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
+    brand: {
+      flexDirection: 'row',
 
-  pillText: {
-    color: colors.primary,
-    ...typography.caption,
-    fontWeight: '800',
-  },
+      alignItems: 'center',
+      justifyContent: 'center',
 
-  darkPill: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderColor: 'rgba(255,255,255,0.12)',
-  },
+      gap: 6,
+    },
 
-  white: {
-    color: '#FFFFFF',
-  },
+    logo: {
+      width: 24,
+      height: 24,
+    },
 
-  darkSubtitle: {
-    color: '#C7C8D2',
-  },
-});
+    brandName: {
+      fontSize: 16,
+      lineHeight: 20,
+
+      fontWeight: '900',
+
+      letterSpacing: -0.2,
+    },
+
+    centerTitle: {
+      maxWidth: '100%',
+
+      fontSize: 17,
+      lineHeight: 22,
+
+      fontWeight: '900',
+
+      letterSpacing: -0.25,
+
+      textAlign: 'center',
+    },
+
+    badge: {
+      position: 'absolute',
+
+      top: -3,
+      right: -3,
+
+      minWidth: 17,
+      height: 17,
+
+      borderRadius: 9,
+
+      paddingHorizontal: 4,
+
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    badgeText: {
+      color: '#FFFFFF',
+
+      fontSize: 9,
+      fontWeight: '900',
+    },
+
+    pageHeader: {
+      minHeight: 62,
+
+      flexDirection: 'row',
+      alignItems: 'center',
+
+      paddingTop: 12,
+      paddingBottom: 8,
+
+      gap: 10,
+    },
+
+    backButton: {
+      width: 36,
+      height: 36,
+
+      borderRadius: 18,
+      borderWidth: 1,
+
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    titleCopy: {
+      flex: 1,
+      minWidth: 0,
+    },
+
+    pageTitle: {
+      fontSize: 20,
+      lineHeight: 25,
+
+      fontWeight: '900',
+
+      letterSpacing: -0.3,
+    },
+
+    subtitle: {
+      marginTop: 2,
+
+      fontSize: 12,
+      lineHeight: 17,
+
+      fontWeight: '600',
+    },
+
+    pressed: {
+      opacity: 0.72,
+
+      transform: [
+        {
+          scale: 0.97,
+        },
+      ],
+    },
+  });

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TextInput, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
-import { colors, shadows } from '../theme/colors';
+import { shadows } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 import { isAuthError, navoraApi } from '../services/api';
 import { saveAuthToken } from '../services/authToken';
 
@@ -54,6 +55,8 @@ const buildAccessibility = (selected) =>
   );
 
 export default function PatientRegisterScreen({ navigate, onPatientReady }) {
+  const { appColors } = useApp();
+  const styles = useMemo(() => createStyles(appColors), [appColors]);
   const [form, setForm] = useState({});
   const [selected, setSelected] = useState({});
   const [notes, setNotes] = useState('');
@@ -132,12 +135,12 @@ export default function PatientRegisterScreen({ navigate, onPatientReady }) {
       <View style={styles.formList}>
         {personalFields.map((field) => (
           <View key={field.key} style={[styles.inputBox, shadows.card]}>
-            <MaterialCommunityIcons name={field.icon} size={21} color={colors.muted} />
+            <MaterialCommunityIcons name={field.icon} size={21} color={appColors.muted} />
             <TextInput
               value={form[field.key] || ''}
               onChangeText={(value) => updateField(field.key, value)}
               placeholder={field.label}
-              placeholderTextColor="#8B8D96"
+              placeholderTextColor={appColors.lightText}
               secureTextEntry={field.secure}
               style={styles.input}
             />
@@ -178,7 +181,7 @@ export default function PatientRegisterScreen({ navigate, onPatientReady }) {
           multiline
           textAlignVertical="top"
           placeholder="Ex.: alergias, restricoes, preferencia por elevador, necessidade de acompanhante..."
-          placeholderTextColor="#8B8D96"
+          placeholderTextColor={appColors.lightText}
           style={styles.notesInput}
         />
       </View>
@@ -194,7 +197,7 @@ export default function PatientRegisterScreen({ navigate, onPatientReady }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   sectionTitle: {
     color: colors.text,
     fontSize: 20,

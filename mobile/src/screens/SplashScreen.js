@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   name: {
     width: nameWidth,
     height: nameHeight,
-    marginTop: 6,
+    marginTop: 14,
   },
 
   divider: {

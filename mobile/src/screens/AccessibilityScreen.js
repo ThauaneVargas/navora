@@ -1,30 +1,37 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
-import { colors, shadows } from '../theme/colors';
+import { shadows } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 
 const options = [
-  { key: 'mobility', title: 'Tenho dificuldade de locomocao', desc: 'O app procura caminhos mais confortaveis e seguros.', icon: 'walk' },
-  { key: 'wheelchair', title: 'Uso cadeira de rodas', desc: 'Prioriza rotas acessiveis para cadeira de rodas.', icon: 'wheelchair-accessibility' },
-  { key: 'avoidStairs', title: 'Evitar escadas', desc: 'Remove escadas das rotas sempre que houver alternativa.', icon: 'stairs' },
-  { key: 'preferElevator', title: 'Priorizar elevador', desc: 'Prefere elevador mesmo se o caminho for um pouco maior.', icon: 'elevator-passenger-outline' },
-  { key: 'needsStretcher', title: 'Preciso de maca ou equipe', desc: 'Sinaliza necessidade de apoio para deslocamento.', icon: 'stretcher' },
+  { key: 'none', title: 'Nao preciso de apoio', desc: 'Usar rotas padrao.', icon: 'check-circle-outline' },
+  { key: 'wheelchair', title: 'Solicitar cadeira de rodas', desc: 'Registra apoio separado quando necessario.', icon: 'wheelchair-accessibility' },
+  { key: 'mobility', title: 'Mobilidade reduzida', desc: 'Prioriza caminhos mais confortaveis.', icon: 'walk' },
+  { key: 'avoidStairs', title: 'Rota sem escadas', desc: 'Evita escadas quando houver alternativa.', icon: 'stairs' },
+  { key: 'preferElevator', title: 'Utilizar somente elevador', desc: 'Prefere elevadores nas trocas de andar.', icon: 'elevator-passenger-outline' },
+  { key: 'walkingHelp', title: 'Ajuda para caminhar', desc: 'Sinaliza necessidade de apoio humano.', icon: 'hand-heart-outline' },
   { key: 'voiceGuidance', title: 'Orientacao por voz', desc: 'Permite instrucoes faladas durante a navegacao.', icon: 'volume-high' },
-  { key: 'highContrast', title: 'Alto contraste', desc: 'Aumenta a separacao visual entre textos e botoes.', icon: 'contrast-circle' },
-  { key: 'largerText', title: 'Texto maior', desc: 'Usa textos maiores nas telas principais.', icon: 'format-size' },
+  { key: 'largerText', title: 'Texto e botoes maiores', desc: 'Aumenta a area de leitura e toque.', icon: 'format-size' },
+  { key: 'visualImpairment', title: 'Deficiencia visual', desc: 'Favorece orientacoes mais descritivas.', icon: 'eye-outline' },
+  { key: 'hearingImpairment', title: 'Deficiencia auditiva', desc: 'Prioriza informacoes visuais claras.', icon: 'ear-hearing' },
+  { key: 'other', title: 'Outra necessidade', desc: 'Informe a recepcao durante o atendimento.', icon: 'plus-circle-outline' },
 ];
 
 export default function AccessibilityScreen({ navigate, goBack }) {
+  const { appColors } = useApp();
+  const styles = useMemo(() => createStyles(appColors), [appColors]);
   const [activeOptions, setActiveOptions] = useState({
-    mobility: true,
-    avoidStairs: true,
-    preferElevator: true,
+    none: true,
   });
 
   const toggle = (key) => {
-    setActiveOptions((current) => ({ ...current, [key]: !current[key] }));
+    setActiveOptions((current) => {
+      if (key === 'none') return { none: true };
+      return { ...current, none: false, [key]: !current[key] };
+    });
   };
 
   return (
@@ -33,7 +40,7 @@ export default function AccessibilityScreen({ navigate, goBack }) {
 
       <View style={[styles.heroCard, shadows.card]}>
         <View style={styles.heroIcon}>
-    <MaterialCommunityIcons name="wheelchair-accessibility" size={34} color={colors.primary} />
+          <MaterialCommunityIcons name="wheelchair-accessibility" size={34} color={appColors.primary} />
         </View>
         <View style={styles.heroCopy}>
           <Text style={styles.heroTitle}>Preferencias de rota</Text>
@@ -58,7 +65,7 @@ export default function AccessibilityScreen({ navigate, goBack }) {
               style={({ pressed }) => [styles.option, active && styles.optionActive, pressed && styles.pressed, shadows.card]}
             >
               <View style={styles.iconBox}>
-                <MaterialCommunityIcons name={option.icon} size={24} color={colors.primary} />
+                <MaterialCommunityIcons name={option.icon} size={24} color={appColors.primary} />
               </View>
               <View style={styles.copy}>
                 <Text style={styles.optionTitle}>{option.title}</Text>
@@ -82,7 +89,7 @@ export default function AccessibilityScreen({ navigate, goBack }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   heroCard: {
     minHeight: 104,
     borderRadius: 22,
@@ -134,7 +141,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   optionActive: {
-    borderColor: '#FFD2D7',
+    borderColor: colors.borderStrong,
     backgroundColor: colors.surfaceSoft,
   },
   iconBox: {
@@ -164,7 +171,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: colors.border,
     justifyContent: 'center',
     paddingHorizontal: 3,
   },
@@ -175,7 +182,7 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   switchKnobActive: {
     alignSelf: 'flex-end',

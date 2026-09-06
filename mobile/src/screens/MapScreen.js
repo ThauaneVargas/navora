@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, PanResponder, View, Text, StyleSheet, Pressable } from 'react-native';
+import { Alert, Animated, Image, PanResponder, View, Text, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
@@ -8,11 +8,25 @@ import { colors, radii, shadows, spacing, typography } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import { deriveNavigationProgress, normalizeRouteCoordinates } from '../services/navigationAdapter';
 
+const logo = require('../../assets/images/navora_symbol.png');
+
+const NAV_COLORS = {
+  burgundy: '#980027',
+  burgundyDark: '#7D001F',
+  burgundyLight: '#FFF5F7',
+  background: '#F8F9FB',
+  surface: '#FFFFFF',
+  text: '#111827',
+  secondary: '#667085',
+  border: '#E7E9EE',
+};
+
 export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute, navigationProgress: selectedProgress, onEndRoute }) {
   const { activeRoute: fallbackRoute, appColors, isDark } = useApp();
+  const { width, height } = useWindowDimensions();
   const activeRoute = selectedRoute || fallbackRoute;
   const pan = useRef(new Animated.ValueXY()).current;
-  const [scale, setScale] = useState(1);
+  const [zoom, setZoom] = useState(1);
   const [selectedFloor, setSelectedFloor] = useState(null);
   const routeNodes = Array.isArray(activeRoute?.nodes) ? activeRoute.nodes : [];
   const routeEdges = Array.isArray(activeRoute?.edges) ? activeRoute.edges : [];
@@ -36,6 +50,12 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
   const instructionText = arrived
     ? getArrivalInstruction(activeRoute, currentStep)
     : currentStep?.instruction || nextStep?.instruction || (activeRoute?.source === 'api' ? 'Sem orientacao disponivel para esta rota.' : 'Continue pelo corredor principal e vire a direita.');
+  const compact = height < 720 || width < 380;
+  const mapViewportHeight = Math.max(compact ? 330 : 360, Math.min(500, Math.round(height * (compact ? 0.48 : 0.54))));
+  const remainingDistance = arrived ? '0 m' : activeRoute.distance || 'Distancia indisponivel';
+  const remainingTime = arrived ? '0 min' : activeRoute.eta || activeRoute.time || 'Tempo indisponivel';
+  const stepDistance = arrived ? '0 m' : currentStep?.distance ? `${Math.round(currentStep.distance)} m` : remainingDistance;
+  const progressPercent = getProgressPercent(navigationProgress);
 
   useEffect(() => {
     setSelectedFloor(null);
@@ -58,14 +78,25 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
     })
   ).current;
 
-  const zoomIn = () => setScale((current) => Math.min(current + 0.12, 1.45));
-  const zoomOut = () => setScale((current) => Math.max(current - 0.12, 0.82));
+  const zoomIn = () => setZoom((current) => Math.min(current + 0.12, 1.28));
+  const zoomOut = () => setZoom((current) => Math.max(current - 0.12, 0.9));
   const resetMap = () => {
-    setScale(1);
+    setZoom(1);
     Animated.spring(pan, {
       toValue: { x: 0, y: 0 },
       useNativeDriver: false,
     }).start();
+  };
+
+  const confirmEndRoute = () => {
+    Alert.alert(
+      'Encerrar navegacao?',
+      'Sua rota atual sera finalizada.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Encerrar rota', style: 'destructive', onPress: () => onEndRoute?.() },
+      ]
+    );
   };
 
   if (!activeRoute) {
@@ -75,7 +106,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
         <View style={[styles.emptyRouteState, styles.emptyRouteCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
           <MaterialCommunityIcons name="map-search-outline" size={38} color={appColors.primary} />
           <Text style={[styles.emptyRouteTitle, { color: appColors.text }]}>Nenhuma rota ativa</Text>
-          <Text style={[styles.emptyRouteText, { color: appColors.muted }]}>Busque um setor, servico ou destino para visualizar a rota 2D/3D.</Text>
+          <Text style={[styles.emptyRouteText, { color: appColors.muted }]}>Busque um setor, servico ou destino para visualizar a rota 2D.</Text>
           <Pressable onPress={() => navigate('Search')} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed, shadows.soft]}>
             <MaterialCommunityIcons name="magnify" size={18} color="#FFFFFF" />
             <Text style={styles.primaryText}>Buscar destino</Text>
@@ -88,28 +119,45 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
 
   return (
     <Screen withBottomTabs>
-      <Header title="Navegar" subtitle="2D esquematico da rota" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <View style={styles.topHeader}>
+        <Pressable
+          onPress={() => goBack?.()}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+          style={({ pressed }) => [styles.headerButton, { backgroundColor: appColors.surface, borderColor: appColors.border }, pressed && styles.pressed, shadows.card]}
+        >
+          <MaterialCommunityIcons name="chevron-left" size={25} color={appColors.primary} />
+        </Pressable>
+        <View style={styles.headerBrand}>
+          <Image source={logo} style={styles.headerLogo} resizeMode="contain" />
+          <Text style={[styles.headerBrandText, { color: appColors.primary }]}>NAVORA</Text>
+        </View>
+        <Pressable
+          onPress={() => navigate('Menu')}
+          accessibilityRole="button"
+          accessibilityLabel="Abrir menu"
+          style={({ pressed }) => [styles.headerButton, { backgroundColor: appColors.surface, borderColor: appColors.border }, pressed && styles.pressed, shadows.card]}
+        >
+          <MaterialCommunityIcons name="menu" size={22} color={appColors.text} />
+        </Pressable>
+      </View>
 
       <View style={[styles.routeCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
-        <View style={[styles.routeIcon, { backgroundColor: appColors.iconBg }]}>
-          <MaterialCommunityIcons name="map-marker-path" size={24} color={appColors.primary} />
-        </View>
         <View style={styles.routeCopy}>
-          <Text style={[styles.label, { color: appColors.muted }]}>De</Text>
-          <Text style={[styles.place, { color: appColors.text }]}>{activeRoute.origin}</Text>
-          <Text style={[styles.label, styles.toLabel, { color: appColors.muted }]}>Para</Text>
-          <Text style={[styles.place, { color: appColors.text }]}>{activeRoute.destination}</Text>
-        </View>
-        <View style={styles.routeStats}>
-          <Text style={[styles.statValue, { color: appColors.primary }]}>{activeRoute.distance}</Text>
-          <Text style={[styles.statLabel, { color: appColors.muted }]}>Distancia</Text>
-          <Text style={[styles.statValue, { color: appColors.primary }]}>{activeRoute.eta}</Text>
-          <Text style={[styles.statLabel, { color: appColors.muted }]}>Tempo</Text>
+          <Text style={[styles.label, { color: appColors.muted }]}>Rota para</Text>
+          <Text style={[styles.routeTitle, { color: appColors.text }]} numberOfLines={1}>{activeRoute.destination}</Text>
+          <Text style={[styles.routePath, { color: appColors.text }]} numberOfLines={1}>
+            {activeRoute.origin} -> {activeRoute.destination}
+          </Text>
+          <Text style={[styles.routeMetaText, { color: appColors.muted }]} numberOfLines={1}>
+            {remainingDistance} - aproximadamente {remainingTime}
+          </Text>
         </View>
       </View>
 
       <View style={[
         styles.mapViewport,
+        { height: mapViewportHeight },
         { backgroundColor: isDark ? '#15151B' : '#F7F5F5', borderColor: appColors.border },
         shadows.card,
       ]}
@@ -138,10 +186,11 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
             style={[
               styles.mapContent,
               {
+                width: Math.round(520 * zoom),
+                height: Math.round(460 * zoom),
                 transform: [
                   { translateX: pan.x },
                   { translateY: pan.y },
-                  { scale },
                 ],
               },
             ]}
@@ -162,17 +211,26 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
             <View style={styles.currentPoint}>
               <View style={styles.blueDot} />
             </View>
+            <View style={styles.currentLabel}>
+              <Text style={styles.currentLabelText}>Voce esta aqui</Text>
+            </View>
             <View style={styles.pinDestination}>
               <MaterialCommunityIcons name="map-marker" size={34} color={appColors.primary} />
+              <View style={styles.destinationLabel}>
+                <Text style={styles.destinationLabelText} numberOfLines={1}>{activeRoute.destination}</Text>
+              </View>
             </View>
           </Animated.View>
         )}
 
+        <View style={[styles.floorPill, { backgroundColor: appColors.surface, borderColor: appColors.border }]}>
+          <MaterialCommunityIcons name="layers-outline" size={15} color={appColors.primary} />
+          <Text style={[styles.floorPillText, { color: appColors.text }]}>{shortFloor(activeFloor || 'Piso Terreo')}</Text>
+        </View>
+
         <View style={styles.controls}>
-          <Control label="2D" active appColors={appColors} />
-          <Control label="3D" onPress={() => navigate('Mode3D')} appColors={appColors} />
-          <Control label="+" onPress={zoomIn} appColors={appColors} />
-          <Control label="-" onPress={zoomOut} appColors={appColors} />
+          <Control icon="plus" label="Aproximar" onPress={zoomIn} appColors={appColors} />
+          <Control icon="minus" label="Afastar" onPress={zoomOut} appColors={appColors} />
           <Pressable
             onPress={resetMap}
             style={({ pressed }) => [
@@ -184,12 +242,6 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
             <MaterialCommunityIcons name="crosshairs-gps" size={18} color={appColors.primary} />
           </Pressable>
         </View>
-
-        <View style={[styles.legend, { backgroundColor: isDark ? 'rgba(21,21,27,0.92)' : 'rgba(255,255,255,0.94)', borderColor: appColors.border }]}>
-          <LegendDot color={appColors.primary} label="Rota" />
-          <LegendDot color={colors.blue} label="Voce" />
-          <LegendDot color={colors.success} label="Destino" />
-        </View>
       </View>
 
       <View style={[styles.instructionCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
@@ -198,48 +250,77 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
         </View>
         <View style={styles.instructionCopy}>
           <Text style={[styles.instructionTitle, { color: appColors.text }]}>
-            {arrived ? 'Destino alcancado' : 'Proxima orientacao'}
+            {arrived ? 'Voce chegou' : 'Proxima orientacao'}
           </Text>
           <Text style={[styles.instructionText, { color: appColors.muted }]}>
-            {instructionText}
+            {arrived ? activeRoute.destination : instructionText}
           </Text>
         </View>
-        <Text style={[styles.distance, { color: appColors.primary }]}>
-          {arrived ? '0 m' : currentStep?.distance ? `${Math.round(currentStep.distance)} m` : activeRoute.distance}
-        </Text>
+        {!arrived ? (
+          <View style={styles.nextDistance}>
+            <Text style={[styles.distance, { color: appColors.primary }]}>{stepDistance}</Text>
+            <Text style={[styles.distanceCaption, { color: appColors.muted }]}>ate a proxima orientacao</Text>
+          </View>
+        ) : null}
       </View>
 
+      <View style={[styles.progressCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
+        <View style={styles.progressHeader}>
+          <Text style={[styles.progressLabel, { color: appColors.muted }]}>Progresso da rota</Text>
+          <View style={styles.progressMeta}>
+            <Text style={[styles.progressDistance, { color: appColors.text }]}>{remainingDistance} restantes</Text>
+            <Text style={[styles.progressTime, { color: appColors.muted }]}>aprox. {remainingTime}</Text>
+          </View>
+        </View>
+        <View style={[styles.progressTrack, { backgroundColor: appColors.border }]}>
+          <View style={[styles.progressFill, { backgroundColor: appColors.primary, width: `${progressPercent}%` }]} />
+        </View>
+      </View>
+
+      {arrived ? (
+        <Pressable
+          onPress={confirmEndRoute}
+          style={({ pressed }) => [styles.finishButton, pressed && styles.pressed, shadows.soft]}
+        >
+          <MaterialCommunityIcons name="check-circle-outline" size={19} color="#FFFFFF" />
+          <Text style={styles.finishText}>Finalizar navegacao</Text>
+        </Pressable>
+      ) : (
+        <>
       <View style={styles.actionRow}>
         <Pressable
-          onPress={() => (onEndRoute ? onEndRoute() : navigate('Home'))}
+          onPress={() => navigate('Lost')}
           style={({ pressed }) => [
-            styles.secondaryButton,
-            { backgroundColor: appColors.surface, borderColor: appColors.borderStrong || appColors.border },
+            styles.softButton,
+            { backgroundColor: appColors.primarySoft, borderColor: appColors.border },
             pressed && styles.pressed,
           ]}
         >
-          <MaterialCommunityIcons name="close" size={18} color={appColors.primary} />
-          <Text style={[styles.secondaryText, { color: appColors.primary }]}>Encerrar rota</Text>
+          <MaterialCommunityIcons name="lifebuoy" size={18} color={appColors.primary} />
+          <Text style={[styles.softButtonText, { color: appColors.primary }]}>Estou perdido</Text>
         </Pressable>
         <Pressable
-          onPress={() => navigate('Assistant')}
-          style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed, shadows.soft]}
+          onPress={() => navigate('Search')}
+          style={({ pressed }) => [
+            styles.softButton,
+            { backgroundColor: appColors.surface, borderColor: appColors.border },
+            pressed && styles.pressed,
+          ]}
         >
-          <MaterialCommunityIcons name="microphone" size={18} color="#FFFFFF" />
-          <Text style={styles.primaryText}>Assistente</Text>
+          <MaterialCommunityIcons name="swap-horizontal" size={18} color={appColors.text} />
+          <Text style={[styles.softButtonText, { color: appColors.text }]}>Trocar destino</Text>
         </Pressable>
       </View>
 
       <Pressable
-        onPress={() => navigate('WaitingMode', { destination: activeRoute.destination })}
-        style={({ pressed }) => [styles.arrivedButton, pressed && styles.pressed, shadows.soft]}
+        onPress={confirmEndRoute}
+        style={({ pressed }) => [styles.endButton, { borderColor: appColors.primary }, pressed && styles.pressed]}
       >
-        <MaterialCommunityIcons name="check-circle" size={20} color="#FFFFFF" />
-        <View style={styles.arrivedCopy}>
-          <Text style={styles.arrivedTitle}>Cheguei ao destino</Text>
-          <Text style={styles.arrivedText}>Ativar modo espera</Text>
-        </View>
+        <MaterialCommunityIcons name="close" size={18} color={appColors.primary} />
+        <Text style={[styles.endButtonText, { color: appColors.primary }]}>Encerrar rota</Text>
       </Pressable>
+        </>
+      )}
 
       <BottomTabs active="Navigate" navigate={navigate} />
     </Screen>
@@ -350,10 +431,10 @@ function RouteLine({ line, mapSize, appColors }) {
   const backgroundColor = line.status === 'traversed'
     ? '#9CA3AF'
     : line.status === 'current'
-      ? appColors.primary
+      ? NAV_COLORS.burgundy
       : '#D6D8DE';
   const opacity = line.status === 'remaining' ? 0.78 : 0.95;
-  const height = line.status === 'current' ? 6 : 4;
+  const height = line.status === 'current' ? 7 : 5;
 
   return (
     <View
@@ -375,9 +456,9 @@ function RouteLine({ line, mapSize, appColors }) {
 
 function RouteNode({ appColors, isDark, node }) {
   const roleStyle = node.visualRole === 'origin'
-    ? { backgroundColor: '#2F80ED', borderColor: '#FFFFFF' }
+    ? { backgroundColor: NAV_COLORS.burgundy, borderColor: '#FFFFFF' }
     : node.visualRole === 'destination'
-      ? { backgroundColor: appColors.primary, borderColor: '#FFFFFF' }
+      ? { backgroundColor: NAV_COLORS.burgundy, borderColor: '#FFFFFF' }
       : { backgroundColor: isDark ? '#2A2A34' : '#FFFFFF', borderColor: appColors.border };
   const icon = node.visualRole === 'origin'
     ? 'crosshairs-gps'
@@ -417,7 +498,7 @@ function RouteNode({ appColors, isDark, node }) {
             },
           ]}
         >
-          {node.visualRole === 'origin' ? `Origem: ${node.label}` : node.visualRole === 'destination' ? `Destino: ${node.label}` : node.label}
+          {node.visualRole === 'origin' ? 'Voce esta aqui' : node.visualRole === 'destination' ? node.label : node.label}
         </Text>
       ) : null}
     </View>
@@ -527,39 +608,71 @@ function Room({ style, label, appColors, isDark }) {
   );
 }
 
-function Control({ label, active, onPress, appColors }) {
+function Control({ icon, label, onPress, appColors }) {
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={label === '3D' ? 'Alternar para visualizacao 3D' : label === '2D' ? 'Visualizacao 2D ativa' : `Controle do mapa ${label}`}
-      accessibilityState={{ selected: Boolean(active) }}
+      accessibilityLabel={label}
       style={({ pressed }) => [
         styles.controlButton,
         {
-          backgroundColor: active ? appColors.primary : appColors.surface,
-          borderColor: active ? appColors.primary : appColors.border,
+          backgroundColor: appColors.surface,
+          borderColor: appColors.border,
         },
         pressed && styles.pressed,
       ]}
     >
-      <Text style={[styles.controlText, { color: active ? '#FFFFFF' : appColors.text }]}>{label}</Text>
+      <MaterialCommunityIcons name={icon} size={18} color={appColors.text} />
     </Pressable>
   );
 }
 
-function LegendDot({ color, label }) {
-  return (
-    <View style={styles.legendItem}>
-      <View style={[styles.legendDot, { backgroundColor: color }]} />
-      <Text style={styles.legendText}>{label}</Text>
-    </View>
-  );
+function getProgressPercent(navigationProgress) {
+  if (!navigationProgress?.progressKnown) return 18;
+  const current = Number(navigationProgress.currentNodeIndex || 0);
+  const remaining = Number(navigationProgress.remainingNodeCodes?.length || 0);
+  const total = current + remaining + 1;
+  if (!total || total <= 1) return 100;
+  return Math.max(12, Math.min(100, Math.round((current / (total - 1)) * 100)));
 }
 
 const styles = StyleSheet.create({
+  topHeader: {
+    minHeight: 50,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 2,
+  },
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: NAV_COLORS.surface,
+    borderWidth: 1,
+    borderColor: NAV_COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerBrand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerLogo: {
+    width: 24,
+    height: 24,
+  },
+  headerBrandText: {
+    color: NAV_COLORS.burgundy,
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '900',
+    letterSpacing: 4,
+  },
   routeCard: {
-    minHeight: 82,
+    minHeight: 76,
     borderRadius: radii.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -567,8 +680,8 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 13,
-    marginTop: spacing.sm,
+    gap: 10,
+    marginTop: 8,
   },
   routeIcon: {
     width: 42,
@@ -586,6 +699,24 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 11,
     fontWeight: '700',
+  },
+  routeTitle: {
+    fontSize: 19,
+    lineHeight: 24,
+    fontWeight: '900',
+    marginTop: 2,
+  },
+  routePath: {
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  routeMetaText: {
+    fontSize: 11,
+    lineHeight: 15,
+    fontWeight: '700',
+    marginTop: 1,
   },
   toLabel: {
     marginTop: 8,
@@ -613,7 +744,7 @@ const styles = StyleSheet.create({
   },
   mapViewport: {
     height: 500,
-    marginTop: spacing.md,
+    marginTop: 10,
     borderRadius: radii.xl,
     backgroundColor: '#F7F5F5',
     borderWidth: 1,
@@ -870,7 +1001,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(47,128,237,0.16)',
+    backgroundColor: 'rgba(152,0,39,0.14)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -878,20 +1009,72 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: colors.blue,
+    backgroundColor: NAV_COLORS.burgundy,
     borderWidth: 3,
     borderColor: '#FFFFFF',
+  },
+  currentLabel: {
+    position: 'absolute',
+    left: 132,
+    bottom: 114,
+    minHeight: 26,
+    borderRadius: 13,
+    backgroundColor: NAV_COLORS.burgundy,
+    paddingHorizontal: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  currentLabelText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '900',
   },
   pinDestination: {
     position: 'absolute',
     right: 116,
     top: 132,
+    alignItems: 'center',
+  },
+  destinationLabel: {
+    maxWidth: 112,
+    minHeight: 24,
+    borderRadius: 12,
+    backgroundColor: NAV_COLORS.burgundy,
+    paddingHorizontal: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -3,
+  },
+  destinationLabelText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '900',
   },
   controls: {
     position: 'absolute',
     right: 12,
-    top: 70,
+    top: 56,
     gap: 8,
+  },
+  floorPill: {
+    position: 'absolute',
+    left: 12,
+    top: 12,
+    minHeight: 34,
+    borderRadius: 17,
+    borderWidth: 1,
+    paddingHorizontal: 11,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    ...shadows.card,
+  },
+  floorPillText: {
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '900',
   },
   legend: {
     position: 'absolute',
@@ -921,9 +1104,9 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   controlButton: {
-    width: 44,
-    height: 38,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -943,8 +1126,8 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   instructionCard: {
-    minHeight: 78,
-    marginTop: spacing.md,
+    minHeight: 76,
+    marginTop: 10,
     borderRadius: radii.lg,
     backgroundColor: colors.surface,
     borderWidth: 1,
@@ -979,13 +1162,83 @@ const styles = StyleSheet.create({
   },
   distance: {
     color: colors.primary,
-    fontSize: 14,
+    fontSize: 18,
+    lineHeight: 22,
+    fontWeight: '900',
+    textAlign: 'right',
+  },
+  distanceCaption: {
+    maxWidth: 80,
+    fontSize: 9,
+    lineHeight: 12,
+    fontWeight: '700',
+    textAlign: 'right',
+    marginTop: 2,
+  },
+  nextDistance: {
+    alignItems: 'flex-end',
+  },
+  progressCard: {
+    minHeight: 58,
+    marginTop: 10,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    padding: 12,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  progressLabel: {
+    fontSize: 11,
+    lineHeight: 15,
     fontWeight: '800',
+  },
+  progressMeta: {
+    alignItems: 'flex-end',
+  },
+  progressDistance: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '900',
+  },
+  progressTime: {
+    fontSize: 10,
+    lineHeight: 13,
+    fontWeight: '700',
+    marginTop: 1,
+  },
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    marginTop: 9,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
   },
   actionRow: {
     flexDirection: 'row',
-    gap: spacing.md,
-    marginTop: spacing.md,
+    gap: 8,
+    marginTop: 10,
+  },
+  softButton: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 7,
+  },
+  softButtonText: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '900',
   },
   secondaryButton: {
     flex: 1,
@@ -1045,6 +1298,37 @@ const styles = StyleSheet.create({
   },
   pressed: {
     opacity: 0.86,
-    transform: [{ scale: 0.985 }],
+  },
+  endButton: {
+    minHeight: 48,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    backgroundColor: colors.surface,
+    marginTop: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 7,
+  },
+  endButtonText: {
+    fontSize: 13,
+    lineHeight: 17,
+    fontWeight: '900',
+  },
+  finishButton: {
+    minHeight: 52,
+    borderRadius: radii.lg,
+    backgroundColor: colors.primary,
+    marginTop: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  finishText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    lineHeight: 18,
+    fontWeight: '900',
   },
 });

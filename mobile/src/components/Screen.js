@@ -1,10 +1,26 @@
 import React from 'react';
-import { Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
+
 import { StatusBar } from 'expo-status-bar';
-import { colors } from '../theme/colors';
-import { APP_MAX_WIDTH, bottomTabHeight, horizontalPadding, IS_WEB } from '../theme/layout';
+
 import { useApp } from '../context/AppContext';
+
+import {
+  APP_MAX_WIDTH,
+  bottomTabHeight,
+  horizontalPaddingFor,
+  IS_WEB,
+} from '../theme/layout';
 
 export default function Screen({
   children,
@@ -14,35 +30,156 @@ export default function Screen({
   withBottomTabs = false,
 }) {
   const insets = useSafeAreaInsets();
-  const { isDark, appColors } = useApp();
-  const effectiveDark = dark || isDark;
-  const barStyle = effectiveDark ? 'light' : 'dark';
+  const { width } = useWindowDimensions();
+
+  const {
+    isDark,
+    appColors,
+  } = useApp();
+
+  const effectiveDark =
+    dark || isDark;
+
+  const barStyle =
+    effectiveDark
+      ? 'light'
+      : 'dark';
+
+  const availableWidth =
+    IS_WEB
+      ? Math.min(
+          width,
+          APP_MAX_WIDTH
+        )
+      : width;
+
+  const horizontalPadding =
+    padded
+      ? horizontalPaddingFor(
+          availableWidth
+        )
+      : 0;
+
+  const bottomPadding =
+    withBottomTabs
+      ? bottomTabHeight +
+        Math.max(
+          insets.bottom,
+          10
+        ) +
+        18
+      : Math.max(
+          insets.bottom,
+          10
+        ) +
+        18;
+
   const contentStyle = [
     styles.content,
-    { paddingBottom: Math.max(insets.bottom, 14) + 14 },
-    !padded && styles.noPadding,
-    withBottomTabs && { paddingBottom: bottomTabHeight + Math.max(insets.bottom, 14) + 24 },
+
+    {
+      paddingHorizontal:
+        horizontalPadding,
+
+      paddingBottom:
+        bottomPadding,
+    },
   ];
 
   if (!scroll) {
     return (
-      <SafeAreaView edges={['left', 'right']} style={[styles.safe, { backgroundColor: appColors.bg }, effectiveDark && styles.dark]}>
-        <StatusBar style={barStyle} />
-        <View style={[styles.inner, !padded && styles.noPadding]}>
-          {children}
+      <SafeAreaView
+        edges={[
+          'left',
+          'right',
+        ]}
+        style={[
+          styles.safe,
+
+          {
+            backgroundColor:
+              appColors.bg,
+          },
+        ]}
+      >
+        <StatusBar
+          style={barStyle}
+        />
+
+        <View
+          style={[
+            styles.inner,
+
+            {
+              maxWidth:
+                IS_WEB
+                  ? APP_MAX_WIDTH
+                  : undefined,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.fixedContent,
+
+              padded && {
+                paddingHorizontal:
+                  horizontalPadding,
+              },
+            ]}
+          >
+            {children}
+          </View>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView edges={['left', 'right']} style={[styles.safe, { backgroundColor: appColors.bg }, effectiveDark && styles.dark]}>
-      <StatusBar style={barStyle} />
-      <View style={[styles.inner, !padded && styles.noPadding]}>
+    <SafeAreaView
+      edges={[
+        'left',
+        'right',
+      ]}
+      style={[
+        styles.safe,
+
+        {
+          backgroundColor:
+            appColors.bg,
+        },
+      ]}
+    >
+      <StatusBar
+        style={barStyle}
+      />
+
+      <View
+        style={[
+          styles.inner,
+
+          {
+            maxWidth:
+              IS_WEB
+                ? APP_MAX_WIDTH
+                : undefined,
+          },
+        ]}
+      >
         <ScrollView
-          contentContainerStyle={contentStyle}
-          showsVerticalScrollIndicator={false}
+          style={styles.scroll}
+          contentContainerStyle={
+            contentStyle
+          }
+          showsVerticalScrollIndicator={
+            false
+          }
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          alwaysBounceVertical={
+            false
+          }
+          overScrollMode="never"
         >
           {children}
         </ScrollView>
@@ -51,32 +188,33 @@ export default function Screen({
   );
 }
 
-const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: colors.bg,
-    alignItems: 'center',
-  },
-  dark: {
-    backgroundColor: colors.dark,
-  },
-  inner: {
-    flex: 1,
-    width: '100%',
-    maxWidth: IS_WEB ? APP_MAX_WIDTH : undefined,
-    alignSelf: IS_WEB ? 'center' : 'stretch',
-    position: 'relative',
-  },
-  content: {
-    width: '100%',
-    paddingHorizontal: horizontalPadding,
-    paddingTop: Platform.OS === 'android' ? 8 : 0,
-    paddingBottom: 28,
-  },
-  withBottomTabs: {
-    paddingBottom: bottomTabHeight + 34,
-  },
-  noPadding: {
-    paddingHorizontal: 0,
-  },
-});
+const styles =
+  StyleSheet.create({
+    safe: {
+      flex: 1,
+      width: '100%',
+      alignItems: 'center',
+    },
+
+    inner: {
+      flex: 1,
+      width: '100%',
+      alignSelf: 'center',
+      position: 'relative',
+    },
+
+    scroll: {
+      flex: 1,
+      width: '100%',
+    },
+
+    content: {
+      width: '100%',
+      paddingTop: 0,
+    },
+
+    fixedContent: {
+      flex: 1,
+      width: '100%',
+    },
+  });

@@ -7,8 +7,7 @@ import { colors, radii, shadows, spacing, typography } from '../theme/colors';
 export default function HomeStartScreen({ navigate, onProfileDraft }) {
   const chooseProfile = (type) => {
     onProfileDraft?.({ type, area: 'private' });
-    navigate(type === 'patient' ? 'PatientIdentification' : 'VisitorEntry', {
-      area: 'private',
+    navigate(type === 'patient' ? 'PatientAccessChoice' : 'VisitorEntry', {
       userType: type,
     });
   };
@@ -27,20 +26,20 @@ export default function HomeStartScreen({ navigate, onProfileDraft }) {
 
         <View style={styles.hero}>
           <Text style={styles.title}>Seu guia inteligente no hospital</Text>
-          <Text style={styles.subtitle}>O Navora ajuda voce a se localizar e encontrar servicos dentro do hospital.</Text>
+          <Text style={styles.subtitle}>Escolha como deseja continuar. O Navora adapta a jornada para voce.</Text>
         </View>
 
         <View style={styles.cards}>
           <ChoiceCard
             icon="account-heart-outline"
             title="Sou Paciente"
-            subtitle="Identificacao simples para iniciar sua jornada."
+            subtitle="Acesse sua jornada, preferencias e rotas."
             onPress={() => chooseProfile('patient')}
           />
           <ChoiceCard
             icon="account-arrow-right-outline"
             title="Sou Visitante"
-            subtitle="Prepare sua entrada antes da validacao presencial."
+            subtitle="Cadastre sua visita e acompanhe a autorizacao."
             onPress={() => chooseProfile('visitor')}
           />
         </View>

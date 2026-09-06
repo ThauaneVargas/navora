@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
-import { colors, shadows } from '../theme/colors';
+import { shadows } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 
 const contentByScreen = {
   RouteHistory: {
@@ -24,6 +25,8 @@ const contentByScreen = {
 };
 
 export default function PlaceholderScreen({ navigate, currentScreen }) {
+  const { appColors } = useApp();
+  const styles = useMemo(() => createStyles(appColors), [appColors]);
   const content = contentByScreen[currentScreen] || contentByScreen.Settings;
 
   return (
@@ -32,7 +35,7 @@ export default function PlaceholderScreen({ navigate, currentScreen }) {
 
       <View style={[styles.card, shadows.card]}>
         <View style={styles.iconBox}>
-          <MaterialCommunityIcons name={content.icon} size={52} color={colors.primary} />
+          <MaterialCommunityIcons name={content.icon} size={52} color={appColors.primary} />
         </View>
         <Text style={styles.title}>{content.title}</Text>
         <Text style={styles.text}>{content.text}</Text>
@@ -48,7 +51,7 @@ export default function PlaceholderScreen({ navigate, currentScreen }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
   card: {
     marginTop: 28,
     borderRadius: 26,

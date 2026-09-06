@@ -1,137 +1,339 @@
 import React from 'react';
-import { Platform, View, Text, Pressable, StyleSheet } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { colors, radii, shadows } from '../theme/colors';
-import { useApp } from '../context/AppContext';
+
+import {
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+
+import {
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
+
+import {
+  MaterialCommunityIcons,
+} from '@expo/vector-icons';
+
+import {
+  useApp,
+} from '../context/AppContext';
+
 
 const tabs = [
-  { key: 'Home', screen: 'Home', label: 'Inicio', icon: 'home' },
-  { key: 'Navigate', screen: 'Search', label: 'Navegar', icon: 'map-search-outline' },
-  { key: 'Assistant', screen: 'Assistant', label: 'Navora IA', icon: 'message-processing-outline' },
-  { key: 'Help', screen: 'Help', label: 'Ajuda', icon: 'hand-heart-outline' },
-  { key: 'Profile', screen: 'Profile', label: 'Perfil', icon: 'account' },
+  {
+    key: 'Home',
+
+    screen: 'Home',
+
+    label: 'Início',
+
+    icon:
+      'home-outline',
+
+    activeIcon:
+      'home',
+  },
+
+  {
+    key: 'Navigate',
+
+    screen: 'Search',
+
+    label: 'Navegar',
+
+    icon:
+      'map-search-outline',
+
+    activeIcon:
+      'map-search',
+  },
+
+  {
+    key: 'Assistant',
+
+    screen: 'Assistant',
+
+    label: 'IA',
+
+    icon:
+      'star-four-points-outline',
+
+    activeIcon:
+      'star-four-points',
+  },
+
+  {
+    key: 'Help',
+
+    screen: 'Help',
+
+    label: 'Ajuda',
+
+    icon:
+      'hand-heart-outline',
+
+    activeIcon:
+      'hand-heart',
+  },
+
+  {
+    key: 'Profile',
+
+    screen: 'Profile',
+
+    label: 'Perfil',
+
+    icon:
+      'account-outline',
+
+    activeIcon:
+      'account',
+  },
 ];
 
-export default function BottomTabs({ active = 'Home', navigate, dark = false }) {
-  const insets = useSafeAreaInsets();
-  const { isDark, appColors } = useApp();
-  const themedDark = dark || isDark;
-  const bottomPadding = Math.max(insets.bottom, 14);
-  const tabHeight = 62 + bottomPadding;
+
+export default function BottomTabs({
+  active = 'Home',
+  navigate,
+}) {
+  const insets =
+    useSafeAreaInsets();
+
+  const {
+    appColors,
+  } = useApp();
+
+
+  const bottomPadding =
+    Math.max(
+      insets.bottom,
+      8
+    );
+
 
   return (
-    <View style={[styles.wrap, { paddingBottom: bottomPadding, height: tabHeight, backgroundColor: appColors.surface, borderTopColor: appColors.border }, themedDark && styles.darkWrap, shadows.card]}>
-      {tabs.map((tab) => {
-        const isActive = active === tab.key;
+    <View
+      style={[
+        styles.wrap,
 
-        return (
-          <Pressable
-            key={tab.key}
-            onPress={() => navigate(tab.screen)}
-            accessibilityRole="button"
-            accessibilityLabel={`Abrir ${tab.label}`}
-            accessibilityState={{ selected: isActive }}
-            style={({ pressed }) => [styles.tab, pressed && styles.pressed]}
-          >
-            <View style={[styles.iconWrap, isActive && { backgroundColor: appColors.primarySoft }]}>
-              <MaterialCommunityIcons
-                name={tab.icon}
-                size={22}
-                color={isActive ? appColors.primary : themedDark ? '#A9ABB8' : colors.lightText}
-              />
-            </View>
+        {
+          height:
+            62 +
+            bottomPadding,
 
-            <Text
-              style={[
-                styles.label,
-                isActive && styles.activeText,
-                themedDark && !isActive && styles.darkMuted,
-                { color: isActive ? appColors.primary : appColors.muted },
+          paddingBottom:
+            bottomPadding,
+
+          backgroundColor:
+            appColors.surface,
+
+          borderTopColor:
+            appColors.border,
+        },
+      ]}
+    >
+      {tabs.map(
+        (tab) => {
+          const isActive =
+            active ===
+            tab.key;
+
+
+          return (
+            <Pressable
+              key={
+                tab.key
+              }
+
+              onPress={() =>
+                navigate?.(
+                  tab.screen
+                )
+              }
+
+              accessibilityRole="button"
+
+              accessibilityLabel={`Abrir ${tab.label}`}
+
+              accessibilityState={{
+                selected:
+                  isActive,
+              }}
+
+              style={({ pressed }) => [
+                styles.tab,
+
+                pressed &&
+                  styles.pressed,
               ]}
             >
-              {tab.label}
-            </Text>
+              <View
+                style={[
+                  styles.iconWrap,
 
-            {isActive ? <View style={[styles.activeDot, { backgroundColor: appColors.primary }]} /> : null}
-          </Pressable>
-        );
-      })}
+                  isActive && {
+                    backgroundColor:
+                      appColors.primarySoft,
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons
+                  name={
+                    isActive
+                      ? tab.activeIcon
+                      : tab.icon
+                  }
+
+                  size={21}
+
+                  color={
+                    isActive
+                      ? appColors.primary
+                      : appColors.muted
+                  }
+                />
+              </View>
+
+
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.label,
+
+                  {
+                    color:
+                      isActive
+                        ? appColors.primary
+                        : appColors.muted,
+                  },
+
+                  isActive &&
+                    styles.activeLabel,
+                ]}
+              >
+                {tab.label}
+              </Text>
+
+
+              {isActive ? (
+                <View
+                  style={[
+                    styles.activeLine,
+
+                    {
+                      backgroundColor:
+                        appColors.primary,
+                    },
+                  ]}
+                />
+              ) : null}
+            </Pressable>
+          );
+        }
+      )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderTopLeftRadius: radii.lg,
-    borderTopRightRadius: radii.lg,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderTopColor: '#EFE2E5',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingTop: 7,
-    zIndex: 100,
-    ...Platform.select({
-      android: { elevation: 14 },
-      default: {},
-    }),
-  },
 
-  darkWrap: {
-    backgroundColor: 'rgba(28,30,39,0.96)',
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
+const styles =
+  StyleSheet.create({
+    wrap: {
+      position: 'absolute',
 
-  tab: {
-    height: 52,
-    flex: 1,
-    minWidth: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
+      left: 0,
+      right: 0,
+      bottom: 0,
 
-  pressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
-  },
+      borderTopWidth: 1,
 
-  label: {
-    color: colors.muted,
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 2,
-  },
+      flexDirection: 'row',
 
-  activeText: {
-    color: colors.primary,
-  },
+      alignItems:
+        'flex-start',
 
-  darkMuted: {
-    color: '#A9ABB8',
-  },
+      justifyContent:
+        'space-between',
 
-  iconWrap: {
-    width: 34,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+      paddingHorizontal: 6,
+      paddingTop: 6,
 
-  activeDot: {
-    position: 'absolute',
-    bottom: -1,
-    height: 3,
-    width: 18,
-    borderRadius: 3,
-    backgroundColor: colors.primary,
-  },
-});
+      zIndex: 200,
+
+      elevation: 10,
+
+      shadowColor:
+        '#000000',
+
+      shadowOpacity:
+        0.05,
+
+      shadowOffset: {
+        width: 0,
+        height: -2,
+      },
+
+      shadowRadius: 8,
+    },
+
+    tab: {
+      flex: 1,
+      minWidth: 0,
+
+      height: 50,
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      position:
+        'relative',
+    },
+
+    iconWrap: {
+      width: 34,
+      height: 28,
+
+      borderRadius: 14,
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+    },
+
+    label: {
+      marginTop: 2,
+
+      fontSize: 10,
+      lineHeight: 13,
+
+      fontWeight:
+        '700',
+    },
+
+    activeLabel: {
+      fontWeight:
+        '900',
+    },
+
+    activeLine: {
+      position:
+        'absolute',
+
+      bottom: -1,
+
+      width: 18,
+      height: 2.5,
+
+      borderRadius: 3,
+    },
+
+    pressed: {
+      opacity: 0.72,
+    },
+  });

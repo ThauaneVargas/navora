@@ -15,7 +15,7 @@ const menuItems = [
   { title: 'Notificacoes', subtitle: 'Avisos do Navora', icon: 'bell-outline', screen: 'Notifications' },
   { title: 'Configuracoes', subtitle: 'Preferencias do app', icon: 'cog-outline', screen: 'Profile' },
   { title: 'Privacidade', subtitle: 'Dados e permissoes', icon: 'shield-lock-outline', screen: 'Profile' },
-  { title: 'Sair', subtitle: 'Encerrar sessao', icon: 'logout', screen: 'Login', danger: true },
+  { title: 'Sair', subtitle: 'Encerrar sessao', icon: 'logout', screen: 'HomeStart', danger: true },
 ];
 
 function menuShadow(themeColors, isDark) {
