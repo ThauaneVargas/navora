@@ -54,12 +54,12 @@ export default function ArrivalConfirmedScreen({
 
   return (
     <Screen>
-      <Header title="Voce chegou" centerTitle onBack={() => goBack?.('ArrivalPreparation')} onMenu={() => navigate('Menu')} />
+      <Header title="Você chegou" centerTitle onBack={() => goBack?.('ArrivalPreparation')} onMenu={() => navigate('Menu')} />
       <View style={[styles.card, shadows.card]}>
         <View style={styles.icon}>
           <MaterialCommunityIcons name="map-marker-check-outline" size={42} color="#FFFFFF" />
         </View>
-        <Text style={styles.title}>Voce chegou</Text>
+        <Text style={styles.title}>Você chegou</Text>
         <Text style={styles.hospital}>{hospitalName}</Text>
         <Text style={styles.label}>Entrada escolhida</Text>
         <Text style={styles.entrance}>{detectedEntrance?.fullName || detectedEntrance?.name || 'Entrada escolhida'}</Text>
@@ -72,7 +72,7 @@ export default function ArrivalConfirmedScreen({
           <MaterialCommunityIcons name="arrow-right" size={18} color="#FFFFFF" />
         </Pressable>
         <Pressable onPress={() => navigate('ArrivalConfirmed', { area, userType: profile, correcting: true, detectedEntrance })} style={styles.discreet}>
-          <Text style={styles.discreetText}>Nao e esta entrada?</Text>
+          <Text style={styles.discreetText}>Não é esta entrada?</Text>
         </Pressable>
       </View>
     </Screen>

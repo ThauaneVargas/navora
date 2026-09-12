@@ -19,16 +19,16 @@ export default function AppSidebar({ role, currentUser, currentPage, navItems, o
       <button className="side-profile" onClick={onEditProfile} aria-label="Editar meu perfil">
         <OperatorAvatar user={currentUser} />
         <div>
-          <b>{currentUser?.name || (role === 'admin' ? 'Administrador Navora' : 'Recepcao Navora')}</b>
-          <small>{currentUser?.roleLabel || (role === 'admin' ? 'Administrador' : 'Recepcao')}</small>
+          <b>{currentUser?.name || (role === 'admin' ? 'Administrador Navora' : 'Recepção Navora')}</b>
+          <small>{currentUser?.roleLabel || (role === 'admin' ? 'Administrador' : 'Recepção')}</small>
           <em className="online-dot">Online</em>
         </div>
       </button>
       <button className="logout" onClick={onLogout}><LogOut size={16} />Sair do sistema</button>
       <div className="secure-card">
         <ShieldCheck size={24} />
-        <b>Sessao protegida</b>
-        <small>Seus dados estao seguros nesta sessao.</small>
+        <b>Sessão protegida</b>
+        <small>Seus dados estão seguros nesta sessão.</small>
       </div>
     </aside>
   );

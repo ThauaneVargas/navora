@@ -8,15 +8,15 @@ import { colors, shadows } from '../theme/colors';
 export default function EmergencyRoutesScreen({ navigate, goBack }) {
   return (
     <Screen>
-      <Header title="Rotas de emergencia" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title="Rotas de emergência" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.heroCard, shadows.card]}>
         <View style={styles.exitIcon}>
           <MaterialCommunityIcons name="exit-run" size={54} color={colors.primary} />
         </View>
-        <Text style={styles.title}>Saida mais proxima</Text>
+        <Text style={styles.title}>Saída mais próxima</Text>
         <Text style={styles.safeRoute}>Rota segura pelo corredor principal</Text>
-        <Text style={styles.distance}>Distancia aproximada: 68 m</Text>
+        <Text style={styles.distance}>Distância aproximada: 68 m</Text>
         <Text style={styles.distance}>Tempo estimado: 1 min</Text>
       </View>
 
@@ -35,9 +35,9 @@ export default function EmergencyRoutesScreen({ navigate, goBack }) {
 
       <View style={[styles.routeCard, shadows.card]}>
         <View style={styles.pathLine} />
-        <Step icon="map-marker" title="Voce esta aqui" desc="Recepcao / entrada principal" />
-        <Step icon="arrow-right-top" title="Siga a sinalizacao verde" desc="Corredor principal por 32 m" />
-        <Step icon="door-open" title="Saida de emergencia" desc="Porta lateral proxima ao estacionamento" />
+        <Step icon="map-marker" title="Você está aqui" desc="Recepção / entrada principal" />
+        <Step icon="arrow-right-top" title="Siga a sinalização verde" desc="Corredor principal por 32 m" />
+        <Step icon="door-open" title="Saída de emergência" desc="Porta lateral próxima ao estacionamento" />
       </View>
 
       <Pressable
@@ -45,7 +45,7 @@ export default function EmergencyRoutesScreen({ navigate, goBack }) {
         style={({ pressed }) => [styles.mainButton, pressed && styles.pressed, shadows.soft]}
       >
         <MaterialCommunityIcons name="navigation-variant" size={20} color="#FFFFFF" />
-        <Text style={styles.mainButtonText}>Iniciar rota de emergencia</Text>
+        <Text style={styles.mainButtonText}>Iniciar rota de emergência</Text>
       </Pressable>
 
       <Pressable

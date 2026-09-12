@@ -21,9 +21,9 @@ export default function SettingsScreen({ navigate, goBack }) {
 
   return (
     <Screen>
-      <Header title="Configuracoes" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title="Configurações" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
-      <SectionLabel label="Aparencia" styles={styles} />
+      <SectionLabel label="Aparência" styles={styles} />
       <View style={[styles.group, shadows.card]}>
         <SettingRow
           icon={isDark ? 'weather-night' : 'white-balance-sunny'}
@@ -42,12 +42,12 @@ export default function SettingsScreen({ navigate, goBack }) {
         />
       </View>
 
-      <SectionLabel label="Notificacoes" styles={styles} />
+      <SectionLabel label="Notificações" styles={styles} />
       <View style={[styles.group, shadows.card]}>
         <SettingRow
           icon="routes"
           title="Alertas de rota"
-          subtitle="Avisos de recalculo e desvios"
+          subtitle="Avisos de recálculo e desvios"
           styles={styles}
           appColors={appColors}
           last={false}
@@ -62,7 +62,7 @@ export default function SettingsScreen({ navigate, goBack }) {
         />
         <SettingRow
           icon="alarm-light-outline"
-          title="Vibracao no SOS"
+          title="Vibração no SOS"
           subtitle="Vibrar ao enviar ou receber SOS"
           styles={styles}
           appColors={appColors}
@@ -78,8 +78,8 @@ export default function SettingsScreen({ navigate, goBack }) {
         />
         <SettingRow
           icon="volume-high"
-          title="Orientacao por voz"
-          subtitle="Falar instrucoes durante a navegacao"
+          title="Orientação por voz"
+          subtitle="Falar instruções durante a navegação"
           styles={styles}
           appColors={appColors}
           last
@@ -94,7 +94,7 @@ export default function SettingsScreen({ navigate, goBack }) {
         />
       </View>
 
-      <SectionLabel label="Dados e conexao" styles={styles} />
+      <SectionLabel label="Dados e conexão" styles={styles} />
       <View style={[styles.group, shadows.card]}>
         <SettingRow
           icon="wifi-off"
@@ -115,7 +115,7 @@ export default function SettingsScreen({ navigate, goBack }) {
         <SettingRow
           icon="shield-lock-outline"
           title="Privacidade"
-          subtitle="Dados, localizacao e consentimentos"
+          subtitle="Dados, localização e consentimentos"
           styles={styles}
           appColors={appColors}
           last
@@ -128,14 +128,14 @@ export default function SettingsScreen({ navigate, goBack }) {
         <SettingRow
           icon="information-outline"
           title="Navora"
-          subtitle="Navegacao hospitalar inteligente"
+          subtitle="Navegação hospitalar inteligente"
           styles={styles}
           appColors={appColors}
           last={false}
         />
         <SettingRow
           icon="tag-outline"
-          title="Versao"
+          title="Versão"
           subtitle="1.0.0"
           styles={styles}
           appColors={appColors}

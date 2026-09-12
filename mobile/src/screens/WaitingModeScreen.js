@@ -29,9 +29,9 @@ export default function WaitingModeScreen({ navigate, goBack, routeParams = {}, 
         <View style={styles.heroIcon}>
           <MaterialCommunityIcons name="timer-sand" size={34} color="#FFFFFF" />
         </View>
-        <Text style={styles.heroTitle}>Voce chegou em {destination}</Text>
+        <Text style={styles.heroTitle}>Você chegou em {destination}</Text>
         <Text style={styles.heroText}>
-          O Navora mantem sua rota ativa e pode chamar ajuda se voce precisar.
+          O Navora mantém sua rota ativa e pode chamar ajuda se você precisar.
         </Text>
         <View style={styles.statusPill}>
           <View style={styles.statusDot} />
@@ -45,10 +45,10 @@ export default function WaitingModeScreen({ navigate, goBack, routeParams = {}, 
       </View>
 
       <View style={[styles.infoCard, shadows.card]}>
-        <Text style={styles.sectionTitle}>Informacoes para a equipe</Text>
-        <InfoRow icon="map-marker" label="Ultima posicao" value={`${currentLocation.name} - ${currentLocation.floor}`} />
+        <Text style={styles.sectionTitle}>Informações para a equipe</Text>
+        <InfoRow icon="map-marker" label="Última posição" value={`${currentLocation.name} - ${currentLocation.floor}`} />
         <InfoRow icon="map-marker-check-outline" label="Entrada confirmada" value={currentLocation.name} />
-        <InfoRow icon="walk" label="Preferencia de rota" value="Acessivel, com elevador e voz" />
+        <InfoRow icon="walk" label="Preferência de rota" value="Acessível, com elevador e voz" />
       </View>
 
       <View style={[styles.helpPanel, shadows.card]}>

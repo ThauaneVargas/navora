@@ -68,8 +68,8 @@ export default function PatientIdentificationScreen({
   return (
     <Screen>
       <Header
-        title="Identificacao do paciente"
-        subtitle="Sem cadastro longo. O Navora so precisa reconhecer voce nesta jornada."
+        title="Identificação do paciente"
+        subtitle="Sem cadastro longo. O Navora só precisa reconhecer você nesta jornada."
         onBack={() => goBack?.('HomeStart')}
         onMenu={() => navigate('Menu')}
       />
@@ -79,16 +79,16 @@ export default function PatientIdentificationScreen({
           <MaterialCommunityIcons name="account-heart-outline" size={30} color={appColors.primary} />
         </View>
         <Text style={styles.title}>Vamos com calma</Text>
-        <Text style={styles.text}>Voce nao precisa ter consulta ou agendamento vinculado para navegar pelo hospital.</Text>
+        <Text style={styles.text}>Você não precisa ter consulta ou agendamento vinculado para navegar pelo hospital.</Text>
 
         <View style={styles.authorizationCard}>
-          <Text style={styles.authorizationTitle}>Autorizacao e area</Text>
-          <Text style={styles.authorizationText}>Informe em qual unidade voce esta: HMC Marco Capute (SUS) ou HMC Private. Se nao souber, voce pode continuar para a home principal e confirmar depois.</Text>
+          <Text style={styles.authorizationTitle}>Autorização e área</Text>
+          <Text style={styles.authorizationText}>Informe em qual unidade você está: HMC Marco Capute (SUS) ou HMC Private. Se não souber, você pode continuar para a home principal e confirmar depois.</Text>
           <View style={styles.areaOptions}>
             {[
               { value: 'sus', label: 'HMC Marco Capute (SUS)' },
               { value: 'private', label: 'HMC Private' },
-              { value: 'unknown', label: 'Nao sei / continuar' },
+              { value: 'unknown', label: 'Não sei / continuar' },
             ].map((option) => (
               <Pressable
                 key={option.value}

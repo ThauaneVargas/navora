@@ -7,16 +7,16 @@ import { colors, shadows } from '../theme/colors';
 import { isAuthError, navoraApi } from '../services/api';
 
 const options = [
-  ['none', 'Nao preciso de apoio', 'check-circle-outline'],
+  ['none', 'Não preciso de apoio', 'check-circle-outline'],
   ['wheelchair', 'Solicitar cadeira de rodas', 'wheelchair-accessibility'],
   ['mobility', 'Mobilidade reduzida', 'walk'],
   ['avoidStairs', 'Rota sem escadas', 'stairs'],
   ['preferElevator', 'Utilizar somente elevador', 'elevator-passenger-outline'],
   ['walkingHelp', 'Ajuda para caminhar', 'hand-heart-outline'],
-  ['voiceGuidance', 'Orientacao por voz', 'volume-high'],
-  ['largerText', 'Texto e botoes maiores', 'format-size'],
-  ['visualImpairment', 'Deficiencia visual', 'eye-outline'],
-  ['hearingImpairment', 'Deficiencia auditiva', 'ear-hearing'],
+  ['voiceGuidance', 'Orientação por voz', 'volume-high'],
+  ['largerText', 'Texto e botões maiores', 'format-size'],
+  ['visualImpairment', 'Deficiência visual', 'eye-outline'],
+  ['hearingImpairment', 'Deficiência auditiva', 'ear-hearing'],
   ['other', 'Outra necessidade', 'plus-circle-outline'],
 ];
 
@@ -71,7 +71,7 @@ export default function PatientAccessibilitySetupScreen({ navigate, goBack, rout
       navigate('ArrivalPreparation');
     } catch (error) {
       if (isAuthError(error)) {
-        Alert.alert('Sessao expirada', 'Entre novamente para salvar suas preferencias.');
+        Alert.alert('Sessão expirada', 'Entre novamente para salvar suas preferências.');
         return;
       }
       onPatientReady?.({ ...localPatient, authSource: patientDraft.authSource || 'fallback' });
@@ -85,7 +85,7 @@ export default function PatientAccessibilitySetupScreen({ navigate, goBack, rout
     <Screen>
       <Header
         title="Acessibilidade"
-        subtitle="Selecione apenas o que voce precisa."
+        subtitle="Selecione apenas o que você precisa."
         onBack={() => goBack?.()}
         onMenu={() => navigate('Menu')}
       />
@@ -93,7 +93,7 @@ export default function PatientAccessibilitySetupScreen({ navigate, goBack, rout
         <View style={styles.heroIcon}>
           <MaterialCommunityIcons name="wheelchair-accessibility" size={28} color="#FFFFFF" />
         </View>
-        <Text style={styles.heroText}>Estas preferencias ficam salvas no seu perfil de paciente.</Text>
+        <Text style={styles.heroText}>Estas preferências ficam salvas no seu perfil de paciente.</Text>
       </View>
       <View style={[styles.card, shadows.card]}>
         {options.map(([key, label, icon]) => {

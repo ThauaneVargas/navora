@@ -10,18 +10,18 @@ export default function PatientAccessChoiceScreen({ navigate, goBack, routeParam
 
   return (
     <Screen>
-      <Header title="Acesse sua conta" subtitle="Entre mais rapido com seus dados salvos." onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title="Acesse sua conta" subtitle="Entre mais rápido com seus dados salvos." onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
       <View style={styles.hero}>
         <View style={styles.heroIcon}>
           <MaterialCommunityIcons name="shield-account-outline" size={28} color="#FFFFFF" />
         </View>
-        <Text style={styles.heroText}>Escolha como quer continuar. Seus dados ajudam o Navora a recuperar rotas e preferencias.</Text>
+        <Text style={styles.heroText}>Escolha como quer continuar. Seus dados ajudam o Navora a recuperar rotas e preferências.</Text>
       </View>
-      <AccessCard icon="account-check-outline" title="Ja tenho cadastro" subtitle="Acessar minha conta" onPress={() => navigate('PatientLogin', { area })} />
+      <AccessCard icon="account-check-outline" title="Já tenho cadastro" subtitle="Acessar minha conta" onPress={() => navigate('PatientLogin', { area })} />
       <AccessCard icon="account-plus-outline" title="Primeiro acesso" subtitle="Criar minha conta" onPress={() => navigate('PatientQuickRegister', { area })} />
       <View style={styles.infoCard}>
         <MaterialCommunityIcons name="shield-lock-outline" size={22} color={colors.primary} />
-        <Text style={styles.infoText}>Seus dados estao seguros e serao usados para navegacao, acessibilidade e assistencia.</Text>
+        <Text style={styles.infoText}>Seus dados estão seguros e serão usados para navegação, acessibilidade e assistência.</Text>
       </View>
       <Pressable onPress={() => navigate('PatientQuickAccess', { area, quick: true })} style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
         <Text style={styles.secondaryText}>Continuar sem cadastro</Text>

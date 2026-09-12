@@ -34,7 +34,7 @@ export default function Mode3DScreen({ navigate, goBack, activeRoute: selectedRo
       : '---'
   );
   const sceneTitle = blockedApiRoute
-    ? 'Rota indisponivel'
+    ? 'Rota indisponível'
     : arrived
       ? 'Destino'
       : currentStep?.type === 'ARRIVAL'
@@ -52,15 +52,15 @@ export default function Mode3DScreen({ navigate, goBack, activeRoute: selectedRo
       : distanceLabel;
   const distanceContext = currentFloor || nextNode?.label || nextNode?.code || currentStep?.node_code || 'Restante';
   const guidanceTitle = blockedApiRoute
-    ? 'Rota indisponivel'
+    ? 'Rota indisponível'
     : arrived
-      ? 'Destino alcancado'
-      : 'Orientacao por voz ativa';
+      ? 'Destino alcançado'
+      : 'Orientação por voz ativa';
   const guidanceText = blockedApiRoute
-    ? activeRoute?.reason || 'Nao foi possivel montar uma rota segura para este destino.'
+    ? activeRoute?.reason || 'Não foi possível montar uma rota segura para este destino.'
     : arrived
       ? getArrivalInstruction(activeRoute, routeSteps)
-      : currentStep?.instruction || (hasKnownProgress ? 'Sem orientacao disponivel para esta rota.' : 'Continue pelo corredor principal. A proxima curva sera a direita.');
+      : currentStep?.instruction || (hasKnownProgress ? 'Sem orientação disponível para esta rota.' : 'Continue pelo corredor principal. A próxima curva será à direita.');
   const waitingDestination = destinationLabel || activeRoute?.destination;
 
   if (!activeRoute) {
@@ -69,8 +69,8 @@ export default function Mode3DScreen({ navigate, goBack, activeRoute: selectedRo
         <Header title="Navegar" subtitle="Escolha um destino para iniciar" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
         <View style={[styles.emptyCard, shadows.card]}>
           <MaterialCommunityIcons name="cube-scan" size={38} color={colors.primary} />
-          <Text style={styles.emptyTitle}>Visualizacao sem rota</Text>
-          <Text style={styles.emptyText}>A perspectiva 2.5D aparece depois que uma rota indoor e iniciada.</Text>
+          <Text style={styles.emptyTitle}>Visualização sem rota</Text>
+          <Text style={styles.emptyText}>A perspectiva 2.5D aparece depois que uma rota indoor é iniciada.</Text>
           <Pressable onPress={() => navigate('Search')} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
             <MaterialCommunityIcons name="magnify" size={18} color="#FFFFFF" />
             <Text style={styles.primaryText}>Buscar destino</Text>
@@ -197,8 +197,8 @@ export default function Mode3DScreen({ navigate, goBack, activeRoute: selectedRo
 function getArrivalInstruction(activeRoute, routeSteps) {
   const arrivalStep = routeSteps.find((step) => step?.type === 'ARRIVAL' && step.instruction);
   if (arrivalStep?.instruction) return arrivalStep.instruction;
-  if (activeRoute?.source === 'api') return 'Voce chegou ao destino.';
-  return 'Destino alcancado. Ative o modo espera quando estiver pronto.';
+  if (activeRoute?.source === 'api') return 'Você chegou ao destino.';
+  return 'Destino alcançado. Ative o modo espera quando estiver pronto.';
 }
 
 function Info({ icon, label, value }) {

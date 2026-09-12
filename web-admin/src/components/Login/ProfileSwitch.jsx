@@ -2,7 +2,7 @@ import React from 'react';
 
 const profiles = [
   { key: 'admin', label: 'Administrador' },
-  { key: 'reception', label: 'Recepcao' },
+  { key: 'reception', label: 'Recepção' },
 ];
 
 export default function ProfileSwitch({ value, onChange }) {

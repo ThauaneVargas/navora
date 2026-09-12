@@ -19,23 +19,23 @@ export default function HelpChoiceScreen({ navigate, goBack, userProfile }) {
         <View style={[styles.heroIcon, { backgroundColor: appColors.iconBg }]}>
           <MaterialCommunityIcons name="hospital-marker" size={30} color={appColors.primary} />
         </View>
-        <Text style={[styles.title, { color: appColors.text }]}>Ola, {name}</Text>
+        <Text style={[styles.title, { color: appColors.text }]}>Olá, {name}</Text>
         <Text style={[styles.text, { color: appColors.muted }]}>
-          O Navora guia voce por rotas publicas, atendimento e ajuda presencial quando necessario.
+          O Navora guia você por rotas públicas, atendimento e ajuda presencial quando necessário.
         </Text>
       </View>
 
       <View style={styles.options}>
         <ChoiceCard
           icon="map-marker-check-outline"
-          title="Ja estou no hospital"
-          subtitle="Identificar sua localizacao inicial."
+          title="Já estou no hospital"
+          subtitle="Identificar sua localização inicial."
           onPress={() => navigate('ArrivalPreparation')}
         />
         <ChoiceCard
           icon="directions"
           title="Como chegar ao hospital"
-          subtitle="Abrir rota externa ate o endereco."
+          subtitle="Abrir rota externa até o endereço."
           onPress={() => navigate('ExternalRoute', { fromHelpChoice: true })}
         />
         <ChoiceCard

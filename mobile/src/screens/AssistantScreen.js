@@ -41,7 +41,7 @@ const initialMessages = [
   {
     id: 'assistant-welcome',
     role: 'assistant',
-    text: 'Ola, sou o Assistente Navora. Posso ajudar com destinos, acessibilidade, ajuda e SOS.',
+    text: 'Olá, sou o Assistente Navora. Posso ajudar com destinos, acessibilidade, ajuda e SOS.',
   },
 ];
 
@@ -123,7 +123,7 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
     if (!permission.granted) {
       appendMessage({
         role: 'assistant',
-        text: 'Nao consegui acessar o microfone. Verifique a permissao do aplicativo.',
+        text: 'Não consegui acessar o microfone. Verifique a permissão do aplicativo.',
       });
       return;
     }
@@ -136,7 +136,7 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
     await recorder.prepareToRecordAsync();
     recorder.record();
     setIsRecording(true);
-    setStatus('Gravando audio...');
+    setStatus('Gravando áudio...');
   };
 
   const stopRecording = async () => {
@@ -146,7 +146,7 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
     setAudioUri(uri);
     setIsRecording(false);
 
-    // Futuro: enviar audioUri para backend/Whisper para transcricao real.
+    // Futuro: enviar audioUri para backend/Whisper para transcrição real.
     const simulatedTranscript = 'Me leve ate Tomografia';
     appendMessage({
       role: 'user',
@@ -154,7 +154,7 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
     });
     processMessage(
       simulatedTranscript,
-      `Transcricao simulada: "${simulatedTranscript}"`
+      `Transcrição simulada: "${simulatedTranscript}"`
     );
   };
 
@@ -170,7 +170,7 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
       setStatus('Pronta para ajudar');
       appendMessage({
         role: 'assistant',
-        text: 'Nao consegui gravar agora. Tente novamente ou digite sua mensagem.',
+        text: 'Não consegui gravar agora. Tente novamente ou digite sua mensagem.',
       });
     }
   };
@@ -180,7 +180,7 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
       toggleTheme();
       appendMessage({
         role: 'assistant',
-        text: 'Pronto. Ajustei o modo de exibicao do app.',
+        text: 'Pronto. Ajustei o modo de exibição do app.',
       });
       return;
     }
@@ -200,7 +200,7 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
   return (
     <Screen scroll={false} padded={false}>
       <View style={styles.screen}>
-        <Header title="Assistente Navora" subtitle="Orientacao guiada" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+        <Header title="Assistente Navora" subtitle="Orientação guiada" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
         <KeyboardAvoidingView
           style={styles.keyboardArea}
@@ -230,7 +230,7 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
               </Pressable>
               <View style={styles.aiCopy}>
                 <Text style={styles.aiTitle}>Assistente Navora</Text>
-                <Text style={styles.aiText}>Busca destinos e orienta proximos passos. Nao usa IA generativa neste app.</Text>
+                <Text style={styles.aiText}>Busca destinos e orienta próximos passos. Não usa IA generativa neste app.</Text>
                 <Text style={styles.providerText}>{assistantProvider.label}</Text>
                 <Text style={styles.statusText}>{status}</Text>
               </View>

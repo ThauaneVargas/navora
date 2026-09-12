@@ -122,7 +122,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
     }
 
     if (!emailOrCpf || !password) {
-      Alert.alert('Atencao', 'Preencha e-mail ou senha.');
+      Alert.alert('Atenção', 'Preencha e-mail ou senha.');
       return;
     }
 
@@ -132,12 +132,12 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
       const auth = await navoraApi.login({ email: emailOrCpf.trim(), password });
 
       if (!auth?.access_token) {
-        Alert.alert('Erro', 'Resposta invalida do servidor.');
+        Alert.alert('Erro', 'Resposta inválida do servidor.');
         return;
       }
 
       if (auth.user?.role !== 'PATIENT') {
-        Alert.alert('Acesso negado', 'Este aplicativo e exclusivo para pacientes.');
+        Alert.alert('Acesso negado', 'Este aplicativo é exclusivo para pacientes.');
         return;
       }
 
@@ -159,25 +159,25 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
       });
     } catch (error) {
       if (isNetworkError(error)) {
-        Alert.alert('Sem conexao', 'Nao foi possivel conectar ao servidor. Verifique sua internet.');
+        Alert.alert('Sem conexão', 'Não foi possível conectar ao servidor. Verifique sua internet.');
         return;
       }
       if (error?.status === 401 || error?.status === 403) {
         Alert.alert('Acesso negado', 'E-mail ou senha incorretos.');
         return;
       }
-      Alert.alert('Erro', 'Nao foi possivel entrar agora. Tente novamente.');
+      Alert.alert('Erro', 'Não foi possível entrar agora. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleForgotPassword = () => {
-    Alert.alert('Recuperar acesso', 'A recuperacao de senha sera feita pela equipe de atendimento.');
+    Alert.alert('Recuperar acesso', 'A recuperação de senha será feita pela equipe de atendimento.');
   };
 
   const handleSocialLogin = (provider) => {
-    Alert.alert(provider, 'Login social ainda nao esta conectado neste ambiente.');
+    Alert.alert(provider, 'Login social ainda não está conectado neste ambiente.');
   };
 
   const handleBiometricLogin = async () => {
@@ -188,18 +188,18 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
     try {
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       if (!hasHardware) {
-        Alert.alert('Autenticacao biometrica', 'Este aparelho nao possui hardware biometrico compativel.');
+        Alert.alert('Autenticação biométrica', 'Este aparelho não possui hardware biométrico compatível.');
         return;
       }
 
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       if (!isEnrolled) {
-        Alert.alert('Autenticacao biometrica', 'Nenhuma biometria esta cadastrada neste aparelho.');
+        Alert.alert('Autenticação biométrica', 'Nenhuma biometria está cadastrada neste aparelho.');
         return;
       }
 
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Autenticacao biometrica',
+        promptMessage: 'Autenticação biométrica',
         cancelLabel: 'Cancelar',
         fallbackLabel: 'Usar senha',
         disableDeviceFallback: false,
@@ -207,7 +207,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
 
       if (!result.success) {
         if (result.error !== 'user_cancel' && result.error !== 'system_cancel') {
-          Alert.alert('Autenticacao biometrica', 'Nao foi possivel autenticar com biometria.');
+          Alert.alert('Autenticação biométrica', 'Não foi possível autenticar com biometria.');
         }
         return;
       }
@@ -215,7 +215,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
       const storedToken = await getAuthToken();
       if (!storedToken) {
         Alert.alert(
-          'Autenticacao biometrica',
+          'Autenticação biométrica',
           'Entre com sua senha uma vez para vincular sua conta neste dispositivo.'
         );
         return;
@@ -223,7 +223,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
 
       const patient = await navoraApi.getMyPatientProfile();
       if (!patient) {
-        Alert.alert('Sessao expirada', 'Sua sessao expirou. Entre com sua senha.');
+        Alert.alert('Sessão expirada', 'Sua sessão expirou. Entre com sua senha.');
         return;
       }
 
@@ -234,14 +234,14 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
       });
     } catch (error) {
       if (isNetworkError(error)) {
-        Alert.alert('Sem conexao', 'Verifique sua internet e tente novamente.');
+        Alert.alert('Sem conexão', 'Verifique sua internet e tente novamente.');
         return;
       }
       if (error?.status === 401 || error?.status === 403) {
-        Alert.alert('Sessao expirada', 'Sua sessao expirou. Entre com sua senha.');
+        Alert.alert('Sessão expirada', 'Sua sessão expirou. Entre com sua senha.');
         return;
       }
-      Alert.alert('Autenticacao biometrica', 'Nao foi possivel autenticar com biometria.');
+      Alert.alert('Autenticação biométrica', 'Não foi possível autenticar com biometria.');
     } finally {
       setBiometricLoading(false);
     }
@@ -432,7 +432,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
               disabled={loading}
               style={({ pressed }) => [styles.signupRow, pressed && styles.pressed]}
             >
-              <Text style={styles.signupText}>Ainda nao tem uma conta? </Text>
+              <Text style={styles.signupText}>Ainda não tem uma conta? </Text>
               <Text style={styles.signupLink}>Cadastre-se</Text>
             </Pressable>
           </View>

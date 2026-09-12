@@ -11,11 +11,11 @@ const menuItems = [
   { title: 'Como chegar ao hospital', subtitle: 'Rota ate a entrada principal', icon: 'map-marker-distance', screen: 'ExternalRoute' },
   { title: 'Acessibilidade', subtitle: 'Rotas adaptadas', icon: 'wheelchair-accessibility', screen: 'Accessibility' },
   { title: 'Rotas de emergencia', subtitle: 'Saidas seguras', icon: 'exit-run', screen: 'EmergencyRoutes' },
-  { title: 'Historico de rotas', subtitle: 'Ultimos destinos', icon: 'history', screen: 'RouteHistory' },
-  { title: 'Notificacoes', subtitle: 'Avisos do Navora', icon: 'bell-outline', screen: 'Notifications' },
-  { title: 'Configuracoes', subtitle: 'Preferencias do app', icon: 'cog-outline', screen: 'Settings' },
-  { title: 'Privacidade', subtitle: 'Dados e permissoes', icon: 'shield-lock-outline', screen: 'Privacy' },
-  { title: 'Sair', subtitle: 'Encerrar sessao', icon: 'logout', screen: 'HomeStart', danger: true },
+  { title: 'Histórico de rotas', subtitle: 'Últimos destinos', icon: 'history', screen: 'RouteHistory' },
+  { title: 'Notificações', subtitle: 'Avisos do Navora', icon: 'bell-outline', screen: 'Notifications' },
+  { title: 'Configurações', subtitle: 'Preferências do app', icon: 'cog-outline', screen: 'Settings' },
+  { title: 'Privacidade', subtitle: 'Dados e permissões', icon: 'shield-lock-outline', screen: 'Privacy' },
+  { title: 'Sair', subtitle: 'Encerrar sessão', icon: 'logout', screen: 'HomeStart', danger: true },
 ];
 
 function menuShadow(themeColors, isDark) {
@@ -165,7 +165,7 @@ export default function MenuScreen({ navigate, goBack, onLogout }) {
           <MenuItem
             icon="navigation-variant"
             title="Navora"
-            subtitle="Navegacao hospitalar inteligente e segura."
+            subtitle="Navegação hospitalar inteligente e segura."
             onPress={() => navigate('Home')}
             appColors={appColors}
             isDark={isDark}

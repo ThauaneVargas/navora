@@ -10,7 +10,7 @@ import { isNetworkError, navoraApi } from '../services/api';
 const DEMO_NOTIFICATIONS = [
   {
     id: 'demo-1',
-    category: 'Navegacao',
+    category: 'Navegação',
     icon: 'routes',
     title: 'Rota recalculada',
     description: 'Encontramos um caminho mais curto ate Tomografia.',
@@ -22,7 +22,7 @@ const DEMO_NOTIFICATIONS = [
     category: 'Acesso',
     icon: 'account-group-outline',
     title: 'Local movimentado',
-    description: 'A recepcao esta com maior movimento neste momento.',
+    description: 'A recepção está com maior movimento neste momento.',
     createdAt: new Date().toISOString(),
     read: false,
   },
@@ -50,7 +50,7 @@ function formatTime(isoString) {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
 }
 
-const FILTERS = ['Todas', 'Acesso', 'Navegacao', 'Ajuda-SOS'];
+const FILTERS = ['Todas', 'Acesso', 'Navegação', 'Ajuda-SOS'];
 
 export default function NotificationsScreen({ navigate, goBack }) {
   const { appColors } = useApp();
@@ -105,8 +105,8 @@ export default function NotificationsScreen({ navigate, goBack }) {
   const confirmClear = () => {
     if (!notifications.length) return;
     Alert.alert(
-      'Limpar notificacoes',
-      'Tem certeza que deseja remover todas as notificacoes?',
+      'Limpar notificações',
+      'Tem certeza que deseja remover todas as notificações?',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
@@ -129,16 +129,16 @@ export default function NotificationsScreen({ navigate, goBack }) {
 
   return (
     <Screen>
-      <Header title="Notificacoes" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title="Notificações" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={styles.titleRow}>
         <View style={styles.titleCopy}>
-          <Text style={styles.title}>Atualizacoes do Navora</Text>
+          <Text style={styles.title}>Atualizações do Navora</Text>
           <Text style={styles.sub}>Alertas de rota, apoio, agenda e acessibilidade.</Text>
         </View>
         <View style={styles.counter}>
           <Text style={styles.counterValue}>{unreadCount}</Text>
-          <Text style={styles.counterLabel}>nao lidas</Text>
+          <Text style={styles.counterLabel}>não lidas</Text>
         </View>
       </View>
 
@@ -157,7 +157,7 @@ export default function NotificationsScreen({ navigate, goBack }) {
           style={({ pressed }) => [styles.actionButton, styles.actionDanger, !notifications.length && styles.disabled, pressed && styles.pressed]}
         >
           <MaterialCommunityIcons name="trash-can-outline" size={17} color={appColors.danger} />
-          <Text style={styles.actionDangerText}>Limpar notificacoes</Text>
+          <Text style={styles.actionDangerText}>Limpar notificações</Text>
         </Pressable>
       </View>
 
@@ -192,8 +192,8 @@ export default function NotificationsScreen({ navigate, goBack }) {
           <View style={styles.emptyIcon}>
             <MaterialCommunityIcons name="bell-check-outline" size={34} color={appColors.primary} />
           </View>
-          <Text style={styles.emptyTitle}>Nenhuma notificacao</Text>
-          <Text style={styles.emptyText}>Quando houver novidades, elas aparecerao aqui.</Text>
+          <Text style={styles.emptyTitle}>Nenhuma notificação</Text>
+          <Text style={styles.emptyText}>Quando houver novidades, elas aparecerão aqui.</Text>
         </View>
       )}
     </Screen>
@@ -246,7 +246,7 @@ function NotificationCard({ item, onDelete, appColors, styles }) {
           <View style={styles.statusRow}>
             {!item.read ? <View style={styles.unreadDot} /> : null}
             <Text style={[styles.readStatus, !item.read && styles.unreadStatus]}>
-              {item.read ? 'Lida' : 'Nao lida'}
+              {item.read ? 'Lida' : 'Não lida'}
             </Text>
             <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
           </View>

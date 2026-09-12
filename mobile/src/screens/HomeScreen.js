@@ -12,14 +12,14 @@ import { getAreaById } from '../data/routes';
 
 const patientShortcuts = [
   { icon: 'flask-outline', title: 'Exames', screen: 'Search', params: { category: 'Exames' } },
-  { icon: 'desk', title: 'Recepcao', screen: 'Search', params: { query: 'Recepcao' } },
+  { icon: 'desk', title: 'Recepção', screen: 'Search', params: { query: 'Recepção' } },
   { icon: 'toilet', title: 'Banheiro', screen: 'Search', params: { query: 'Banheiro' } },
   { icon: 'map-marker-question-outline', title: 'Estou perdido', screen: 'Lost' },
   { icon: 'alarm-light-outline', title: 'Ajuda/SOS', screen: 'Help', params: { type: 'help' } },
 ];
 
 const visitorShortcuts = [
-  { icon: 'desk', title: 'Recepcao', screen: 'Search', params: { query: 'Recepcao' } },
+  { icon: 'desk', title: 'Recepção', screen: 'Search', params: { query: 'Recepção' } },
   { icon: 'toilet', title: 'Banheiro', screen: 'Search', params: { query: 'Banheiro' } },
   { icon: 'account-heart-outline', title: 'Visita', screen: 'Search', params: { category: 'Visita' } },
   { icon: 'map-marker-question-outline', title: 'Estou perdido', screen: 'Lost' },
@@ -30,13 +30,13 @@ const destinationCards = [
   {
     icon: 'navigation-variant',
     title: 'Para onde vamos?',
-    subtitle: 'Navegacao interna',
+    subtitle: 'Navegação interna',
     screen: 'Search',
   },
   {
     icon: 'map-marker-radius-outline',
     title: 'Como chegar ao hospital',
-    subtitle: 'Navegacao externa',
+    subtitle: 'Navegação externa',
     screen: 'HowToGet',
   },
 ];
@@ -139,7 +139,7 @@ export default function HomeScreen({ navigate, userProfile = { type: 'patient', 
             <View style={[styles.visitorNotice, { borderColor: isDark ? '#4A252C' : '#FFD2D7' }]}>
               <MaterialCommunityIcons name="shield-check-outline" size={18} color={appColors.primary} />
               <Text style={[styles.visitorNoticeText, { color: appColors.primary }]}>
-                Areas sensiveis precisam de liberacao da recepcao.
+                Áreas sensíveis precisam de liberação da recepção.
               </Text>
             </View>
           ) : null}
@@ -204,9 +204,9 @@ export default function HomeScreen({ navigate, userProfile = { type: 'patient', 
                   <MaterialCommunityIcons name="map-marker" size={24} color={appColors.primary} />
                 </View>
                 <View style={styles.routeCopy}>
-                  <Text style={[styles.routeLabel, { color: appColors.muted }]}>Sua localizacao atual</Text>
-                  <Text style={[styles.routeTitle, { color: appColors.text }]}>Recepcao Principal</Text>
-                  <Text style={[styles.routeMeta, { color: appColors.muted }]}>Corredor A - Piso Terreo</Text>
+                  <Text style={[styles.routeLabel, { color: appColors.muted }]}>Sua localização atual</Text>
+                  <Text style={[styles.routeTitle, { color: appColors.text }]}>Recepção Principal</Text>
+                  <Text style={[styles.routeMeta, { color: appColors.muted }]}>Corredor A - Piso Térreo</Text>
                 </View>
               </View>
 
@@ -216,7 +216,7 @@ export default function HomeScreen({ navigate, userProfile = { type: 'patient', 
                 <View style={styles.routeCopy}>
                   <View style={[styles.activeChip, { backgroundColor: isDark ? '#183224' : '#F1FBF5' }]}>
                     <View style={[styles.statusDot, { backgroundColor: appColors.success }]} />
-                    <Text style={[styles.activeChipText, { color: appColors.success }]}>Navegacao ativa</Text>
+                    <Text style={[styles.activeChipText, { color: appColors.success }]}>Navegação ativa</Text>
                   </View>
                   <Text style={[styles.routeTitle, { color: appColors.text }]}>Tomografia</Text>
                   <Text style={[styles.routeMeta, { color: appColors.muted }]}>120 m - 2 min</Text>
@@ -253,7 +253,7 @@ export default function HomeScreen({ navigate, userProfile = { type: 'patient', 
                 <HelpAction
                   icon="stethoscope"
                   title="Solicitar medico"
-                  subtitle="Avaliacao clinica"
+                  subtitle="Avaliação clínica"
                   onPress={() => navigate('Help', { type: 'doctor' })}
                   appColors={appColors}
                   isDark={isDark}
@@ -261,9 +261,9 @@ export default function HomeScreen({ navigate, userProfile = { type: 'patient', 
               ) : (
                 <HelpAction
                   icon="desk"
-                  title="Recepcao"
+                  title="Recepção"
                   subtitle="Apoio presencial"
-                  onPress={() => navigate('Search', { query: 'Recepcao' })}
+                  onPress={() => navigate('Search', { query: 'Recepção' })}
                   appColors={appColors}
                   isDark={isDark}
                 />

@@ -54,8 +54,8 @@ export default function ArrivalDetectedScreen({ navigate, goBack, routeParams = 
   return (
     <Screen>
       <Header
-        title={knownArea ? 'Voce chegou ao hospital' : 'Escolha sua entrada'}
-        subtitle={knownArea ? 'Entrada confirmada para esta jornada.' : 'Confirme manualmente por onde voce entrou.'}
+        title={knownArea ? 'Você chegou ao hospital' : 'Escolha sua entrada'}
+        subtitle={knownArea ? 'Entrada confirmada para esta jornada.' : 'Confirme manualmente por onde você entrou.'}
         onBack={() => goBack?.()}
         onMenu={() => navigate('Menu')}
       />
@@ -101,7 +101,7 @@ export default function ArrivalDetectedScreen({ navigate, goBack, routeParams = 
         ) : (
           <>
             <Text style={styles.hint}>
-              Selecione uma das entradas disponiveis para que o Navora carregue o mapa correto.
+              Selecione uma das entradas disponíveis para que o Navora carregue o mapa correto.
             </Text>
 
             <View style={styles.choices}>
@@ -120,7 +120,7 @@ export default function ArrivalDetectedScreen({ navigate, goBack, routeParams = 
                 style={({ pressed }) => [styles.unknownButton, pressed && styles.pressed]}
               >
                 <MaterialCommunityIcons name="help-circle-outline" size={18} color={appColors.muted} />
-                <Text style={styles.unknownButtonText}>Nao sei, levar ate a recepcao</Text>
+                <Text style={styles.unknownButtonText}>Não sei, levar até a recepção</Text>
               </Pressable>
             </View>
           </>

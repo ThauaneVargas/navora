@@ -117,11 +117,11 @@ export default function PatientRegisterScreen({ navigate, onPatientReady }) {
       navigate('PatientHome');
     } catch (error) {
       if (isAuthError(error)) {
-        Alert.alert('Cadastro criado', 'Nao foi possivel autenticar automaticamente. Tente entrar com e-mail e senha.');
+        Alert.alert('Cadastro criado', 'Não foi possível autenticar automaticamente. Tente entrar com e-mail e senha.');
         navigate('Login');
         return;
       }
-      Alert.alert('Cadastro nao concluido', error?.payload?.message || 'Confira os dados e tente novamente.');
+      Alert.alert('Cadastro não concluído', error?.payload?.message || 'Confira os dados e tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -180,7 +180,7 @@ export default function PatientRegisterScreen({ navigate, onPatientReady }) {
           onChangeText={setNotes}
           multiline
           textAlignVertical="top"
-          placeholder="Ex.: alergias, restricoes, preferencia por elevador, necessidade de acompanhante..."
+          placeholder="Ex.: alergias, restrições, preferência por elevador, necessidade de acompanhante..."
           placeholderTextColor={appColors.lightText}
           style={styles.notesInput}
         />

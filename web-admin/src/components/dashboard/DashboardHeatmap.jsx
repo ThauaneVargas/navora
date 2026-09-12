@@ -111,8 +111,8 @@ export default function DashboardHeatmap({ sectors, nodes = [], floor, onSelect 
           </>
         ) : (
           <div className="floor-empty-state compact">
-            <h3>Mapeamento deste andar ainda nao disponivel.</h3>
-            <p>Os setores serao exibidos apos a configuracao estrutural.</p>
+            <h3>Mapeamento deste andar ainda não disponível.</h3>
+            <p>Os setores serão exibidos após a configuração estrutural.</p>
           </div>
         )}
       </div>

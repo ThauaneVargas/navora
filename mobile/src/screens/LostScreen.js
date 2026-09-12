@@ -7,7 +7,7 @@ import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 
 const nearbyPlaces = [
-  { icon: 'account-tie-outline', label: 'Recepcao principal', distance: '18 m', screen: 'Navigation' },
+  { icon: 'account-tie-outline', label: 'Recepção principal', distance: '18 m', screen: 'Navigation' },
   { icon: 'elevator-passenger-outline', label: 'Elevador A', distance: '24 m', screen: 'Navigation' },
   { icon: 'radioactive-circle-outline', label: 'Setor de Imagem', distance: '42 m', screen: 'Search' },
 ];
@@ -16,7 +16,7 @@ const actions = [
   {
     icon: 'map-marker-path',
     label: 'Recalcular minha rota',
-    subtitle: 'Tracar nova rota a partir daqui',
+    subtitle: 'Traçar nova rota a partir daqui',
     screen: 'Navigation',
     variant: 'primary',
   },
@@ -78,8 +78,8 @@ export default function LostScreen({ navigate, goBack }) {
           </View>
         </View>
         <View style={styles.locationCopy}>
-          <Text style={styles.locationLabel}>Voce esta em</Text>
-          <Text style={styles.locationName}>Recepcao Principal</Text>
+          <Text style={styles.locationLabel}>Você está em</Text>
+          <Text style={styles.locationName}>Recepção Principal</Text>
           <Text style={styles.locationSub}>Corredor Principal · entrada confirmada</Text>
         </View>
         <View style={styles.liveChip}>
@@ -94,12 +94,12 @@ export default function LostScreen({ navigate, goBack }) {
         <View style={styles.aiCopy}>
           <Text style={styles.aiTitle}>Sem problema, eu te oriento.</Text>
           <Text style={styles.aiText}>
-            Posso recalcular sua rota, abrir o mapa ou guiar voce passo a passo.
+            Posso recalcular sua rota, abrir o mapa ou guiar você passo a passo.
           </Text>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Destinos proximos</Text>
+      <Text style={styles.sectionTitle}>Destinos próximos</Text>
       <View style={[styles.nearbyCard, shadows.card]}>
         {nearbyPlaces.map((place, index) => (
           <Pressable

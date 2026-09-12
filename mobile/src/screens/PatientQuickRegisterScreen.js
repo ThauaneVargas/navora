@@ -34,7 +34,7 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
       birth,
       alreadyPatient,
       accessibility: {},
-      lastDestination: 'Recepcao',
+      lastDestination: 'Recepção',
     };
     onPatientReady?.(patient);
     if (needsAccessibility) {
@@ -47,8 +47,8 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
   return (
     <Screen>
       <Header
-        title={quick ? 'Acesso rapido' : 'Primeiro acesso'}
-        subtitle="Vamos preencher apenas o necessario para iniciar sua navegacao."
+        title={quick ? 'Acesso rápido' : 'Primeiro acesso'}
+        subtitle="Vamos preencher apenas o necessário para iniciar sua navegação."
         onBack={() => goBack?.()}
         onMenu={() => navigate('Menu')}
       />
@@ -59,17 +59,17 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
           </View>
           <View style={styles.copy}>
             <Text style={styles.title}>{quick ? 'Continuar sem cadastro' : 'Vamos te conhecer rapidamente'}</Text>
-            <Text style={styles.subtitle}>Precisamos de algumas informacoes para te guiar melhor.</Text>
+            <Text style={styles.subtitle}>Precisamos de algumas informações para te guiar melhor.</Text>
           </View>
         </View>
         <View style={styles.authorizationCard}>
-          <Text style={styles.authorizationTitle}>Autorizacao e area</Text>
-          <Text style={styles.authorizationText}>Informe em qual unidade voce esta: HMC Marco Capute (SUS) ou HMC Private. Se nao souber, voce pode continuar para a home principal.</Text>
+          <Text style={styles.authorizationTitle}>Autorização e área</Text>
+          <Text style={styles.authorizationText}>Informe em qual unidade você está: HMC Marco Capute (SUS) ou HMC Private. Se não souber, você pode continuar para a home principal.</Text>
           <View style={styles.areaOptions}>
             {[
               { value: 'sus', label: 'HMC Marco Capute (SUS)' },
               { value: 'private', label: 'HMC Private' },
-              { value: 'unknown', label: 'Nao sei / continuar' },
+              { value: 'unknown', label: 'Não sei / continuar' },
             ].map((option) => (
               <Pressable
                 key={option.value}
@@ -85,10 +85,10 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
         <Input label="Nome completo" value={name} onChangeText={setName} placeholder="Seu nome completo" />
         <Input label="Telefone opcional" value={phone} onChangeText={setPhone} placeholder="(00) 00000-0000" />
         <Input label="Data de nascimento opcional" value={birth} onChangeText={setBirth} placeholder="DD/MM/AAAA" />
-        <CheckRow title="Ja sou paciente do hospital" active={alreadyPatient} onPress={() => setAlreadyPatient((value) => !value)} />
+        <CheckRow title="Já sou paciente do hospital" active={alreadyPatient} onPress={() => setAlreadyPatient((value) => !value)} />
         <Text style={styles.question}>Precisa de acessibilidade?</Text>
         <View style={styles.binary}>
-          {['Sim', 'Nao'].map((item) => (
+          {['Sim', 'Não'].map((item) => (
             <Pressable key={item} onPress={() => setNeedsAccessibility(item === 'Sim')} style={[styles.binaryButton, needsAccessibility === (item === 'Sim') && styles.binaryActive]}>
               <Text style={[styles.binaryText, needsAccessibility === (item === 'Sim') && styles.binaryTextActive]}>{item}</Text>
             </Pressable>

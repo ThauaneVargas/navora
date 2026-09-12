@@ -6,23 +6,23 @@ import FeatureItem from './FeatureItem.jsx';
 const features = [
   {
     icon: MapPinned,
-    title: 'Navegacao inteligente',
+    title: 'Navegação inteligente',
     description: 'Rotas otimizadas em tempo real dentro do hospital.',
   },
   {
     icon: HeartPulse,
     title: 'SOS em tempo real',
-    description: 'Alertas instantaneos e localizacao precisa para emergencias.',
+    description: 'Alertas instantâneos e localização precisa para emergências.',
   },
   {
     icon: BarChart3,
-    title: 'Gestao e relatorios',
-    description: 'Dashboards completos para decisoes rapidas e estrategicas.',
+    title: 'Gestão e relatórios',
+    description: 'Dashboards completos para decisões rápidas e estratégicas.',
   },
   {
     icon: Sparkles,
-    title: 'Experiencia integrada',
-    description: 'Recepcao, pacientes e administracao em um so fluxo.',
+    title: 'Experiência integrada',
+    description: 'Recepção, pacientes e administração em um só fluxo.',
   },
 ];
 
@@ -38,12 +38,12 @@ export default function BrandPanel() {
 
         <div className="brand-copy">
           <h1>
-            Inteligencia que guia.
+            Inteligência que guia.
             <br />
             Tecnologia que cuida.
           </h1>
           <p>
-            Plataforma inteligente de navegacao indoor, assistencia e gestao hospitalar.
+            Plataforma inteligente de navegação indoor, assistência e gestão hospitalar.
           </p>
         </div>
 

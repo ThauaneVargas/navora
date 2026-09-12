@@ -45,7 +45,7 @@ export default function SearchScreen({
     [
       visitorAccessRequest?.requestedDestination,
       visitorAccessRequest?.destinationName,
-      'Recepcao',
+      'Recepção',
       'Banheiro',
       'Sala de espera',
       'Saida',
@@ -90,7 +90,7 @@ export default function SearchScreen({
     if (!destination) return;
     const currentReception = getReceptionDestination(userProfile.area);
     const destinationArea = getAreaById(destination.area);
-    const message = `Este destino pertence a outro ambiente do hospital ativo.\nVoce esta em ${area.name}.\nProcure a recepcao para orientacao segura.`;
+    const message = `Este destino pertence a outro ambiente do hospital ativo.\nVocê está em ${area.name}.\nProcure a recepção para orientação segura.`;
 
     Alert.alert(destinationArea.name, message, [
       { text: `Levar ate ${currentReception?.name}`, onPress: () => onStartRoute?.(currentReception) },
@@ -105,7 +105,7 @@ export default function SearchScreen({
 
     Alert.alert(
       'Atendimento externo',
-      `${destination.name} recebe pacientes externos das ${status.label.replace('Atendimento externo: ', '')}.\nProcure a recepcao para orientacao ou aguarde o horario permitido.`,
+      `${destination.name} recebe pacientes externos das ${status.label.replace('Atendimento externo: ', '')}.\nProcure a recepção para orientação ou aguarde o horário permitido.`,
       [
         { text: `Levar ate ${reception?.name}`, onPress: () => onStartRoute?.(reception) },
         { text: 'Cancelar', style: 'cancel' },
@@ -131,7 +131,7 @@ export default function SearchScreen({
     }
 
     if (userProfile.type === 'patient') {
-      Alert.alert('Acesso restrito', 'Este destino nao esta liberado para sua area atual. Siga para a recepcao ou use apenas servicos da unidade ativa.');
+      Alert.alert('Acesso restrito', 'Este destino não está liberado para sua área atual. Siga para a recepção ou use apenas serviços da unidade ativa.');
       return;
     }
 
@@ -193,8 +193,8 @@ export default function SearchScreen({
           <MaterialCommunityIcons name="shield-check-outline" size={17} color={appColors.primary} />
           <Text style={styles.accessNoticeText}>
             {visitorApproved
-              ? 'Apenas areas autorizadas estao disponiveis para navegacao.'
-              : 'Antes da liberacao, apenas recepcao, banheiro e areas publicas aparecem aqui.'}
+              ? 'Apenas áreas autorizadas estão disponíveis para navegação.'
+              : 'Antes da liberação, apenas recepção, banheiro e áreas públicas aparecem aqui.'}
           </Text>
         </View>
       ) : null}
@@ -218,7 +218,7 @@ export default function SearchScreen({
               ? 'Acesso restrito'
               : outsideExternalHours
                 ? 'Fora do horario'
-                : 'Rota disponivel';
+                : 'Rota disponível';
 
           return (
             <Pressable
@@ -239,11 +239,11 @@ export default function SearchScreen({
               <View style={styles.copy}>
                 <Text numberOfLines={1} style={styles.name}>{item.name}</Text>
                 <Text numberOfLines={1} style={styles.type}>{item.category} - {(typeof item.sector === 'object' ? item.sector?.name : item.sector) || 'Setor informado pela rota'}</Text>
-                <Text numberOfLines={1} style={styles.floor}>{item.floor || 'Andar nao informado'}</Text>
+                <Text numberOfLines={1} style={styles.floor}>{item.floor || 'Andar não informado'}</Text>
               </View>
               <View style={styles.metaBox}>
                 <Text numberOfLines={1} style={[styles.meta, outsideExternalHours && styles.metaMuted]}>{item.distance}</Text>
-                <Text numberOfLines={1} style={styles.time}>{item.time || 'Tempo indisponivel'}</Text>
+                <Text numberOfLines={1} style={styles.time}>{item.time || 'Tempo indisponível'}</Text>
                 <Text numberOfLines={1} style={[styles.auth, outsideExternalHours && styles.metaMuted]}>{accessLabel}</Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={18} color={appColors.muted} />
@@ -253,8 +253,8 @@ export default function SearchScreen({
         {!visibleDestinations.length ? (
           <View style={styles.emptyState}>
             <MaterialCommunityIcons name="map-search-outline" size={32} color={appColors.primary} />
-            <Text style={styles.emptyTitle}>Destino nao encontrado</Text>
-            <Text style={styles.emptyText}>Tente outro termo ou procure a recepcao para orientacao.</Text>
+            <Text style={styles.emptyTitle}>Destino não encontrado</Text>
+            <Text style={styles.emptyText}>Tente outro termo ou procure a recepção para orientação.</Text>
           </View>
         ) : null}
       </View>
@@ -266,7 +266,7 @@ export default function SearchScreen({
               <MaterialCommunityIcons name="routes" size={22} color={appColors.primary} />
             </View>
             <View style={styles.copy}>
-              <Text style={styles.previewKicker}>Pre-rota</Text>
+              <Text style={styles.previewKicker}>Pré-rota</Text>
               <Text style={styles.previewTitle}>{selectedDestination.name}</Text>
             </View>
             <Pressable onPress={() => setSelectedDestination(null)} style={styles.closePreview}>
@@ -276,19 +276,19 @@ export default function SearchScreen({
           <View style={styles.previewGrid}>
             <PreviewInfo label="Origem" value={userProfile.currentLocation || area.entryLabel || 'Entrada atual'} />
             <PreviewInfo label="Destino" value={selectedDestination.name} />
-            <PreviewInfo label="Andar" value={selectedDestination.floor || 'Nao informado'} />
-            <PreviewInfo label="Estimativa" value={[selectedDestination.distance, selectedDestination.time].filter(Boolean).join(' - ') || 'Indisponivel'} />
+            <PreviewInfo label="Andar" value={selectedDestination.floor || 'Não informado'} />
+            <PreviewInfo label="Estimativa" value={[selectedDestination.distance, selectedDestination.time].filter(Boolean).join(' - ') || 'Indisponível'} />
           </View>
           <View style={styles.accessRow}>
             <MaterialCommunityIcons name="wheelchair-accessibility" size={17} color={appColors.primary} />
             <Text style={styles.accessText}>
               {userProfile?.accessibility?.avoidStairs || userProfile?.accessibility?.wheelchair
-                ? 'Preferencias acessiveis consideradas quando a rota suporta.'
+                ? 'Preferências acessíveis consideradas quando a rota suporta.'
                 : 'Acessibilidade pode ser ajustada no Perfil ou durante a rota.'}
             </Text>
           </View>
           <Pressable onPress={() => startSelectedDestination(selectedDestination)} style={({ pressed }) => [styles.startButton, pressed && styles.pressed]}>
-            <Text style={styles.startText}>Iniciar navegacao</Text>
+            <Text style={styles.startText}>Iniciar navegação</Text>
             <MaterialCommunityIcons name="navigation-variant" size={18} color="#FFFFFF" />
           </Pressable>
         </View>

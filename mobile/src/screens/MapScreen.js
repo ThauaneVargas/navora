@@ -49,11 +49,11 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
   const arrived = navigationProgress.arrived;
   const instructionText = arrived
     ? getArrivalInstruction(activeRoute, currentStep)
-    : currentStep?.instruction || nextStep?.instruction || (activeRoute?.source === 'api' ? 'Sem orientacao disponivel para esta rota.' : 'Continue pelo corredor principal e vire a direita.');
+    : currentStep?.instruction || nextStep?.instruction || (activeRoute?.source === 'api' ? 'Sem orientação disponível para esta rota.' : 'Continue pelo corredor principal e vire à direita.');
   const compact = height < 720 || width < 380;
   const mapViewportHeight = Math.max(compact ? 330 : 360, Math.min(500, Math.round(height * (compact ? 0.48 : 0.54))));
-  const remainingDistance = arrived ? '0 m' : activeRoute.distance || 'Distancia indisponivel';
-  const remainingTime = arrived ? '0 min' : activeRoute.eta || activeRoute.time || 'Tempo indisponivel';
+  const remainingDistance = arrived ? '0 m' : activeRoute.distance || 'Distância indisponível';
+  const remainingTime = arrived ? '0 min' : activeRoute.eta || activeRoute.time || 'Tempo indisponível';
   const stepDistance = arrived ? '0 m' : currentStep?.distance ? `${Math.round(currentStep.distance)} m` : remainingDistance;
   const progressPercent = getProgressPercent(navigationProgress);
 
@@ -90,8 +90,8 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
 
   const confirmEndRoute = () => {
     Alert.alert(
-      'Encerrar navegacao?',
-      'Sua rota atual sera finalizada.',
+      'Encerrar navegação?',
+      'Sua rota atual será finalizada.',
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Encerrar rota', style: 'destructive', onPress: () => onEndRoute?.() },
@@ -175,9 +175,9 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
         ) : blockedApiRoute ? (
           <View style={styles.emptyRouteState}>
             <MaterialCommunityIcons name="map-marker-off-outline" size={34} color={appColors.primary} />
-            <Text style={[styles.emptyRouteTitle, { color: appColors.text }]}>Rota indisponivel</Text>
+            <Text style={[styles.emptyRouteTitle, { color: appColors.text }]}>Rota indisponível</Text>
             <Text style={[styles.emptyRouteText, { color: appColors.muted }]}>
-              {activeRoute?.reason || 'Nao foi possivel montar uma rota segura para este destino.'}
+              {activeRoute?.reason || 'Não foi possível montar uma rota segura para este destino.'}
             </Text>
           </View>
         ) : (
@@ -195,7 +195,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
               },
             ]}
           >
-            <Room style={styles.roomReception} label="Recepcao" appColors={appColors} isDark={isDark} />
+            <Room style={styles.roomReception} label="Recepção" appColors={appColors} isDark={isDark} />
             <Room style={styles.roomLab} label="Laboratorio" appColors={appColors} isDark={isDark} />
             <Room style={styles.roomBathroom} label="Banheiro" appColors={appColors} isDark={isDark} />
             <Room style={styles.roomExam} label="Imagem" appColors={appColors} isDark={isDark} />
@@ -212,7 +212,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
               <View style={styles.blueDot} />
             </View>
             <View style={styles.currentLabel}>
-              <Text style={styles.currentLabelText}>Voce esta aqui</Text>
+              <Text style={styles.currentLabelText}>Você está aqui</Text>
             </View>
             <View style={styles.pinDestination}>
               <MaterialCommunityIcons name="map-marker" size={34} color={appColors.primary} />
@@ -250,7 +250,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
         </View>
         <View style={styles.instructionCopy}>
           <Text style={[styles.instructionTitle, { color: appColors.text }]}>
-            {arrived ? 'Voce chegou' : 'Proxima orientacao'}
+            {arrived ? 'Você chegou' : 'Próxima orientação'}
           </Text>
           <Text style={[styles.instructionText, { color: appColors.muted }]}>
             {arrived ? activeRoute.destination : instructionText}
@@ -259,7 +259,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
         {!arrived ? (
           <View style={styles.nextDistance}>
             <Text style={[styles.distance, { color: appColors.primary }]}>{stepDistance}</Text>
-            <Text style={[styles.distanceCaption, { color: appColors.muted }]}>ate a proxima orientacao</Text>
+            <Text style={[styles.distanceCaption, { color: appColors.muted }]}>até a próxima orientação</Text>
           </View>
         ) : null}
       </View>
@@ -283,7 +283,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
           style={({ pressed }) => [styles.finishButton, pressed && styles.pressed, shadows.soft]}
         >
           <MaterialCommunityIcons name="check-circle-outline" size={19} color="#FFFFFF" />
-          <Text style={styles.finishText}>Finalizar navegacao</Text>
+          <Text style={styles.finishText}>Finalizar navegação</Text>
         </Pressable>
       ) : (
         <>
@@ -379,7 +379,7 @@ function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFl
       {arrived ? (
         <View style={[styles.arrivalBanner, { backgroundColor: appColors.primary }]}>
           <MaterialCommunityIcons name="check-circle" size={18} color="#FFFFFF" />
-          <Text style={styles.arrivalBannerText}>Voce chegou ao destino</Text>
+          <Text style={styles.arrivalBannerText}>Você chegou ao destino</Text>
         </View>
       ) : null}
 
@@ -498,7 +498,7 @@ function RouteNode({ appColors, isDark, node }) {
             },
           ]}
         >
-          {node.visualRole === 'origin' ? 'Voce esta aqui' : node.visualRole === 'destination' ? node.label : node.label}
+          {node.visualRole === 'origin' ? 'Você está aqui' : node.visualRole === 'destination' ? node.label : node.label}
         </Text>
       ) : null}
     </View>
@@ -573,8 +573,8 @@ function buildRouteMap(activeRoute, nodes, edges, navigationProgress) {
 
 function getArrivalInstruction(activeRoute, currentStep) {
   if (currentStep?.type === 'ARRIVAL' && currentStep.instruction) return currentStep.instruction;
-  if (activeRoute?.source === 'api') return 'Voce chegou ao destino.';
-  return 'Destino alcancado. Ative o modo espera quando estiver pronto.';
+  if (activeRoute?.source === 'api') return 'Você chegou ao destino.';
+  return 'Destino alcançado. Ative o modo espera quando estiver pronto.';
 }
 
 function iconForNodeType(type) {

@@ -5,13 +5,13 @@ import NavoraBrand from '../branding/NavoraBrand.jsx';
 const profileText = {
   admin: {
     title: 'Acesso Administrativo',
-    subtitle: 'Faca login para acessar o painel administrativo e gerenciar o sistema hospitalar.',
+    subtitle: 'Faça login para acessar o painel administrativo e gerenciar o sistema hospitalar.',
     button: 'Entrar no Painel',
-    helper: 'Controle operacional, beacons, mapas, usuarios e relatorios.',
+    helper: 'Controle operacional, beacons, mapas, usuários e relatórios.',
   },
   reception: {
-    title: 'Acesso Recepcao',
-    subtitle: 'Faca login para acessar o sistema de atendimento e recepcao de pacientes.',
+    title: 'Acesso Recepção',
+    subtitle: 'Faça login para acessar o sistema de atendimento e recepção de pacientes.',
     button: 'Entrar no Sistema',
     helper: 'Atendimento, check-ins, chamados, mensagens e fluxo de pacientes.',
   },
@@ -57,13 +57,13 @@ export default function LoginForm({ profile, onSubmit, children }) {
       <p className="login-profile-helper">{content.helper}</p>
 
       <label className={`field ${errors.user ? 'invalid' : ''}`}>
-        <span>E-mail ou Usuario</span>
+        <span>E-mail ou Usuário</span>
         <div className="input-shell">
           <i aria-hidden="true"><Mail size={17} /></i>
           <input
             value={user}
             onChange={(event) => setUser(event.target.value)}
-            placeholder="Digite seu e-mail ou usuario"
+            placeholder="Digite seu e-mail ou usuário"
             autoComplete="username"
           />
         </div>
@@ -97,7 +97,7 @@ export default function LoginForm({ profile, onSubmit, children }) {
           />
           Lembrar-me
         </label>
-        <span className="access-help">Recuperacao de acesso: contate o administrador.</span>
+        <span className="access-help">Recuperação de acesso: contate o administrador.</span>
       </div>
 
       <button className="login-submit" type="submit" disabled={loading}>
@@ -106,7 +106,7 @@ export default function LoginForm({ profile, onSubmit, children }) {
 
       <footer className="login-security">
         <strong>Acesso restrito e monitorado</strong>
-        <span>Todos os dados sao protegidos com criptografia.</span>
+        <span>Todos os dados são protegidos com criptografia.</span>
       </footer>
     </form>
   );

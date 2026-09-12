@@ -21,9 +21,9 @@ export default function AreaEntryScreen({ navigate, onAreaProfileSelect, onStart
         <View style={styles.brandMark}>
           <MaterialCommunityIcons name="navigation-variant" size={28} color="#FFFFFF" />
         </View>
-        <Text style={styles.title}>Por onde voce entrou?</Text>
+        <Text style={styles.title}>Por onde você entrou?</Text>
         <Text style={styles.subtitle}>
-          Se voce nao souber, o Navora ira orientar voce ate a recepcao para confirmacao.
+          Se você não souber, o Navora irá orientar você até a recepção para confirmação.
         </Text>
       </View>
 
@@ -34,14 +34,14 @@ export default function AreaEntryScreen({ navigate, onAreaProfileSelect, onStart
       <Pressable onPress={goReception} style={({ pressed }) => [styles.unknownButton, pressed && styles.pressed]}>
         <MaterialCommunityIcons name="help-circle-outline" size={20} color={colors.primary} />
         <View style={styles.copy}>
-          <Text style={styles.unknownTitle}>Nao sei</Text>
-          <Text style={styles.unknownText}>Levar ate a recepcao mais proxima</Text>
+          <Text style={styles.unknownTitle}>Não sei</Text>
+          <Text style={styles.unknownText}>Levar até a recepção mais próxima</Text>
         </View>
         <MaterialCommunityIcons name="chevron-right" size={20} color={colors.muted} />
       </Pressable>
 
       <Pressable onPress={() => navigate('Login')} style={styles.loginLink}>
-        <Text style={styles.loginText}>Ja tenho conta</Text>
+        <Text style={styles.loginText}>Já tenho conta</Text>
       </Pressable>
     </Screen>
   );
@@ -49,8 +49,8 @@ export default function AreaEntryScreen({ navigate, onAreaProfileSelect, onStart
 
 function AreaCard({ area: sourceArea, onChoose }) {
   const area = sourceArea || getAreaById('private');
-  const welcome = `Bem-vindo a ${area.name}`;
-  const routing = 'Suas rotas serao direcionadas apenas para o ambiente hospitalar confirmado.';
+  const welcome = `Bem-vindo à ${area.name}`;
+  const routing = 'Suas rotas serão direcionadas apenas para o ambiente hospitalar confirmado.';
 
   return (
     <View style={[styles.areaCard, shadows.card]}>
@@ -60,10 +60,11 @@ function AreaCard({ area: sourceArea, onChoose }) {
         </View>
         <View style={styles.copy}>
           <Text style={styles.areaTitle}>{welcome}</Text>
-          <Text style={styles.areaMeta}>Voce entrou pela {area.entranceName}.</Text>
+          <Text style={styles.areaMeta}>Você entrou pela {area.entranceName}.</Text>
         </View>
       </View>
       <Text style={styles.routingText}>{routing}</Text>
+
       <View style={styles.actions}>
         <Pressable onPress={() => onChoose(area.id, 'patient')} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
           <Text style={styles.primaryText}>Sou paciente</Text>

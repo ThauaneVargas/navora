@@ -21,7 +21,7 @@ const history = [
   },
   {
     id: '2',
-    destination: 'Recepcao Principal',
+    destination: 'Recepção Principal',
     sector: 'Ala Principal',
     floor: 'Piso Terreo',
     date: 'Hoje',
@@ -84,7 +84,7 @@ export default function RouteHistoryScreen({ navigate, goBack }) {
 
   return (
     <Screen>
-      <Header title="Historico de rotas" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title="Histórico de rotas" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.statsRow, shadows.card]}>
         <StatItem label="Rotas" value={history.length} icon="routes" styles={styles} appColors={appColors} />
@@ -137,7 +137,7 @@ export default function RouteHistoryScreen({ navigate, goBack }) {
       <View style={[styles.infoCard, shadows.card]}>
         <MaterialCommunityIcons name="information-outline" size={16} color={appColors.muted} />
         <Text style={styles.infoText}>
-          O historico exibe as ultimas rotas concluidas. Rotas canceladas nao sao salvas.
+          O histórico exibe as últimas rotas concluídas. Rotas canceladas não são salvas.
         </Text>
       </View>
     </Screen>

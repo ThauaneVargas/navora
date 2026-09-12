@@ -8,17 +8,17 @@ import { useApp } from '../context/AppContext';
 import { navoraApi, isNetworkError } from '../services/api';
 
 const options = [
-  { key: 'none', title: 'Nao preciso de apoio', desc: 'Usar rotas padrao.', icon: 'check-circle-outline' },
-  { key: 'wheelchair', title: 'Solicitar cadeira de rodas', desc: 'Registra apoio separado quando necessario.', icon: 'wheelchair-accessibility' },
-  { key: 'mobility', title: 'Mobilidade reduzida', desc: 'Prioriza caminhos mais confortaveis.', icon: 'walk' },
+  { key: 'none', title: 'Não preciso de apoio', desc: 'Usar rotas padrão.', icon: 'check-circle-outline' },
+  { key: 'wheelchair', title: 'Solicitar cadeira de rodas', desc: 'Registra apoio separado quando necessário.', icon: 'wheelchair-accessibility' },
+  { key: 'mobility', title: 'Mobilidade reduzida', desc: 'Prioriza caminhos mais confortáveis.', icon: 'walk' },
   { key: 'avoidStairs', title: 'Rota sem escadas', desc: 'Evita escadas quando houver alternativa.', icon: 'stairs' },
   { key: 'preferElevator', title: 'Utilizar somente elevador', desc: 'Prefere elevadores nas trocas de andar.', icon: 'elevator-passenger-outline' },
   { key: 'walkingHelp', title: 'Ajuda para caminhar', desc: 'Sinaliza necessidade de apoio humano.', icon: 'hand-heart-outline' },
-  { key: 'voiceGuidance', title: 'Orientacao por voz', desc: 'Permite instrucoes faladas durante a navegacao.', icon: 'volume-high' },
-  { key: 'largerText', title: 'Texto e botoes maiores', desc: 'Aumenta a area de leitura e toque.', icon: 'format-size' },
-  { key: 'visualImpairment', title: 'Deficiencia visual', desc: 'Favorece orientacoes mais descritivas.', icon: 'eye-outline' },
-  { key: 'hearingImpairment', title: 'Deficiencia auditiva', desc: 'Prioriza informacoes visuais claras.', icon: 'ear-hearing' },
-  { key: 'other', title: 'Outra necessidade', desc: 'Informe a recepcao durante o atendimento.', icon: 'plus-circle-outline' },
+  { key: 'voiceGuidance', title: 'Orientação por voz', desc: 'Permite instruções faladas durante a navegação.', icon: 'volume-high' },
+  { key: 'largerText', title: 'Texto e botões maiores', desc: 'Aumenta a área de leitura e toque.', icon: 'format-size' },
+  { key: 'visualImpairment', title: 'Deficiência visual', desc: 'Favorece orientações mais descritivas.', icon: 'eye-outline' },
+  { key: 'hearingImpairment', title: 'Deficiência auditiva', desc: 'Prioriza informações visuais claras.', icon: 'ear-hearing' },
+  { key: 'other', title: 'Outra necessidade', desc: 'Informe a recepção durante o atendimento.', icon: 'plus-circle-outline' },
 ];
 
 // Maps screen option keys to backend API fields
@@ -78,13 +78,13 @@ export default function AccessibilityScreen({ navigate, goBack, userProfile }) {
     setSaving(true);
     try {
       await navoraApi.updateAccessibility(fromScreenToApi(activeOptions));
-      Alert.alert('Salvo', 'Suas preferencias de acessibilidade foram atualizadas.');
+      Alert.alert('Salvo', 'Suas preferências de acessibilidade foram atualizadas.');
       navigate('Menu');
     } catch (error) {
       if (isNetworkError(error)) {
-        Alert.alert('Sem conexao', 'Nao foi possivel salvar agora. Tente novamente.');
+        Alert.alert('Sem conexão', 'Não foi possível salvar agora. Tente novamente.');
       } else {
-        Alert.alert('Erro', 'Nao foi possivel salvar suas preferencias.');
+        Alert.alert('Erro', 'Não foi possível salvar suas preferências.');
       }
     } finally {
       setSaving(false);
@@ -93,16 +93,16 @@ export default function AccessibilityScreen({ navigate, goBack, userProfile }) {
 
   return (
     <Screen>
-      <Header title="Acessibilidade" subtitle="Preferencias para uma rota segura" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title="Acessibilidade" subtitle="Preferências para uma rota segura" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.heroCard, shadows.card]}>
         <View style={styles.heroIcon}>
           <MaterialCommunityIcons name="wheelchair-accessibility" size={34} color={appColors.primary} />
         </View>
         <View style={styles.heroCopy}>
-          <Text style={styles.heroTitle}>Preferencias de rota</Text>
+          <Text style={styles.heroTitle}>Preferências de rota</Text>
           <Text style={styles.heroText}>
-            Estas opcoes ajudam o Navora a sugerir caminhos mais seguros e confortaveis.
+            Estas opções ajudam o Navora a sugerir caminhos mais seguros e confortáveis.
           </Text>
         </View>
       </View>
@@ -144,7 +144,7 @@ export default function AccessibilityScreen({ navigate, goBack, userProfile }) {
         {saving ? (
           <ActivityIndicator color="#FFFFFF" size="small" />
         ) : (
-          <Text style={styles.saveText}>Salvar preferencias</Text>
+          <Text style={styles.saveText}>Salvar preferências</Text>
         )}
       </Pressable>
     </Screen>

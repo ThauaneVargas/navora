@@ -22,7 +22,7 @@ export default function ProfileChoiceScreen({ navigate, goBack, routeParams = {}
     <Screen>
       <Header
         title="Como deseja continuar?"
-        subtitle="Isso nos ajuda a mostrar o conteudo certo para voce."
+        subtitle="Isso nos ajuda a mostrar o conteúdo certo para você."
         onBack={() => goBack?.()}
         onMenu={() => navigate('Menu')}
       />
@@ -31,7 +31,7 @@ export default function ProfileChoiceScreen({ navigate, goBack, routeParams = {}
         <Text style={styles.area}>{areaData.name} - {areaData.entranceName}</Text>
       </View>
       <ProfileCard icon="account-heart-outline" title="Sou Paciente" subtitle="Tenho exame, atendimento ou procedimento." onPress={() => choose('patient')} />
-      <ProfileCard icon="account-arrow-right-outline" title="Sou Visitante" subtitle="Vou acompanhar ou visitar alguem." onPress={() => choose('visitor')} />
+      <ProfileCard icon="account-arrow-right-outline" title="Sou Visitante" subtitle="Vou acompanhar ou visitar alguém." onPress={() => choose('visitor')} />
     </Screen>
   );
 }

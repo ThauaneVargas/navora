@@ -42,7 +42,7 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
 
   const submit = async () => {
     if (!login.trim() || !password.trim()) {
-      Alert.alert('Atencao', 'Preencha CPF, e-mail ou telefone e senha.');
+      Alert.alert('Atenção', 'Preencha CPF, e-mail ou telefone e senha.');
       return;
     }
     setLoading(true);
@@ -67,7 +67,7 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
         Alert.alert('Credenciais invalidas', 'Confira seu e-mail e senha para continuar.');
         return;
       }
-      Alert.alert('Nao foi possivel entrar', 'Tente novamente em instantes.');
+      Alert.alert('Não foi possível entrar', 'Tente novamente em instantes.');
     } finally {
       setLoading(false);
     }
@@ -83,7 +83,7 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
           </View>
           <View style={styles.copy}>
             <Text style={styles.title}>Bem-vinda de volta</Text>
-            <Text style={styles.subtitle}>Use sua conta de paciente. Biometria e login social serao conectados somente quando houver suporte real.</Text>
+            <Text style={styles.subtitle}>Use sua conta de paciente. Biometria e login social serão conectados somente quando houver suporte real.</Text>
           </View>
         </View>
         <Input icon="account-outline" placeholder="CPF, e-mail ou telefone" value={login} onChangeText={setLogin} />

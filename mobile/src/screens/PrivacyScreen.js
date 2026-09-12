@@ -9,33 +9,33 @@ import { useApp } from '../context/AppContext';
 const sections = [
   {
     icon: 'map-marker-outline',
-    title: 'Localizacao indoor',
-    body: 'O Navora usa beacons Wi-Fi para estimar sua posicao dentro do hospital. Esses dados sao usados apenas durante a navegacao e nao sao armazenados permanentemente.',
+    title: 'Localização indoor',
+    body: 'O Navora usa beacons Wi-Fi para estimar sua posição dentro do hospital. Esses dados são usados apenas durante a navegação e não são armazenados permanentemente.',
   },
   {
     icon: 'routes',
-    title: 'Historico de rotas',
-    body: 'As rotas percorridas sao salvas localmente no dispositivo para exibir o historico. Nenhuma rota e enviada a terceiros.',
+    title: 'Histórico de rotas',
+    body: 'As rotas percorridas são salvas localmente no dispositivo para exibir o histórico. Nenhuma rota é enviada a terceiros.',
   },
   {
     icon: 'account-outline',
     title: 'Dados do perfil',
-    body: 'Nome, CPF e dados de saude cadastrados sao armazenados de forma criptografada no servidor Navora e nao sao compartilhados sem consentimento.',
+    body: 'Nome, CPF e dados de saúde cadastrados são armazenados de forma criptografada no servidor Navora e não são compartilhados sem consentimento.',
   },
   {
     icon: 'bell-outline',
-    title: 'Notificacoes',
-    body: 'Alertas de rota e SOS sao enviados apenas enquanto o app esta em uso. Nenhuma notificacao de marketing e enviada.',
+    title: 'Notificações',
+    body: 'Alertas de rota e SOS são enviados apenas enquanto o app está em uso. Nenhuma notificação de marketing é enviada.',
   },
   {
     icon: 'shield-check-outline',
-    title: 'Seguranca dos dados',
-    body: 'Toda comunicacao com o servidor usa HTTPS com token JWT. Seus dados nunca trafegam em texto simples.',
+    title: 'Segurança dos dados',
+    body: 'Toda comunicação com o servidor usa HTTPS com token JWT. Seus dados nunca trafegam em texto simples.',
   },
   {
     icon: 'delete-outline',
-    title: 'Exclusao de dados',
-    body: 'Voce pode solicitar a exclusao completa dos seus dados a qualquer momento na recepcao do hospital ou pelo e-mail privacidade@navora.com.br.',
+    title: 'Exclusão de dados',
+    body: 'Você pode solicitar a exclusão completa dos seus dados a qualquer momento na recepção do hospital ou pelo e-mail privacidade@navora.com.br.',
   },
 ];
 
@@ -54,7 +54,7 @@ export default function PrivacyScreen({ navigate, goBack }) {
         <View style={styles.headerCopy}>
           <Text style={styles.headerTitle}>Seus dados, sua privacidade</Text>
           <Text style={styles.headerSub}>
-            O Navora coleta apenas o necessario para funcionar e nunca vende seus dados.
+            O Navora coleta apenas o necessário para funcionar e nunca vende seus dados.
           </Text>
         </View>
       </View>
@@ -74,8 +74,8 @@ export default function PrivacyScreen({ navigate, goBack }) {
       <View style={[styles.footerCard, shadows.card]}>
         <MaterialCommunityIcons name="information-outline" size={18} color={appColors.muted} />
         <Text style={styles.footerText}>
-          Ultima atualizacao da politica de privacidade: Janeiro de 2025.
-          Para duvidas, acesse o balcao de informacoes do hospital.
+          Última atualização da política de privacidade: Janeiro de 2025.
+          Para dúvidas, acesse o balcão de informações do hospital.
         </Text>
       </View>
     </Screen>

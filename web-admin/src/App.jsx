@@ -64,7 +64,7 @@ const adminNav = [
   ['admin-users', 'Usuarios', Users],
   ['admin-beacons', 'Beacons', RadioTower],
   ['admin-reports', 'Relatorios', BarChart3],
-  ['admin-settings', 'Configuracoes', Settings],
+  ['admin-settings', 'Configurações', Settings],
 ];
 
 const receptionNav = [
@@ -74,7 +74,7 @@ const receptionNav = [
   ['reception-checkin', 'Check-ins', ClipboardCheck],
   ['reception-calls', 'Chamados', HelpCircle],
   ['reception-messages', 'Mensagens', MessageSquare],
-  ['reception-settings', 'Configuracoes', Settings],
+  ['reception-settings', 'Configurações', Settings],
 ];
 
 const pageLabels = Object.fromEntries([...adminNav, ...receptionNav].map(([id, label]) => [id, label]));
@@ -130,19 +130,19 @@ const roleMap = {
 
 const roleLabelMap = {
   admin: 'Administrador',
-  reception: 'Recepcao',
+  reception: 'Recepção',
 };
 
 function mapUserToStaffAccount(user) {
   const role = roleMap[user?.role];
   return {
     id: `API-${user?.id}`,
-    name: user?.name || 'Funcionario Navora',
+    name: user?.name || 'Funcionário Navora',
     email: user?.email,
     phone: user?.phone,
     role,
     roleLabel: roleLabelMap[role] || user?.role,
-    sector: role === 'admin' ? 'Gestao' : 'Recepcao',
+    sector: role === 'admin' ? 'Gestão' : 'Recepção',
     status: user?.active === false ? 'Inativo' : 'Ativo',
     createdAt: user?.createdAt || '',
     lastLogin: 'Agora',
@@ -175,7 +175,7 @@ function mapCallFromApi(call) {
     createdAt: created
       ? created.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       : 'Agora',
-    assignedTo: 'Nao atribuido',
+    assignedTo: 'Não atribuído',
     history: ['Chamado recebido pela API'],
   };
 }
@@ -248,7 +248,7 @@ function mapVisitorAccessFromApi(request) {
     areaId: request.area_id || request.area,
     entry: request.entrance || request.entry,
     currentLocation: request.current_location,
-    beacon: request.current_beacon || request.beacon || 'Nao informado',
+    beacon: request.current_beacon || request.beacon || 'Não informado',
     requestedDestination: request.requested_destination,
     reason: request.reason,
     accessibility: request.accessibility,
@@ -419,7 +419,7 @@ function App() {
   const handleAuthFailure = (error, forbiddenMessage = 'Acesso negado para este perfil.') => {
     if (isUnauthorizedError(error)) {
       leaveAdminPanel();
-      showToast('Sessao invalida ou expirada.', 'danger');
+      showToast('Sessão inválida ou expirada.', 'danger');
       return true;
     }
 
@@ -437,7 +437,7 @@ function App() {
       setVisitors(requests.map(mapVisitorAccessFromApi));
     } catch (error) {
       if (handleAuthFailure(error)) return;
-      showToast('API indisponivel, mantendo dados simulados de visitantes', 'warning');
+      showToast('API indisponível, mantendo dados simulados de visitantes', 'warning');
     }
   };
 
@@ -447,7 +447,7 @@ function App() {
       setCalls(requests.map(mapCallFromApi));
     } catch (error) {
       if (handleAuthFailure(error)) return;
-      showToast('API indisponivel, mantendo chamados simulados', 'warning');
+      showToast('API indisponível, mantendo chamados simulados', 'warning');
     }
   };
 
@@ -458,7 +458,7 @@ function App() {
     } catch (error) {
       if (handleAuthFailure(error)) return;
       setDashboardSummary(null);
-      showToast('API indisponivel, mantendo resumo local', 'warning');
+      showToast('API indisponível, mantendo resumo local', 'warning');
     }
   };
 
@@ -472,7 +472,7 @@ function App() {
         return;
       }
       setCheckins(initialCheckins);
-      showToast('API indisponivel, usando check-ins simulados', 'warning');
+      showToast('API indisponível, usando check-ins simulados', 'warning');
     }
   };
 
@@ -486,7 +486,7 @@ function App() {
         return;
       }
       setMessages(initialMessages);
-      showToast('API indisponivel, usando mensagens simuladas', 'warning');
+      showToast('API indisponível, usando mensagens simuladas', 'warning');
     }
   };
 
@@ -502,7 +502,7 @@ function App() {
       if (handleAuthFailure(error)) return;
       setSectors(initialSectors);
       setSectorsSource('fallback');
-      showToast('API indisponivel, usando setores simulados', 'warning');
+      showToast('API indisponível, usando setores simulados', 'warning');
     }
   };
 
@@ -517,7 +517,7 @@ function App() {
       if (handleAuthFailure(error)) return;
       setBeacons(initialBeacons);
       setBeaconsSource('fallback');
-      showToast('API indisponivel, usando beacons simulados', 'warning');
+      showToast('API indisponível, usando beacons simulados', 'warning');
     }
   };
 
@@ -594,7 +594,7 @@ function App() {
             setCurrentPage(null);
             setCurrentUser(null);
             window.history.replaceState({}, '', '/login');
-            showToast('Sessao invalida ou expirada.', 'danger');
+            showToast('Sessão inválida ou expirada.', 'danger');
           }
         } else if (isForbiddenError(error)) {
           if (active) showToast('Acesso negado para este perfil.', 'danger');
@@ -625,7 +625,7 @@ function App() {
       clearAdminSession();
       const auth = await adminApi.login({ email, password });
       if (!auth?.access_token || !auth?.user) {
-        showToast('Resposta de autenticacao invalida.', 'danger');
+        showToast('Resposta de autenticação inválida.', 'danger');
         return;
       }
 
@@ -633,13 +633,13 @@ function App() {
 
       if (!account.role || !['admin', 'reception'].includes(account.role)) {
         clearAdminSession();
-        showToast('Este perfil nao possui acesso ao painel administrativo.', 'danger');
+        showToast('Este perfil não possui acesso ao painel administrativo.', 'danger');
         return;
       }
 
       if (role && account.role !== role) {
         clearAdminSession();
-        showToast('Perfil selecionado nao corresponde ao usuario autenticado', 'danger');
+        showToast('Perfil selecionado não corresponde ao usuário autenticado', 'danger');
         return;
       }
 
@@ -649,13 +649,13 @@ function App() {
 
       if (!confirmedAccount.role || !['admin', 'reception'].includes(confirmedAccount.role)) {
         clearAdminSession();
-        showToast('Este perfil nao possui acesso ao painel administrativo.', 'danger');
+        showToast('Este perfil não possui acesso ao painel administrativo.', 'danger');
         return;
       }
 
       if (role && confirmedAccount.role !== role) {
         clearAdminSession();
-        showToast('Perfil selecionado nao corresponde ao usuario autenticado', 'danger');
+        showToast('Perfil selecionado não corresponde ao usuário autenticado', 'danger');
         return;
       }
 
@@ -664,25 +664,25 @@ function App() {
       showToast(`Bem-vindo(a), ${confirmedAccount.name}`, 'info');
     } catch (error) {
       if (isNetworkError(error)) {
-        showToast('Nao foi possivel conectar ao backend de autenticacao.', 'danger');
+        showToast('Não foi possível conectar ao backend de autenticação.', 'danger');
         return;
       }
       if (isUnauthorizedError(error)) {
         clearAdminSession();
-        showToast('Credenciais invalidas ou sessao expirada.', 'danger');
+        showToast('Credenciais inválidas ou sessão expirada.', 'danger');
         return;
       }
       if (isForbiddenError(error)) {
         showToast('Acesso negado para este perfil.', 'danger');
         return;
       }
-      showToast('Nao foi possivel autenticar agora', 'danger');
+      showToast('Não foi possível autenticar agora', 'danger');
     }
   };
 
   const logout = () => {
     leaveAdminPanel();
-    showToast('Sessao encerrada', 'info');
+    showToast('Sessão encerrada', 'info');
   };
 
   const createStaffAccount = async (data) => {
@@ -697,18 +697,18 @@ function App() {
       const account = mapUserToStaffAccount(created);
       setStaffAccounts((items) => [account, ...items]);
       setUsers((items) => [
-        { id: created.id, name: created.name, role: account.roleLabel, status: 'Ativo', location: data.sector || 'Recepcao', lastSeen: 'Nunca', accessibility: 'Nao' },
+        { id: created.id, name: created.name, role: account.roleLabel, status: 'Ativo', location: data.sector || 'Recepção', lastSeen: 'Nunca', accessibility: 'Nao' },
         ...items,
       ]);
-      showToast('Funcionario cadastrado com acesso ao sistema');
+      showToast('Funcionário cadastrado com acesso ao sistema');
       closeModal();
     } catch (error) {
-      if (handleAuthFailure(error, 'Acesso negado para cadastrar funcionario')) return;
+      if (handleAuthFailure(error, 'Acesso negado para cadastrar funcionário')) return;
       if (error?.status === 409) {
-        showToast('Ja existe uma conta com este e-mail', 'warning');
+        showToast('Já existe uma conta com este e-mail', 'warning');
         return;
       }
-      showToast('Nao foi possivel cadastrar o funcionario agora', 'danger');
+      showToast('Não foi possível cadastrar o funcionário agora', 'danger');
     }
   };
 
@@ -740,7 +740,7 @@ function App() {
       showToast(updated?.demoMode ? `Chamado atualizado localmente para ${status}` : `Chamado atualizado para ${status}`, updated?.demoMode ? 'warning' : 'success');
     } catch (error) {
       if (handleAuthFailure(error, 'Acesso negado para atualizar chamado')) return;
-      showToast('Chamado nao atualizado. Dados locais mantidos.', 'danger');
+      showToast('Chamado não atualizado. Dados locais mantidos.', 'danger');
       return;
     }
     loadCalls();
@@ -754,7 +754,7 @@ function App() {
       showToast(updated?.demoMode ? 'Equipe acionada localmente' : 'Equipe acionada', updated?.demoMode ? 'warning' : 'success');
     } catch (error) {
       if (handleAuthFailure(error, 'Acesso negado para acionar equipe')) return;
-      showToast('Equipe nao acionada. Dados locais mantidos.', 'danger');
+      showToast('Equipe não acionada. Dados locais mantidos.', 'danger');
       return;
     }
     loadCalls();
@@ -777,7 +777,7 @@ function App() {
       closeModal();
     } catch (error) {
       if (handleAuthFailure(error, 'Acesso negado para criar check-in')) return;
-      showToast('Check-in nao criado. API indisponivel ou dados recusados.', 'danger');
+      showToast('Check-in não criado. API indisponível ou dados recusados.', 'danger');
     }
   };
 
@@ -788,7 +788,7 @@ function App() {
       showToast(`Check-in atualizado para ${status}`);
     } catch (error) {
       if (handleAuthFailure(error, 'Acesso negado para atualizar check-in')) return;
-      showToast('Check-in nao atualizado. Dados locais mantidos.', 'danger');
+      showToast('Check-in não atualizado. Dados locais mantidos.', 'danger');
     }
   };
 
@@ -813,13 +813,13 @@ function App() {
       closeModal();
     } catch (error) {
       if (handleAuthFailure(error, 'Acesso negado para enviar mensagem')) return;
-      showToast('Mensagem nao enviada. API indisponivel ou dados recusados.', 'danger');
+      showToast('Mensagem não enviada. API indisponível ou dados recusados.', 'danger');
     }
   };
 
   const saveSettings = (data) => {
     setSettings((current) => ({ ...current, ...data }));
-    showToast('Configuracoes salvas');
+    showToast('Configurações salvas');
   };
 
   const updateCurrentUserProfile = (changes) => {
@@ -843,7 +843,7 @@ function App() {
       updateVisitor(visitor.id, { ...(updated.visitor_name ? mapVisitorAccessFromApi(updated) : { status }), ...changes }, toastMessage);
     } catch (error) {
       if (handleAuthFailure(error, 'Acesso negado para atualizar visitante')) return;
-      showToast('Visitante nao atualizado. Dados locais mantidos.', 'danger');
+      showToast('Visitante não atualizado. Dados locais mantidos.', 'danger');
       return;
     }
     loadVisitorAccessRequests();
@@ -853,8 +853,8 @@ function App() {
   const authorizeVisitor = async (visitor, data) => {
     const allowedRoute =
       visitor.areaId === 'private'
-        ? `Recepcao Private -> rota autorizada -> ${visitor.requestedDestination}`
-        : `Recepcao Hospital Marco Capute -> rota autorizada -> ${visitor.requestedDestination}`;
+        ? `Recepção Private -> rota autorizada -> ${visitor.requestedDestination}`
+        : `Recepção Hospital Marco Capute -> rota autorizada -> ${visitor.requestedDestination}`;
 
     if (data.releaseType === 'Negar acesso') {
       denyVisitor(visitor, 'Negado na autorizacao');
@@ -879,7 +879,7 @@ function App() {
       );
     } catch (error) {
       if (handleAuthFailure(error, 'Acesso negado para autorizar visitante')) return;
-      showToast('Acesso nao autorizado. Dados locais mantidos.', 'danger');
+      showToast('Acesso não autorizado. Dados locais mantidos.', 'danger');
       return;
     }
     closeModal();
@@ -897,7 +897,7 @@ function App() {
       );
     } catch (error) {
       if (handleAuthFailure(error, 'Acesso negado para negar visitante')) return;
-      showToast('Negativa nao registrada. Dados locais mantidos.', 'danger');
+      showToast('Negativa não registrada. Dados locais mantidos.', 'danger');
       return;
     }
     closeModal();
@@ -920,11 +920,11 @@ function App() {
       help,
       doctor,
       averageResponse: '4 min',
-      busiestSector: busiestSector?.name || 'Recepcao',
+      busiestSector: busiestSector?.name || 'Recepção',
       lowBeacon: lowBeacon?.id || 'Nenhum',
       closed: calls.filter((call) => call.status === 'Encerrado').length,
       pending: calls.filter((call) => call.status === 'Pendente').length,
-      recommendations: ['Reforcar equipe no Setor de Imagem', 'Substituir beacon com bateria baixa', 'Manter prioridade para SOS e solicitacoes medicas'],
+      recommendations: ['Reforçar equipe no Setor de Imagem', 'Substituir beacon com bateria baixa', 'Manter prioridade para SOS e solicitações médicas'],
     };
   };
 
@@ -934,14 +934,14 @@ function App() {
       if (report?.demoMode) return generateLocalReport(period);
       return report;
     } catch (error) {
-      if (handleAuthFailure(error, 'Acesso negado para gerar relatorio')) {
+      if (handleAuthFailure(error, 'Acesso negado para gerar relatório')) {
         return {
           period,
           source: 'auth-error',
-          status: 'Nao autorizado',
+          status: 'Não autorizado',
         };
       }
-      showToast('API indisponivel, gerando relatorio local', 'warning');
+      showToast('API indisponível, gerando relatório local', 'warning');
       return generateLocalReport(period);
     }
   };
@@ -1206,12 +1206,12 @@ function CallsPage({ app, admin = false }) {
   if (!admin) {
     return (
       <div className="page-view premium-page reception-calls-page">
-        <PageHeading title="Chamados e SOS" subtitle="Acompanhe pedidos de ajuda, emergencias e solicitacoes operacionais." />
+        <PageHeading title="Chamados e SOS" subtitle="Acompanhe pedidos de ajuda, emergências e solicitações operacionais." />
         <section className="kpi-grid">
           <KpiCard icon={HeartPulse} tone="danger" label="SOS ativos" value={app.calls.filter((call) => call.type === 'SOS Emergencia' && call.status !== 'Encerrado').length} helper="Prioridade critica" />
-          <KpiCard icon={HelpCircle} tone="warning" label="Pedidos de ajuda" value={app.calls.filter((call) => call.type !== 'SOS Emergencia' && call.status !== 'Encerrado').length} helper="Nao encerrados" />
+          <KpiCard icon={HelpCircle} tone="warning" label="Pedidos de ajuda" value={app.calls.filter((call) => call.type !== 'SOS Emergencia' && call.status !== 'Encerrado').length} helper="Não encerrados" />
           <KpiCard icon={Clock3} tone="info" label="Em atendimento" value={app.calls.filter((call) => call.status === 'Em atendimento').length} helper="Equipe acompanhando" />
-          <KpiCard icon={CheckCircle2} tone="success" label="Encerrados" value={app.calls.filter((call) => call.status === 'Encerrado').length} helper="Historico operacional" />
+          <KpiCard icon={CheckCircle2} tone="success" label="Encerrados" value={app.calls.filter((call) => call.status === 'Encerrado').length} helper="Histórico operacional" />
         </section>
         <div className="page-toolbar">
           <div className="page-search"><Search size={16} /><input placeholder="Buscar paciente, setor ou tipo" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
@@ -1231,7 +1231,7 @@ function CallsPage({ app, admin = false }) {
     <section className={`panel wide ${admin ? 'alerts-page' : 'calls-page'}`}>
       <div className="panel-title">
         <div>
-          <h2>{admin ? 'Alertas e SOS' : 'Chamados da recepcao'}</h2>
+          <h2>{admin ? 'Alertas e SOS' : 'Chamados da recepção'}</h2>
         </div>
       </div>
       <Toolbar>
@@ -1267,14 +1267,14 @@ function UsersPage({ app }) {
     const matchesFilter =
       filter === 'Todos' ||
       (filter === 'Administrador' && account.role === 'admin') ||
-      (filter === 'Recepcao' && account.role === 'reception');
+      (filter === 'Recepção' && account.role === 'reception');
     return matchesQuery && matchesFilter;
   });
   const visible = app.users.filter((user) => {
     const okFilter =
       filter === 'Todos' ||
       (filter === 'Administrador' && user.role === 'Administrador') ||
-      (filter === 'Recepcao' && user.role === 'Recepcao') ||
+      (filter === 'Recepção' && user.role === 'Recepção') ||
       (filter === 'Pacientes' && user.role === 'Paciente') ||
       (filter === 'Visitantes' && user.role === 'Visitante');
     return okFilter && `${user.name} ${user.role} ${user.location} ${user.accessibility}`.toLowerCase().includes(query.toLowerCase());
@@ -1285,7 +1285,7 @@ function UsersPage({ app }) {
       <section className="kpi-grid">
         <KpiCard icon={Users} tone="violet" label="Acessos internos" value={app.staffAccounts.length} helper="Perfis internos cadastrados" />
         <KpiCard icon={CheckCircle2} tone="success" label="Ativos agora" value={activeStaff} helper="Podem entrar no sistema" />
-        <KpiCard icon={UserCheck} tone="warning" label="Acesso recepcao" value={receptionStaff} helper="Perfis de recepcao" />
+        <KpiCard icon={UserCheck} tone="warning" label="Acesso recepção" value={receptionStaff} helper="Perfis de recepção" />
         <KpiCard icon={Activity} tone="info" label="Pacientes monitorados" value={app.users.length} helper="Usuarios na plataforma" />
       </section>
 
@@ -1295,7 +1295,7 @@ function UsersPage({ app }) {
         <button className="btn btn-secondary" onClick={() => app.exportToCSV('usuarios.csv', [...staffQuery, ...visible])}><Download size={16} />Exportar</button>
       </div>
 
-      <FilterChips items={['Todos', 'Administrador', 'Recepcao', 'Pacientes']} active={filter} onChange={setFilter} />
+      <FilterChips items={['Todos', 'Administrador', 'Recepção', 'Pacientes']} active={filter} onChange={setFilter} />
 
       <SectionCard title="Acessos administrativos" subtitle="Controle de acessos da equipe interna ao sistema.">
         <PremiumTable
@@ -1327,15 +1327,15 @@ function UsersPage({ app }) {
             { key: 'name', label: 'Nome', render: (user) => <UserCell name={user.name} sub={user.role} /> },
             { key: 'role', label: 'Perfil', render: (user) => <RoleBadge value={user.role} /> },
             { key: 'status', label: 'Status', render: (user) => <NvBadge value={user.status} /> },
-            { key: 'location', label: 'Localizacao', render: (user) => user.location },
+            { key: 'location', label: 'Localização', render: (user) => user.location },
             { key: 'accessibility', label: 'Acessibilidade', render: (user) => <AccessibilityNote value={user.accessibility} /> },
-            { key: 'lastSeen', label: 'Ultima atualizacao', render: (user) => user.lastSeen },
+            { key: 'lastSeen', label: 'Última atualização', render: (user) => user.lastSeen },
             { key: 'actions', label: 'Acoes', render: (user) => (
               <RowActions>
                 <button className="btn btn-secondary" onClick={() => app.openModal('Perfil do usuario', <UserProfile user={user} />)}>Ver perfil</button>
-                <button className="btn btn-info" onClick={() => { app.setCurrentPage('admin-heatmap'); app.setFilters({ sector: user.location }); }}>Localizacao</button>
+                <button className="btn btn-info" onClick={() => { app.setCurrentPage('admin-heatmap'); app.setFilters({ sector: user.location }); }}>Localização</button>
                 <ActionMenu>
-                  <button onClick={() => openMessage(app, user.name)}>Enviar notificacao</button>
+                  <button onClick={() => openMessage(app, user.name)}>Enviar notificação</button>
                   <button className="menu-danger" onClick={() => { app.setUsers((items) => items.map((item) => item.id === user.id ? { ...item, status: item.status === 'Bloqueado' ? 'Ativo' : 'Bloqueado' } : item)); app.showToast('Status do usuario atualizado'); }}>{user.status === 'Bloqueado' ? 'Desbloquear' : 'Bloquear'}</button>
                 </ActionMenu>
               </RowActions>
@@ -1357,23 +1357,23 @@ function BeaconsPage({ app }) {
   });
   const rows = visible.map((beacon) => ({
     ...beacon,
-    node: beacon.originNodeCode || beacon.navigationNode?.code || 'Nao informado',
+    node: beacon.originNodeCode || beacon.navigationNode?.code || 'Não informado',
     lastSignal: beacon.lastSignal || 'Sem sinal',
   }));
   return (
     <div className="page-view premium-page">
-      <PageHeading title="Beacons" subtitle="Monitoramento dos dispositivos de localizacao indoor" />
+      <PageHeading title="Beacons" subtitle="Monitoramento dos dispositivos de localização indoor" />
       <section className="kpi-grid">
         <KpiCard icon={RadioTower} tone="info" label="Total de beacons" value={app.beacons.length} helper="Dispositivos cadastrados" />
         <KpiCard icon={CheckCircle2} tone="success" label="Online" value={app.beacons.filter((b) => b.status === 'Online').length} helper="Transmitindo sinal" />
-        <KpiCard icon={Clock3} tone="warning" label="Bateria baixa" value={app.beacons.filter((b) => b.battery < 30).length} helper="Requer atencao" />
-        <KpiCard icon={ShieldCheck} tone="danger" label="Offline" value={app.beacons.filter((b) => b.status === 'Offline').length} helper="Sem comunicacao" />
+        <KpiCard icon={Clock3} tone="warning" label="Bateria baixa" value={app.beacons.filter((b) => b.battery < 30).length} helper="Requer atenção" />
+        <KpiCard icon={ShieldCheck} tone="danger" label="Offline" value={app.beacons.filter((b) => b.status === 'Offline').length} helper="Sem comunicação" />
       </section>
       <div className="page-toolbar">
         <div className="page-search"><Search size={16} /><input placeholder="Buscar por codigo, nome ou setor" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
         <button className="btn btn-secondary" onClick={() => app.exportToCSV('beacons.csv', rows)}><Download size={16} />Exportar</button>
       </div>
-      <FilterChips items={['Todos', 'Online', 'Atencao', 'Offline', 'Sem sinal', 'Bateria baixa', 'Manutencao']} active={filter} onChange={setFilter} />
+      <FilterChips items={['Todos', 'Online', 'Atenção', 'Offline', 'Sem sinal', 'Bateria baixa', 'Manutenção']} active={filter} onChange={setFilter} />
       <SectionCard title="Dispositivos monitorados" subtitle="Status operacional dos beacons no ambiente.">
         <PremiumTable
           rows={rows}
@@ -1392,7 +1392,7 @@ function BeaconsPage({ app }) {
                 <button className="btn btn-info" onClick={() => { app.setFilters({ sector: beacon.sector }); app.setCurrentPage('admin-heatmap'); }}>Localizar</button>
                 <ActionMenu>
                   <button onClick={() => app.restartBeacon(beacon.id)}>Reiniciar</button>
-                  <button onClick={() => { app.updateBeacon(beacon.id, { status: 'Manutencao' }); app.showToast('Beacon marcado para manutencao', 'warning'); }}>Manutencao</button>
+                  <button onClick={() => { app.updateBeacon(beacon.id, { status: 'Manutenção' }); app.showToast('Beacon marcado para manutenção', 'warning'); }}>Manutenção</button>
                 </ActionMenu>
               </RowActions>
             ) },
@@ -1419,11 +1419,11 @@ function ReportsPage({ app }) {
   const localSource = report.source === 'fallback' ? 'Dados locais' : report.source === 'api' ? 'Fonte API' : report.source;
   return (
     <div className="page-view premium-page">
-      <PageHeading title="Relatorios" subtitle="Gere, visualize e exporte informacoes operacionais do Navora." />
+      <PageHeading title="Relatórios" subtitle="Gere, visualize e exporte informações operacionais do Navora." />
       <section className="kpi-grid">
         <KpiCard icon={HeartPulse} tone="danger" label="SOS" value={app.calls.filter((c) => c.type === 'SOS Emergencia').length} helper="Chamados de emergencia" />
         <KpiCard icon={HelpCircle} tone="warning" label="Help" value={app.calls.filter((c) => c.type !== 'SOS Emergencia').length} helper="Pedidos de ajuda" />
-        <KpiCard icon={UserCheck} tone="info" label="Visitantes" value={app.visitors.length} helper="Solicitacoes registradas" />
+        <KpiCard icon={UserCheck} tone="info" label="Visitantes" value={app.visitors.length} helper="Solicitações registradas" />
         <KpiCard icon={ClipboardCheck} tone="success" label="Check-ins" value={app.checkins.length} helper="Atendimentos criados" />
       </section>
       <section className="section-card">
@@ -1464,29 +1464,29 @@ function SettingsPage({ app, admin = false }) {
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const textFields = admin
     ? [['hospitalName', 'Nome do hospital'], ['hospitalAddress', 'Endereco do hospital'], ['waitLimit', 'Tempo limite de espera']]
-    : [['receptionName', 'Nome da recepcao'], ['waitLimit', 'Tempo maximo de espera']];
+    : [['receptionName', 'Nome da recepção'], ['waitLimit', 'Tempo máximo de espera']];
   const toggles = admin
-    ? [['sosNotifications', 'Notificacoes de SOS'], ['heatmap', 'Heatmap operacional'], ['beaconMonitoring', 'Monitoramento de beacons'], ['maintenanceMode', 'Modo manutencao']]
+    ? [['sosNotifications', 'Notificações de SOS'], ['heatmap', 'Heatmap operacional'], ['beaconMonitoring', 'Monitoramento de beacons'], ['maintenanceMode', 'Modo manutenção']]
     : [['soundAlerts', 'Alertas sonoros'], ['prioritizeSos', 'Priorizar SOS'], ['prioritizeDoctor', 'Priorizar medico'], ['showClosed', 'Exibir encerrados']];
   return (
     <div className="page-view premium-page">
       <PageHeading
-        title={admin ? 'Configuracoes' : 'Configuracoes da recepcao'}
-        subtitle={admin ? 'Gerencie preferencias administrativas e operacionais.' : 'Ajuste preferencias operacionais da recepcao.'}
+        title={admin ? 'Configurações' : 'Configurações da recepção'}
+        subtitle={admin ? 'Gerencie preferências administrativas e operacionais.' : 'Ajuste preferências operacionais da recepção.'}
       />
       <div className="settings-grid premium-settings-grid">
         <section className="settings-group">
-          <div><h3 className="section-title">{admin ? 'Instituicao' : 'Recepcao'}</h3><p className="section-subtitle">Dados operacionais exibidos no painel.</p></div>
+          <div><h3 className="section-title">{admin ? 'Instituição' : 'Recepção'}</h3><p className="section-subtitle">Dados operacionais exibidos no painel.</p></div>
           {textFields.map(([key, label]) => <label className="form-label settings-row" key={key}>{label}<input className="form-control" value={form[key]} onChange={(e) => update(key, e.target.value)} /></label>)}
         </section>
         <section className="settings-group">
-          <div><h3 className="section-title">Operacao e notificacoes</h3><p className="section-subtitle">Preferencias de alertas e monitoramento.</p></div>
+          <div><h3 className="section-title">Operação e notificações</h3><p className="section-subtitle">Preferências de alertas e monitoramento.</p></div>
           {toggles.map(([key, label]) => (
             <label className={`toggle settings-toggle ${key === 'maintenanceMode' ? 'warning' : ''}`} key={key}><input type="checkbox" checked={!!form[key]} onChange={(e) => update(key, e.target.checked)} /><span>{label}</span></label>
           ))}
         </section>
       </div>
-      <button className="btn btn-primary settings-save" onClick={() => app.saveSettings(form)}>Salvar configuracoes</button>
+      <button className="btn btn-primary settings-save" onClick={() => app.saveSettings(form)}>Salvar configurações</button>
     </div>
   );
 }
@@ -1554,16 +1554,16 @@ function UserCell({ name, sub }) {
 function RoleBadge({ value }) {
   const normalized = comparableLocation(value);
   const tone = normalized.includes('admin') ? 'violet' : normalized.includes('recepc') ? 'info' : normalized.includes('paciente') ? 'info' : 'neutral';
-  return <span className={`badge badge-${tone}`}>{value || 'Nao informado'}</span>;
+  return <span className={`badge badge-${tone}`}>{value || 'Não informado'}</span>;
 }
 
 function NvBadge({ value }) {
-  const label = String(value || 'Nao informado');
+  const label = String(value || 'Não informado');
   const normalized = comparableLocation(label);
   const tone =
     normalized.includes('bloqueado') || normalized.includes('offline') || normalized.includes('negado')
       ? 'danger'
-      : normalized.includes('aguardando') || normalized.includes('atencao') || normalized.includes('manutencao') || normalized.includes('bateria')
+      : normalized.includes('aguardando') || normalized.includes('aten') || normalized.includes('manuten') || normalized.includes('bateria')
         ? 'warning'
         : normalized.includes('em rota') || normalized.includes('sem sinal')
           ? 'info'
@@ -1608,12 +1608,12 @@ function ReceptionDashboard({ app }) {
   const pendingVisitors = app.visitors.filter((visitor) => visitor.status === 'Aguardando autorizacao').slice(0, 4);
   return (
     <div className="page-view premium-page reception-dashboard">
-      <PageHeading title="Painel da Recepcao" subtitle="Acompanhe pacientes, visitantes e solicitacoes em tempo real." />
+      <PageHeading title="Painel da Recepção" subtitle="Acompanhe pacientes, visitantes e solicitações em tempo real." />
       <section className="kpi-grid">
         <KpiCard icon={ClipboardCheck} tone="info" label="Check-ins aguardando" value={waiting} helper="Fila inicial" />
-        <KpiCard icon={UserCheck} tone="warning" label="Visitantes pendentes" value={awaitingVisitors} helper="Aguardando autorizacao" />
-        <KpiCard icon={HelpCircle} tone="info" label="Chamados ativos" value={openCalls} helper="Nao encerrados" />
-        <KpiCard icon={HeartPulse} tone="danger" label="SOS ativos" value={sos} helper="Prioridade critica" />
+        <KpiCard icon={UserCheck} tone="warning" label="Visitantes pendentes" value={awaitingVisitors} helper="Aguardando autorização" />
+        <KpiCard icon={HelpCircle} tone="info" label="Chamados ativos" value={openCalls} helper="Não encerrados" />
+        <KpiCard icon={HeartPulse} tone="danger" label="SOS ativos" value={sos} helper="Prioridade crítica" />
       </section>
       <section className="two-col">
         <SectionCard title="Pacientes aguardando" subtitle="Check-ins pendentes e primeiros atendimentos.">
@@ -1634,7 +1634,7 @@ function ReceptionDashboard({ app }) {
             ]}
           />
         </SectionCard>
-        <SectionCard title="Solicitacoes de visitantes" subtitle="Visitantes aguardando decisao da recepcao.">
+        <SectionCard title="Solicitações de visitantes" subtitle="Visitantes aguardando decisão da recepção.">
           <PremiumTable
             rows={pendingVisitors}
             columns={[
@@ -1665,17 +1665,17 @@ function VisitorsAccessPage({ app, accessOnly = false }) {
   return (
     <div className="page-view premium-page reception-visitors-page">
       <PageHeading
-        title={accessOnly ? 'Autorizacoes' : 'Visitantes'}
-        subtitle={accessOnly ? 'Analise solicitacoes de acesso e libere rotas autorizadas.' : 'Acompanhe visitantes, status de rota e permissoes ativas.'}
+        title={accessOnly ? 'Autorizações' : 'Visitantes'}
+        subtitle={accessOnly ? 'Analise solicitações de acesso e libere rotas autorizadas.' : 'Acompanhe visitantes, status de rota e permissões ativas.'}
       />
       <section className="kpi-grid">
         <KpiCard icon={Building2} tone="info" label="Private" value={app.visitors.filter((v) => v.areaId === 'private').length} helper="Visitantes registrados" />
         <KpiCard icon={ShieldCheck} tone="success" label="Autorizados" value={app.visitors.filter((v) => v.status === 'Autorizado').length} helper="Permissao ativa" />
         <KpiCard icon={Clock3} tone="warning" label="Pendentes" value={app.visitors.filter((v) => v.status === 'Aguardando autorizacao').length} helper="Aguardando decisao" />
-        <KpiCard icon={HeartPulse} tone="danger" label="Fora da rota" value={app.visitors.filter((v) => v.status === 'Fora da rota').length} helper="Requer atencao" />
+        <KpiCard icon={HeartPulse} tone="danger" label="Fora da rota" value={app.visitors.filter((v) => v.status === 'Fora da rota').length} helper="Requer atenção" />
       </section>
       <FilterChips items={statuses} active={filter} onChange={setFilter} />
-      <SectionCard title={accessOnly ? 'Solicitacoes de acesso' : 'Visitantes monitorados'} subtitle="Dados reais ou fallback operacional ja existente no projeto.">
+      <SectionCard title={accessOnly ? 'Solicitações de acesso' : 'Visitantes monitorados'} subtitle="Dados reais ou fallback operacional já existente no projeto.">
         <PremiumTable
           rows={visible}
           columns={[
@@ -1691,7 +1691,7 @@ function VisitorsAccessPage({ app, accessOnly = false }) {
                 <button className="btn btn-success" onClick={() => openAuthorizeVisitor(app, visitor)}>Autorizar</button>
                 <button className="btn btn-danger" onClick={() => openDenyVisitor(app, visitor)}>Negar</button>
                 <ActionMenu>
-                  <button onClick={() => app.updateVisitorAccessStatus(visitor, 'Em rota', { requestedDestination: visitor.areaId === 'private' ? 'Recepcao Private' : 'Recepcao Hospital Marco Capute' }, 'Visitante orientado ate a recepcao')}>Levar ate recepcao</button>
+                  <button onClick={() => app.updateVisitorAccessStatus(visitor, 'Em rota', { requestedDestination: visitor.areaId === 'private' ? 'Recepção Private' : 'Recepção Hospital Marco Capute' }, 'Visitante orientado até a recepção')}>Levar até recepção</button>
                   <button onClick={() => openMessage(app, visitor.name)}>Enviar mensagem</button>
                   <button className="menu-danger" onClick={() => app.updateVisitorAccessStatus(visitor, 'Finalizado', {}, 'Permissao encerrada')}>Encerrar permissao</button>
                 </ActionMenu>
@@ -1767,7 +1767,7 @@ function MessagesPage({ app }) {
   const selected = app.messages[0];
   return (
     <div className="page-view premium-page reception-messages-page">
-      <PageHeading title="Mensagens" subtitle="Comunicacao operacional da recepcao com pacientes e setores." />
+      <PageHeading title="Mensagens" subtitle="Comunicação operacional da recepção com pacientes e setores." />
       <div className="page-toolbar">
         <button className="btn btn-primary" onClick={() => openMessage(app)}><Plus size={16} />Criar mensagem</button>
       </div>
@@ -1948,8 +1948,8 @@ function Heatmap({ sectors, nodes = [], floor = heatmapFloorOptions[0], beacons 
         ) : (
           <div className="floor-empty-state">
             <span>{floor.special ? <Activity size={24} /> : <MapIcon size={24} />}</span>
-            <h3>{floor.special ? 'Mapeamento do Terraco / Heliponto ainda nao configurado.' : 'Mapeamento deste andar ainda nao disponivel.'}</h3>
-            <p>Os setores e pontos de navegacao serao exibidos apos a configuracao estrutural.</p>
+            <h3>{floor.special ? 'Mapeamento do Terraço / Heliponto ainda não configurado.' : 'Mapeamento deste andar ainda não disponível.'}</h3>
+            <p>Os setores e pontos de navegação serão exibidos após a configuração estrutural.</p>
           </div>
         )}
       </div>
@@ -2102,17 +2102,17 @@ function renderCell(col, value) {
   if (['status', 'priority', 'role', 'roleLabel'].includes(col)) {
     return <StatusBadge value={value} />;
   }
-  if (col === 'battery') return value === undefined || value === null ? 'Nao informado' : `${value}%`;
-  return String(value ?? 'Nao informado');
+  if (col === 'battery') return value === undefined || value === null ? 'Não informado' : `${value}%`;
+  return String(value ?? 'Não informado');
 }
 
 function StatusBadge({ value }) {
-  const label = String(value || 'Nao informado');
+  const label = String(value || 'Não informado');
   const normalized = comparableLocation(label);
   const tone =
     normalized.includes('critica') || normalized.includes('sos') || normalized.includes('negado') || normalized.includes('offline') || normalized.includes('bloqueado')
       ? 'danger'
-      : normalized.includes('pendente') || normalized.includes('aguardando') || normalized.includes('atencao') || normalized.includes('alta')
+      : normalized.includes('pendente') || normalized.includes('aguardando') || normalized.includes('aten') || normalized.includes('alta')
         ? 'warning'
         : normalized.includes('ativo') || normalized.includes('online') || normalized.includes('autorizado') || normalized.includes('encerrado') || normalized.includes('finalizado')
           ? 'success'
@@ -2177,7 +2177,7 @@ function ProfileForm({ user, onSubmit }) {
       <label>Telefone<input value={form.phone} onChange={(event) => update('phone', event.target.value)} /></label>
       <label>Cargo<input value={form.roleLabel} onChange={(event) => update('roleLabel', event.target.value)} /></label>
       <label>Setor<input value={form.sector} onChange={(event) => update('sector', event.target.value)} /></label>
-      <p className="form-note">Alteracoes visuais ficam salvas nesta sessao do painel. O e-mail e a permissao continuam vindo da autenticacao real.</p>
+      <p className="form-note">Alterações visuais ficam salvas nesta sessão do painel. O e-mail e a permissão continuam vindo da autenticação real.</p>
       <button className="primary">Salvar perfil</button>
     </form>
   );
@@ -2192,7 +2192,7 @@ function Details({ data }) {
 }
 
 function UserProfile({ user }) {
-  return <div><Details data={user} /><h3>Historico de rota</h3><ul><li>Recepcao para Tomografia</li><li>Tomografia para Laboratorio</li><li>Preferencia: rota acessivel</li></ul></div>;
+  return <div><Details data={user} /><h3>Histórico de rota</h3><ul><li>Recepção para Tomografia</li><li>Tomografia para Laboratório</li><li>Preferência: rota acessível</li></ul></div>;
 }
 
 function ReportView({ report }) {
@@ -2216,14 +2216,14 @@ function openMessage(app, to = 'Pacientes') {
 
 function openDoctor(app, call) {
   app.openModal('Solicitar medico', <Form fields={[['reason', 'Motivo']]} data={{ reason: call.reason }} onSubmit={(data) => {
-    app.setCalls((items) => [{ ...call, id: `CH-${Date.now()}`, type: 'Solicitar Medico', reason: data.reason, priority: 'Alta', status: 'Pendente', history: ['Solicitacao medica criada'] }, ...items]);
-    app.showToast('Solicitacao medica criada');
+    app.setCalls((items) => [{ ...call, id: `CH-${Date.now()}`, type: 'Solicitar Medico', reason: data.reason, priority: 'Alta', status: 'Pendente', history: ['Solicitação médica criada'] }, ...items]);
+    app.showToast('Solicitação médica criada');
     app.closeModal();
   }} />);
 }
 
 function openCheckin(app) {
-  app.openModal('Novo check-in', <Form fields={[['patient', 'Nome paciente'], ['document', 'Documento'], ['destination', 'Destino'], ['accessibility', 'Precisa acessibilidade?'], ['observations', 'Observacoes']]} data={{ patient: '', document: '', destination: 'Tomografia', accessibility: 'Nao', observations: '' }} onSubmit={app.createCheckin} />);
+  app.openModal('Novo check-in', <Form fields={[['patient', 'Nome paciente'], ['document', 'Documento'], ['destination', 'Destino'], ['accessibility', 'Precisa acessibilidade?'], ['observations', 'Observações']]} data={{ patient: '', document: '', destination: 'Tomografia', accessibility: 'Nao', observations: '' }} onSubmit={app.createCheckin} />);
 }
 
 function openAuthorizeVisitor(app, visitor) {
@@ -2251,7 +2251,7 @@ function StaffAccountForm({ onSubmit }) {
     name: '',
     email: '',
     role: 'reception',
-    sector: 'Recepcao',
+    sector: 'Recepção',
     status: 'Ativo',
   });
 
@@ -2265,11 +2265,11 @@ function StaffAccountForm({ onSubmit }) {
         onSubmit(form);
       }}
     >
-      <label>Nome do funcionario<input required value={form.name} onChange={(event) => update('name', event.target.value)} /></label>
+      <label>Nome do funcionário<input required value={form.name} onChange={(event) => update('name', event.target.value)} /></label>
       <label>E-mail de login<input required type="email" value={form.email} onChange={(event) => update('email', event.target.value)} /></label>
       <label>Tipo de acesso
         <select value={form.role} onChange={(event) => update('role', event.target.value)}>
-          <option value="reception">Recepcao</option>
+          <option value="reception">Recepção</option>
           <option value="admin">Administrador</option>
         </select>
       </label>
@@ -2294,8 +2294,8 @@ function VisitorAuthorizationForm({ visitor, onSubmit }) {
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
   const routePreview =
     visitor.areaId === 'private'
-      ? 'Recepcao Private -> rota autorizada -> destino Private'
-      : 'Recepcao Hospital Marco Capute -> rota autorizada -> destino SUS';
+      ? 'Recepção Private -> rota autorizada -> destino Private'
+      : 'Recepção Hospital Marco Capute -> rota autorizada -> destino SUS';
 
   return (
     <form className="modal-form" onSubmit={(event) => { event.preventDefault(); onSubmit(form); }}>
@@ -2310,7 +2310,7 @@ function VisitorAuthorizationForm({ visitor, onSubmit }) {
       <label>Tipo de liberacao
         <select value={form.releaseType} onChange={(event) => update('releaseType', event.target.value)}>
           <option>Liberar rota ate o destino</option>
-          <option>Liberar somente ate recepcao</option>
+          <option>Liberar somente até a recepção</option>
           <option>Liberar com acompanhante</option>
           <option>Negar acesso</option>
         </select>
@@ -2339,7 +2339,7 @@ function VisitorDenyForm({ visitor, onSubmit }) {
           <option>Horario de visita encerrado</option>
           <option>Destino restrito</option>
           <option>Dados insuficientes</option>
-          <option>Orientar presencialmente na recepcao</option>
+          <option>Orientar presencialmente na recepção</option>
           <option>Outro</option>
         </select>
       </label>

@@ -26,14 +26,14 @@ export default function HomeStartScreen({ navigate, onProfileDraft }) {
 
         <View style={styles.hero}>
           <Text style={styles.title}>Seu guia inteligente no hospital</Text>
-          <Text style={styles.subtitle}>Escolha como deseja continuar. O Navora adapta a jornada para voce.</Text>
+          <Text style={styles.subtitle}>Escolha como deseja continuar. O Navora adapta a jornada para você.</Text>
         </View>
 
         <View style={styles.cards}>
           <ChoiceCard
             icon="account-heart-outline"
             title="Sou Paciente"
-            subtitle="Acesse sua jornada, preferencias e rotas."
+            subtitle="Acesse sua jornada, preferências e rotas."
             onPress={() => chooseProfile('patient')}
           />
           <ChoiceCard

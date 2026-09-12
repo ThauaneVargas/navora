@@ -24,8 +24,8 @@ export default function HowToGetScreen({ navigate, goBack }) {
         origin = `${pos.coords.latitude},${pos.coords.longitude}`;
       } else {
         Alert.alert(
-          'Localizacao nao disponivel',
-          'Nao foi possivel obter sua localizacao atual. O mapa vai abrir com o destino do hospital, mas sem rota a partir da sua posicao.',
+          'Localização não disponível',
+          'Não foi possível obter sua localização atual. O mapa vai abrir com o destino do hospital, mas sem rota a partir da sua posição.',
           [{ text: 'Entendi', style: 'default' }]
         );
       }
@@ -58,7 +58,7 @@ export default function HowToGetScreen({ navigate, goBack }) {
       <Image source={hospitalImage} resizeMode="cover" style={styles.heroImage} />
 
       <View style={[styles.addressCard, shadows.card]}>
-        <Text style={styles.kicker}>Abra a rota ate a entrada principal.</Text>
+        <Text style={styles.kicker}>Abra a rota até a entrada principal.</Text>
         <Text style={styles.address}>Rua Ronaldo Fiuza Manhaes, no 1</Text>
         <Text style={styles.city}>Centro, Vassouras - RJ</Text>
       </View>
@@ -73,7 +73,7 @@ export default function HowToGetScreen({ navigate, goBack }) {
       <View style={[styles.infoCard, shadows.card]}>
         <MaterialCommunityIcons name="map-marker-check-outline" size={22} color={colors.primary} />
         <Text style={styles.infoText}>
-          Ao chegar no hospital, confirme sua entrada no Navora para liberar a navegacao interna.
+          Ao chegar no hospital, confirme sua entrada no Navora para liberar a navegação interna.
         </Text>
       </View>
     </Screen>

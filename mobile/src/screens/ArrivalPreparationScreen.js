@@ -44,13 +44,13 @@ export default function ArrivalPreparationScreen({
   const continueAfterLocation = () => navigate('Search');
   const useReception = () => {
     onAreaDetected?.('private', { source: 'reception-pending' });
-    navigate('Search', { query: 'Recepcao' });
+    navigate('Search', { query: 'Recepção' });
   };
 
   return (
     <Screen>
       <Header
-        title="Localizacao inicial"
+        title="Localização inicial"
         subtitle="Vamos localizar o melhor ponto de partida."
         onBack={() => goBack?.()}
         onMenu={() => navigate('Menu')}
@@ -70,25 +70,25 @@ export default function ArrivalPreparationScreen({
 
         {hasConfirmedLocation ? (
           <>
-            <StatusPill label="Localizacao identificada" tone="success" icon="check-circle-outline" />
-            <Text style={[styles.title, { color: appColors.text }]}>Localizacao identificada</Text>
+            <StatusPill label="Localização identificada" tone="success" icon="check-circle-outline" />
+            <Text style={[styles.title, { color: appColors.text }]}>Localização identificada</Text>
             <View style={[styles.locationBox, { backgroundColor: appColors.surfaceAlt, borderColor: appColors.border }]}>
               <Info label="Hospital" value="Hospital Marco Capute" />
               <Info label="Area" value={detectedEntrance.hospitalArea || 'Area identificada'} />
               <Info label="Entrada" value={detectedEntrance.fullName || detectedEntrance.name || 'Entrada identificada'} />
             </View>
-            <Text style={[styles.text, { color: appColors.muted }]}>Esta localizacao esta correta?</Text>
+            <Text style={[styles.text, { color: appColors.muted }]}>Esta localização está correta?</Text>
             <PrimaryButton title="Sim, continuar" onPress={continueAfterLocation} />
-            <SecondaryButton title="Pedir correcao na recepcao" icon="desk" onPress={useReception} />
+            <SecondaryButton title="Pedir correção na recepção" icon="desk" onPress={useReception} />
           </>
         ) : status === 'needsReception' ? (
           <>
-            <StatusPill label="Confirmacao presencial" tone="warning" icon="alert-circle-outline" />
-            <Text style={[styles.title, { color: appColors.text }]}>Precisamos da recepcao</Text>
+            <StatusPill label="Confirmação presencial" tone="warning" icon="alert-circle-outline" />
+            <Text style={[styles.title, { color: appColors.text }]}>Precisamos da recepção</Text>
             <Text style={[styles.text, { color: appColors.muted }]}>
-              Nao foi possivel identificar sua localizacao automaticamente neste aparelho. Procure a recepcao para confirmar ou corrigir seu ponto inicial.
+              Não foi possível identificar sua localização automaticamente neste aparelho. Procure a recepção para confirmar ou corrigir seu ponto inicial.
             </Text>
-            <PrimaryButton title="Ver rota ate a recepcao" icon="desk" onPress={useReception} />
+            <PrimaryButton title="Ver rota até a recepção" icon="desk" onPress={useReception} />
             {__DEV__ ? (
               <Pressable
                 onPress={() => {
@@ -97,16 +97,16 @@ export default function ArrivalPreparationScreen({
                 }}
                 style={({ pressed }) => [styles.devButton, { borderColor: appColors.border }, pressed && styles.pressed]}
               >
-                <Text style={[styles.devText, { color: appColors.muted }]}>Dev: marcar localizacao recebida</Text>
+                <Text style={[styles.devText, { color: appColors.muted }]}>Dev: marcar localização recebida</Text>
               </Pressable>
             ) : null}
           </>
         ) : (
           <>
             <StatusPill label="Identificando" icon="radar" />
-            <Text style={[styles.title, { color: appColors.text }]}>Buscando localizacao</Text>
+            <Text style={[styles.title, { color: appColors.text }]}>Buscando localização</Text>
             <Text style={[styles.text, { color: appColors.muted }]}>
-              Mantenha o aplicativo aberto por alguns instantes. Se a localizacao nao aparecer, a recepcao pode confirmar para voce.
+              Mantenha o aplicativo aberto por alguns instantes. Se a localização não aparecer, a recepção pode confirmar para você.
             </Text>
           </>
         )}

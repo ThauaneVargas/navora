@@ -2,8 +2,8 @@ import React from 'react';
 import navoraSymbol from '../../assets/navora_symbol.png';
 
 const roleLabels = {
-  admin: 'Administracao',
-  reception: 'Recepcao',
+  admin: 'Administração',
+  reception: 'Recepção',
 };
 
 export default function NavoraBrand({

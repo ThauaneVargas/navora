@@ -14,8 +14,8 @@ export default function CareAreaChoiceScreen({ navigate, goBack, onAreaDetected 
   return (
     <Screen>
       <Header
-        title="Para qual atendimento voce deseja ir?"
-        subtitle="Escolha a area correta para receber a rota ate a entrada do hospital."
+        title="Para qual atendimento você deseja ir?"
+        subtitle="Escolha a área correta para receber a rota até a entrada do hospital."
         onBack={() => goBack?.()}
         onMenu={() => navigate('Menu')}
       />
@@ -23,12 +23,12 @@ export default function CareAreaChoiceScreen({ navigate, goBack, onAreaDetected 
         <View style={styles.heroMark}>
           <MaterialCommunityIcons name="hospital-marker" size={30} color="#FFFFFF" />
         </View>
-        <Text style={styles.heroText}>O Navora calcula a entrada certa antes de liberar a navegacao interna.</Text>
+        <Text style={styles.heroText}>O Navora calcula a entrada certa antes de liberar a navegação interna.</Text>
       </View>
 
       <ChoiceCard icon="hospital-building" title="Unidade / entrada A" subtitle="Ambiente carregado pelo hospital ativo" detail="Entrada conforme dados atuais" onPress={() => chooseArea('private')} />
-      <ChoiceCard icon="medical-bag" title="Unidade / entrada B" subtitle="Outro ambiente disponivel no hospital ativo" detail="Entrada conforme dados atuais" onPress={() => chooseArea('sus')} />
-      <ChoiceCard icon="help-circle-outline" title="Nao sei meu atendimento" subtitle="Vamos te orientar ate a recepcao" detail="Confirmacao presencial" onPress={() => chooseArea('unknown')} />
+      <ChoiceCard icon="medical-bag" title="Unidade / entrada B" subtitle="Outro ambiente disponível no hospital ativo" detail="Entrada conforme dados atuais" onPress={() => chooseArea('sus')} />
+      <ChoiceCard icon="help-circle-outline" title="Não sei meu atendimento" subtitle="Vamos te orientar até a recepção" detail="Confirmação presencial" onPress={() => chooseArea('unknown')} />
 
       <Pressable onPress={() => navigate('Assistant')} style={({ pressed }) => [styles.aiCard, pressed && styles.pressed, shadows.card]}>
         <View style={styles.aiIcon}>
@@ -36,7 +36,7 @@ export default function CareAreaChoiceScreen({ navigate, goBack, onAreaDetected 
         </View>
         <View style={styles.copy}>
           <Text style={styles.aiTitle}>Assistente Navora</Text>
-          <Text style={styles.aiText}>Posso ajudar voce a escolher a entrada correta.</Text>
+          <Text style={styles.aiText}>Posso ajudar você a escolher a entrada correta.</Text>
         </View>
       </Pressable>
     </Screen>

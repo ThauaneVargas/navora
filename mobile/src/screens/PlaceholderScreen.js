@@ -8,19 +8,19 @@ import { useApp } from '../context/AppContext';
 
 const contentByScreen = {
   RouteHistory: {
-    title: 'Historico de rotas',
+    title: 'Histórico de rotas',
     icon: 'history',
-    text: 'Aqui ficarao as rotas usadas recentemente pelo paciente.',
+    text: 'Aqui ficarão as rotas usadas recentemente pelo paciente.',
   },
   Settings: {
-    title: 'Configuracoes',
+    title: 'Configurações',
     icon: 'cog-outline',
-    text: 'Preferencias do app, notificacoes e ajustes de navegacao ficarao nesta area.',
+    text: 'Preferências do app, notificações e ajustes de navegação ficarão nesta área.',
   },
   Privacy: {
     title: 'Privacidade',
     icon: 'shield-lock-outline',
-    text: 'Informacoes sobre dados, localizacao e consentimentos do paciente.',
+    text: 'Informações sobre dados, localização e consentimentos do paciente.',
   },
 };
 
