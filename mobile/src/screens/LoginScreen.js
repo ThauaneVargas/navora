@@ -160,14 +160,22 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
       });
     } catch (error) {
       if (isNetworkError(error)) {
-        Alert.alert('Sem conexão', 'Não foi possível conectar ao servidor. Verifique sua internet.');
+        if (error?.timeout) {
+          Alert.alert('Servidor demorou demais', 'O servidor está inicializando. Aguarde alguns segundos e tente novamente.');
+        } else {
+          Alert.alert('Sem conexão', 'Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.');
+        }
         return;
       }
       if (error?.status === 401 || error?.status === 403) {
-        Alert.alert('Acesso negado', 'E-mail ou senha incorretos.');
+        Alert.alert('Acesso negado', 'E-mail ou senha incorretos. Verifique seus dados e tente novamente.');
         return;
       }
-      Alert.alert('Erro', 'Não foi possível entrar agora. Tente novamente.');
+      if (error?.status >= 500) {
+        Alert.alert('Erro no servidor', 'O servidor encontrou um problema. Tente novamente em instantes.');
+        return;
+      }
+      Alert.alert('Erro', `Não foi possível entrar agora (${error?.status || 'erro desconhecido'}). Tente novamente.`);
     } finally {
       setLoading(false);
     }

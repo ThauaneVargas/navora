@@ -129,8 +129,10 @@ export default function Screen({
   return (
     <SafeAreaView
       edges={[
+        'top',
         'left',
         'right',
+        'bottom',
       ]}
       style={[
         styles.safe,

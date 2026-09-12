@@ -355,16 +355,13 @@ export default function PatientHomeScreen({
       }
 
 
+      const rdest = visitorAccessRequest?.requestedDestination;
       navigate(
         'Search',
         {
           query:
-            visitorAccessRequest
-              ?.allowedRoute ||
-
-            visitorAccessRequest
-              ?.requestedDestination ||
-
+            visitorAccessRequest?.allowedRoute ||
+            (typeof rdest === 'string' ? rdest : rdest?.name) ||
             '',
         }
       );
@@ -820,9 +817,10 @@ export default function PatientHomeScreen({
                         },
                       ]}
                     >
-                      {visitorAccessRequest
-                        ?.requestedDestination ||
-                        'Destino autorizado'}
+                      {(() => {
+                        const rd = visitorAccessRequest?.requestedDestination;
+                        return (typeof rd === 'string' ? rd : rd?.name) || 'Destino autorizado';
+                      })()}
                     </Text>
                   </View>
 

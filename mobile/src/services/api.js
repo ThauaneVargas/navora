@@ -69,8 +69,12 @@ async function parseResponse(response) {
   }
 }
 
+const REQUEST_TIMEOUT_MS = 20000;
+
 async function request(path, options = {}, fallback) {
   const { authenticated = false, headers, ...fetchOptions } = options;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     const token = authenticated ? await getAuthToken() : null;
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -79,8 +83,10 @@ async function request(path, options = {}, fallback) {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(headers || {}),
       },
+      signal: controller.signal,
       ...fetchOptions,
     });
+    clearTimeout(timeoutId);
     const data = await parseResponse(response);
 
     if (!response.ok) {
@@ -92,10 +98,15 @@ async function request(path, options = {}, fallback) {
 
     return data;
   } catch (error) {
+    clearTimeout(timeoutId);
+    const isTimeout = error?.name === 'AbortError';
     const apiError =
       error instanceof NavoraApiError
         ? error
-        : new NavoraApiError(error?.message || 'API indisponivel', { network: true });
+        : new NavoraApiError(
+            isTimeout ? 'Tempo limite da requisicao esgotado' : (error?.message || 'API indisponivel'),
+            { network: true, timeout: isTimeout }
+          );
     if (apiError.network) {
       if (typeof fallback === 'function') return fallback(apiError);
       if (fallback !== undefined) return fallback;
