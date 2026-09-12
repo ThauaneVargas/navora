@@ -16,14 +16,10 @@ import {
   View,
 } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { navoraApi, isNetworkError } from '../services/api';
 import { getAuthToken, saveAuthToken } from '../services/authToken';
-
-WebBrowser.maybeCompleteAuthSession();
 
 const REMEMBERED_EMAIL_KEY = 'navora.login.remembered_email';
 
@@ -77,12 +73,6 @@ const shadow = {
 
 const GOOGLE_LOGO = require('../../assets/images/logo google.png');
 
-// Replace with your Google OAuth client IDs from Google Cloud Console
-const GOOGLE_EXPO_CLIENT_ID = 'YOUR_EXPO_CLIENT_ID.apps.googleusercontent.com';
-const GOOGLE_IOS_CLIENT_ID = 'YOUR_IOS_CLIENT_ID.apps.googleusercontent.com';
-const GOOGLE_ANDROID_CLIENT_ID = 'YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com';
-const GOOGLE_WEB_CLIENT_ID = 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com';
-
 export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, onHowToGet, navigate }) => {
   const { width, height } = useWindowDimensions();
   const stageMaxWidth = Math.min(width, 430);
@@ -96,13 +86,6 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const profileAnim = useRef(new Animated.Value(1)).current;
-
-  const [googleRequest, googleResponse, promptGoogleAsync] = Google.useAuthRequest({
-    expoClientId: GOOGLE_EXPO_CLIENT_ID,
-    iosClientId: GOOGLE_IOS_CLIENT_ID,
-    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-  });
 
   useEffect(() => {
     loadRememberedEmail().then((saved) => {
@@ -190,52 +173,16 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
     }
   };
 
-  useEffect(() => {
-    if (googleResponse?.type !== 'success') return;
-    const idToken = googleResponse.authentication?.idToken;
-    if (!idToken) {
-      Alert.alert('Google', 'Não foi possível obter o token de autenticação.');
-      return;
-    }
-    (async () => {
-      setGoogleLoading(true);
-      try {
-        const auth = await navoraApi.loginWithGoogle(idToken);
-        if (!auth?.access_token) {
-          Alert.alert('Erro', 'Resposta inválida do servidor.');
-          return;
-        }
-        await saveAuthToken(auth.access_token);
-        const patient = await navoraApi.getMyPatientProfile();
-        onPatientReady?.({ ...patient, apiUser: auth.user, authSource: 'google', hasAccount: true });
-      } catch (error) {
-        if (isNetworkError(error)) {
-          Alert.alert('Sem conexão', 'Verifique sua internet e tente novamente.');
-          return;
-        }
-        Alert.alert('Erro', 'Não foi possível entrar com Google. Tente novamente.');
-      } finally {
-        setGoogleLoading(false);
-      }
-    })();
-  }, [googleResponse]);
-
   const handleForgotPassword = () => {
     navigate?.('ForgotPassword');
   };
 
-  const handleGoogleLogin = async () => {
-    if (loading || biometricLoading || googleLoading) return;
-    const configured = GOOGLE_EXPO_CLIENT_ID !== 'YOUR_EXPO_CLIENT_ID.apps.googleusercontent.com';
-    if (!configured) {
-      Alert.alert('Google', 'Configure os Client IDs do Google em LoginScreen.js para ativar este recurso.');
-      return;
-    }
-    try {
-      await promptGoogleAsync();
-    } catch {
-      Alert.alert('Google', 'Não foi possível abrir o login do Google.');
-    }
+  const handleGoogleLogin = () => {
+    Alert.alert(
+      'Login com Google',
+      'Em breve disponível. Configure os Client IDs do Google para ativar.',
+      [{ text: 'OK' }]
+    );
   };
 
   const handleSocialLogin = (provider) => {
