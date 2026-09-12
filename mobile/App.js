@@ -39,6 +39,8 @@ import PlaceholderScreen from './src/screens/PlaceholderScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import PrivacyScreen from './src/screens/PrivacyScreen';
 import RouteHistoryScreen from './src/screens/RouteHistoryScreen';
+import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
+import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import { initialHelpRequests } from './src/data/helpRequests';
 import { AppProvider } from './src/context/AppContext';
 import {
@@ -97,6 +99,8 @@ const screens = {
   RouteHistory: RouteHistoryScreen,
   Settings: SettingsScreen,
   Privacy: PrivacyScreen,
+  ForgotPassword: ForgotPasswordScreen,
+  ResetPassword: ResetPasswordScreen,
 };
 
 const mobileScreens = new Set(Object.keys(screens));
@@ -2428,6 +2432,8 @@ export default function App() {
       <SafeAreaProvider>
         {screen === 'Login' ? (
           <LoginScreen
+            navigate={navigate}
+
             onLoginSuccess={
               handleLoginSuccess
             }

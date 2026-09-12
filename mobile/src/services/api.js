@@ -160,6 +160,9 @@ export const navoraApi = {
   markNotificationRead: (id) => request(`/notifications/${id}/read`, { method: 'PUT', authenticated: true }),
   markAllNotificationsRead: () => request('/notifications/me/read-all', { method: 'PUT', authenticated: true }),
   deleteNotification: (id) => request(`/notifications/${id}`, { method: 'DELETE', authenticated: true }),
+  forgotPassword: (email) => request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }, { ok: true }),
+  resetPassword: (token, newPassword) => request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) }, null),
+  loginWithGoogle: (idToken) => request('/auth/google', { method: 'POST', body: JSON.stringify({ idToken }) }, null),
   getRoutes: () => request('/routes', {}, []),
   getNavigationBootstrap: () =>
     navigationRequest('/navigation/bootstrap', {}, fallbackNavigationBootstrap, normalizeNavigationBootstrap),

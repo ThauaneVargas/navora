@@ -1,12 +1,16 @@
-import { ConflictException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { User, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
+import * as crypto from 'crypto';
 import { PrismaService } from '../database/prisma.service';
 import { JwtPayload, SafeUser } from './auth.types';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterStaffDto } from './dto/register-staff.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -83,6 +87,106 @@ export class AuthService {
 
   async issueAccessToken(user: Pick<User, 'id' | 'email' | 'role'>) {
     return this.signUser(user);
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ ok: boolean }> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: dto.email.trim().toLowerCase() },
+    });
+
+    // Always return ok to avoid email enumeration
+    if (!user || !user.active) return { ok: true };
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordResetToken: token, passwordResetExpires: expires },
+    });
+
+    // Log token until SMTP is configured
+    console.log(`[ForgotPassword] Token para ${user.email}: ${token} (expira em ${expires.toISOString()})`);
+
+    return { ok: true };
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<{ ok: boolean }> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        passwordResetToken: dto.token,
+        passwordResetExpires: { gt: new Date() },
+        active: true,
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Token inválido ou expirado');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash, passwordResetToken: null, passwordResetExpires: null },
+    });
+
+    return { ok: true };
+  }
+
+  async loginWithGoogle(dto: GoogleLoginDto) {
+    const GOOGLE_TOKEN_INFO_URL = `https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${dto.idToken}`;
+
+    let googlePayload: { sub: string; email: string; name: string; email_verified: string };
+
+    try {
+      const res = await fetch(GOOGLE_TOKEN_INFO_URL);
+      if (!res.ok) throw new UnauthorizedException('Token Google inválido');
+      googlePayload = await res.json() as any;
+    } catch {
+      throw new UnauthorizedException('Não foi possível verificar o token Google');
+    }
+
+    if (googlePayload.email_verified !== 'true') {
+      throw new UnauthorizedException('E-mail Google não verificado');
+    }
+
+    const email = googlePayload.email.toLowerCase();
+
+    let user = await this.prisma.user.findUnique({ where: { email } });
+
+    if (user) {
+      // Link google ID if not yet linked
+      if (!user.googleId) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { googleId: googlePayload.sub },
+        });
+      }
+      if (!user.active) throw new UnauthorizedException('Conta desativada');
+      if (user.role !== UserRole.PATIENT) throw new UnauthorizedException('Este aplicativo é exclusivo para pacientes');
+    } else {
+      // Auto-register new patient via Google
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          name: googlePayload.name || email.split('@')[0],
+          passwordHash: await bcrypt.hash(crypto.randomBytes(20).toString('hex'), 10),
+          googleId: googlePayload.sub,
+          role: UserRole.PATIENT,
+          active: true,
+        },
+      });
+
+      await this.prisma.patientProfile.create({
+        data: { userId: user.id },
+      });
+    }
+
+    return {
+      access_token: await this.signUser(user),
+      user: this.toSafeUser(user),
+    };
   }
 
   toSafeUser(user: User): SafeUser {

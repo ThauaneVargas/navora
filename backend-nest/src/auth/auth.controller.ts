@@ -4,8 +4,11 @@ import { UserRole } from '@prisma/client';
 import { AuthService } from './auth.service';
 import { AuthenticatedUser } from './auth.types';
 import { CurrentUser } from './current-user.decorator';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { GoogleLoginDto } from './dto/google-login.dto';
 import { LoginDto } from './dto/login.dto';
 import { RegisterStaffDto } from './dto/register-staff.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { Roles } from './roles.decorator';
 import { RolesGuard } from './roles.guard';
@@ -31,5 +34,23 @@ export class AuthController {
   @Roles(UserRole.ADMIN)
   registerStaff(@Body() payload: RegisterStaffDto) {
     return this.authService.registerStaff(payload);
+  }
+
+  @Post('forgot-password')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  forgotPassword(@Body() payload: ForgotPasswordDto) {
+    return this.authService.forgotPassword(payload);
+  }
+
+  @Post('reset-password')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  resetPassword(@Body() payload: ResetPasswordDto) {
+    return this.authService.resetPassword(payload);
+  }
+
+  @Post('google')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  loginWithGoogle(@Body() payload: GoogleLoginDto) {
+    return this.authService.loginWithGoogle(payload);
   }
 }

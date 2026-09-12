@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -9,6 +9,7 @@ import { colors, shadows } from '../theme/colors';
 import { horizontalPaddingFor } from '../theme/layout';
 import { useApp } from '../context/AppContext';
 import { getAreaById } from '../data/routes';
+import { navoraApi } from '../services/api';
 
 const patientShortcuts = [
   { icon: 'flask-outline', title: 'Exames', screen: 'Search', params: { category: 'Exames' } },
@@ -49,11 +50,20 @@ export default function HomeScreen({ navigate, userProfile = { type: 'patient', 
   const shortcuts = userProfile.type === 'visitor' ? visitorShortcuts : patientShortcuts;
   const headerHeight = 56 + insets.top;
   const tabHeight = 60 + Math.max(insets.bottom, 14);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    navoraApi.getNotifications()
+      .then((data) => {
+        if (Array.isArray(data)) setUnreadCount(data.filter((n) => !n.read).length);
+      })
+      .catch(() => {});
+  }, []);
 
   return (
     <Screen scroll={false} padded={false}>
       <View style={[styles.screen, { backgroundColor: appColors.bg }]}>
-        <AppHeader navigate={navigate} />
+        <AppHeader navigate={navigate} notificationCount={unreadCount} />
 
         <ScrollView
           showsVerticalScrollIndicator={false}

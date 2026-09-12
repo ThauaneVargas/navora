@@ -126,15 +126,18 @@ model Notification {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  name         String
-  phone        String?
-  role         UserRole
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id                   Int       @id @default(autoincrement())
+  email                String    @unique
+  passwordHash         String    @map("password_hash")
+  googleId             String?   @unique @map("google_id")
+  name                 String
+  phone                String?
+  role                 UserRole
+  active               Boolean   @default(true)
+  passwordResetToken   String?   @unique @map("password_reset_token")
+  passwordResetExpires DateTime? @map("password_reset_expires")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
 
   staffProfile   StaffProfile?
   patientProfile PatientProfile?
