@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
@@ -174,9 +174,7 @@ export default function NotificationsScreen({ navigate, goBack }) {
       </View>
 
       {loading ? (
-        <View style={styles.loadingBox}>
-          <ActivityIndicator color={appColors.primary} />
-        </View>
+        <SkeletonList appColors={appColors} />
       ) : filtered.length ? (
         <View style={styles.list}>
           {filtered.map((item) => (
@@ -199,6 +197,40 @@ export default function NotificationsScreen({ navigate, goBack }) {
         </View>
       )}
     </Screen>
+  );
+}
+
+function SkeletonPulse({ style, appColors }) {
+  const anim = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 1, duration: 700, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+  return <Animated.View style={[style, { opacity: anim, backgroundColor: appColors.border }]} />;
+}
+
+function SkeletonCard({ appColors }) {
+  return (
+    <View style={{ flexDirection: 'row', gap: 12, padding: 14, borderRadius: 18, borderWidth: 1, borderColor: appColors.border, backgroundColor: appColors.surface, marginBottom: 8 }}>
+      <SkeletonPulse style={{ width: 44, height: 44, borderRadius: 22 }} appColors={appColors} />
+      <View style={{ flex: 1, gap: 8 }}>
+        <SkeletonPulse style={{ height: 10, borderRadius: 6, width: '40%' }} appColors={appColors} />
+        <SkeletonPulse style={{ height: 13, borderRadius: 6, width: '75%' }} appColors={appColors} />
+        <SkeletonPulse style={{ height: 10, borderRadius: 6, width: '90%' }} appColors={appColors} />
+      </View>
+    </View>
+  );
+}
+
+function SkeletonList({ appColors }) {
+  return (
+    <View style={{ marginTop: 8, gap: 0 }}>
+      {[1, 2, 3].map((i) => <SkeletonCard key={i} appColors={appColors} />)}
+    </View>
   );
 }
 

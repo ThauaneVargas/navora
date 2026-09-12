@@ -18,7 +18,7 @@ import {
 import * as LocalAuthentication from 'expo-local-authentication';
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import { navoraApi, isNetworkError } from '../services/api';
-import { saveAuthToken } from '../services/authToken';
+import { getAuthToken, saveAuthToken } from '../services/authToken';
 
 const COLORS = {
   burgundy: '#980027',
@@ -180,11 +180,35 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
         return;
       }
 
-      Alert.alert(
-        'Autenticacao biometrica',
-        'Biometria validada. Entre com sua senha uma vez para vincular sua conta neste dispositivo.'
-      );
+      const storedToken = await getAuthToken();
+      if (!storedToken) {
+        Alert.alert(
+          'Autenticacao biometrica',
+          'Entre com sua senha uma vez para vincular sua conta neste dispositivo.'
+        );
+        return;
+      }
+
+      const patient = await navoraApi.getMyPatientProfile();
+      if (!patient) {
+        Alert.alert('Sessao expirada', 'Sua sessao expirou. Entre com sua senha.');
+        return;
+      }
+
+      onPatientReady?.({
+        ...patient,
+        authSource: 'biometric',
+        hasAccount: true,
+      });
     } catch (error) {
+      if (isNetworkError(error)) {
+        Alert.alert('Sem conexao', 'Verifique sua internet e tente novamente.');
+        return;
+      }
+      if (error?.status === 401 || error?.status === 403) {
+        Alert.alert('Sessao expirada', 'Sua sessao expirou. Entre com sua senha.');
+        return;
+      }
       Alert.alert('Autenticacao biometrica', 'Nao foi possivel autenticar com biometria.');
     } finally {
       setBiometricLoading(false);

@@ -1,16 +1,39 @@
-import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
-import { colors, shadows } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 import { getAreaById, hospitalAreas } from '../data/routes';
 
 export default function ArrivalDetectedScreen({ navigate, goBack, routeParams = {}, userProfile, onAreaDetected }) {
+  const { appColors, isDark } = useApp();
+  const styles = createStyles(appColors, isDark);
+
   const area = routeParams.area || 'unknown';
   const knownArea = area !== 'unknown';
   const areaData = knownArea ? getAreaById(area) : null;
   const selectedType = routeParams.userType || userProfile?.type;
+
+  const scaleAnim = useRef(new Animated.Value(0.85)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+  const iconScaleAnim = useRef(new Animated.Value(0.6)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(scaleAnim, { toValue: 1, friction: 8, tension: 80, useNativeDriver: true }),
+      Animated.timing(opacityAnim, { toValue: 1, duration: 320, useNativeDriver: true }),
+      Animated.spring(iconScaleAnim, { toValue: 1, friction: 6, tension: 70, delay: 120, useNativeDriver: true }),
+    ]).start(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.08, duration: 900, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1, duration: 900, useNativeDriver: true }),
+        ])
+      ).start();
+    });
+  }, []);
 
   const nextScreenForType = (nextArea) => {
     if (selectedType === 'visitor') return navigate('VisitorEntry', { area: nextArea });
@@ -36,60 +59,260 @@ export default function ArrivalDetectedScreen({ navigate, goBack, routeParams = 
         onBack={() => goBack?.()}
         onMenu={() => navigate('Menu')}
       />
-      <View style={[styles.card, shadows.card]}>
-        <View style={styles.beacon}>
-          <MaterialCommunityIcons name="map-marker-check-outline" size={34} color="#FFFFFF" />
-        </View>
-        <Text style={styles.kicker}>Chegada manual</Text>
-        <Text style={styles.title}>Voce chegou ao hospital</Text>
+
+      <Animated.View style={[styles.card, { opacity: opacityAnim, transform: [{ scale: scaleAnim }] }]}>
+        <Animated.View style={[styles.iconRing, { transform: [{ scale: pulseAnim }] }]}>
+          <Animated.View style={[styles.iconInner, { transform: [{ scale: iconScaleAnim }] }]}>
+            <MaterialCommunityIcons
+              name={knownArea ? 'map-marker-check' : 'map-marker-question'}
+              size={36}
+              color="#FFFFFF"
+            />
+          </Animated.View>
+        </Animated.View>
+
+        <Text style={styles.kicker}>{knownArea ? 'Chegada confirmada' : 'Entrada manual'}</Text>
+        <Text style={styles.title}>
+          {knownArea ? 'Bem-vindo ao hospital' : 'Selecione sua entrada'}
+        </Text>
+
         {knownArea ? (
           <>
-            <Text style={styles.label}>Entrada escolhida:</Text>
-            <Text style={styles.area}>{areaData.name}</Text>
-            <Text style={styles.entry}>{areaData.entranceName}</Text>
-            <Text style={styles.text}>Hospital ativo carregado a partir da entrada escolhida.</Text>
-            <Pressable onPress={continueKnown} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
-              <Text style={styles.primaryText}>Continuar no Navora</Text>
-              <MaterialCommunityIcons name="arrow-right" size={18} color="#FFFFFF" />
+            <View style={styles.areaRow}>
+              <MaterialCommunityIcons name="hospital-building" size={18} color={appColors.primary} />
+              <View style={styles.areaInfo}>
+                <Text style={styles.areaName}>{areaData?.name}</Text>
+                <Text style={styles.areaEntry}>{areaData?.entranceName}</Text>
+              </View>
+            </View>
+
+            <Text style={styles.hint}>
+              O Navora carregou o mapa a partir da sua entrada. Toque em continuar para iniciar.
+            </Text>
+
+            <Pressable
+              onPress={continueKnown}
+              style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}
+            >
+              <MaterialCommunityIcons name="navigation" size={20} color="#FFFFFF" />
+              <Text style={styles.primaryButtonText}>Continuar no Navora</Text>
             </Pressable>
           </>
         ) : (
           <>
-            <Text style={styles.text}>Selecione uma das entradas disponiveis para continuar.</Text>
+            <Text style={styles.hint}>
+              Selecione uma das entradas disponiveis para que o Navora carregue o mapa correto.
+            </Text>
+
             <View style={styles.choices}>
               {hospitalAreas.map((option) => (
-                <MiniButton key={option.id} title={option.name} onPress={() => chooseUnknown(option.id)} />
+                <AreaButton
+                  key={option.id}
+                  title={option.name}
+                  subtitle={option.entranceName}
+                  onPress={() => chooseUnknown(option.id)}
+                  appColors={appColors}
+                  styles={styles}
+                />
               ))}
-              <MiniButton title="Nao sei, levar ate recepcao" onPress={() => chooseUnknown('unknown')} />
+              <Pressable
+                onPress={() => chooseUnknown('unknown')}
+                style={({ pressed }) => [styles.unknownButton, pressed && styles.pressed]}
+              >
+                <MaterialCommunityIcons name="help-circle-outline" size={18} color={appColors.muted} />
+                <Text style={styles.unknownButtonText}>Nao sei, levar ate a recepcao</Text>
+              </Pressable>
             </View>
           </>
         )}
-      </View>
+      </Animated.View>
     </Screen>
   );
 }
 
-function MiniButton({ title, onPress }) {
+function AreaButton({ title, subtitle, onPress, appColors, styles }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.mini, pressed && styles.pressed]}>
-      <Text style={styles.miniText}>{title}</Text>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.areaButton, pressed && styles.pressed]}
+    >
+      <View style={styles.areaButtonIcon}>
+        <MaterialCommunityIcons name="door-open" size={20} color={appColors.primary} />
+      </View>
+      <View style={styles.areaButtonText}>
+        <Text style={styles.areaButtonTitle}>{title}</Text>
+        {subtitle ? <Text style={styles.areaButtonSub}>{subtitle}</Text> : null}
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={20} color={appColors.muted} />
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  card: { borderRadius: 30, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, padding: 22, alignItems: 'center', marginTop: 4 },
-  beacon: { width: 82, height: 82, borderRadius: 32, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 16, ...shadows.soft },
-  kicker: { color: colors.primary, fontSize: 12, fontWeight: '900', textTransform: 'uppercase' },
-  title: { color: colors.text, fontSize: 25, lineHeight: 31, fontWeight: '900', textAlign: 'center', marginTop: 6 },
-  label: { color: colors.muted, fontSize: 12, fontWeight: '900', marginTop: 22 },
-  area: { color: colors.primary, fontSize: 20, fontWeight: '900', textAlign: 'center', marginTop: 5 },
-  entry: { color: colors.text, fontSize: 14, fontWeight: '800', marginTop: 4 },
-  text: { color: colors.muted, fontSize: 14, lineHeight: 21, fontWeight: '800', textAlign: 'center', marginTop: 16 },
-  primary: { height: 54, alignSelf: 'stretch', borderRadius: 18, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, marginTop: 22 },
-  primaryText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
-  choices: { alignSelf: 'stretch', gap: 10, marginTop: 22 },
-  mini: { minHeight: 50, borderRadius: 17, borderWidth: 1, borderColor: colors.primary, backgroundColor: '#FFF7F8', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
-  miniText: { color: colors.primary, fontSize: 13, fontWeight: '900', textAlign: 'center' },
-  pressed: { opacity: 0.86, transform: [{ scale: 0.985 }] },
-});
+function createStyles(c, isDark) {
+  return StyleSheet.create({
+    card: {
+      borderRadius: 28,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.surface,
+      padding: 24,
+      alignItems: 'center',
+      marginTop: 6,
+      shadowColor: isDark ? '#000' : c.primary,
+      shadowOffset: { width: 0, height: 6 },
+      shadowOpacity: isDark ? 0.3 : 0.08,
+      shadowRadius: 16,
+      elevation: 4,
+    },
+    iconRing: {
+      width: 100,
+      height: 100,
+      borderRadius: 50,
+      backgroundColor: c.primary + '20',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: 18,
+    },
+    iconInner: {
+      width: 72,
+      height: 72,
+      borderRadius: 36,
+      backgroundColor: c.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      shadowColor: c.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.45,
+      shadowRadius: 10,
+      elevation: 6,
+    },
+    kicker: {
+      color: c.primary,
+      fontSize: 11,
+      fontWeight: '900',
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+    },
+    title: {
+      color: c.text,
+      fontSize: 22,
+      lineHeight: 28,
+      fontWeight: '900',
+      textAlign: 'center',
+      marginTop: 6,
+      marginBottom: 18,
+    },
+    areaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      alignSelf: 'stretch',
+      backgroundColor: c.surfaceSoft || c.bg,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.primary + '40',
+      padding: 14,
+      marginBottom: 16,
+    },
+    areaInfo: {
+      flex: 1,
+    },
+    areaName: {
+      color: c.primary,
+      fontSize: 16,
+      fontWeight: '900',
+    },
+    areaEntry: {
+      color: c.muted,
+      fontSize: 12,
+      fontWeight: '700',
+      marginTop: 2,
+    },
+    hint: {
+      color: c.muted,
+      fontSize: 13,
+      lineHeight: 20,
+      fontWeight: '700',
+      textAlign: 'center',
+      marginBottom: 20,
+    },
+    primaryButton: {
+      height: 54,
+      alignSelf: 'stretch',
+      borderRadius: 18,
+      backgroundColor: c.primary,
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexDirection: 'row',
+      gap: 10,
+      shadowColor: c.primary,
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.35,
+      shadowRadius: 10,
+      elevation: 5,
+    },
+    primaryButtonText: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '900',
+    },
+    choices: {
+      alignSelf: 'stretch',
+      gap: 8,
+    },
+    areaButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+      minHeight: 60,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: c.primary + '50',
+      backgroundColor: c.surface,
+      paddingHorizontal: 14,
+      paddingVertical: 10,
+    },
+    areaButtonIcon: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: c.primary + '15',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    areaButtonText: {
+      flex: 1,
+    },
+    areaButtonTitle: {
+      color: c.text,
+      fontSize: 14,
+      fontWeight: '900',
+    },
+    areaButtonSub: {
+      color: c.muted,
+      fontSize: 11,
+      fontWeight: '700',
+      marginTop: 2,
+    },
+    unknownButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      minHeight: 50,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: c.border,
+      paddingHorizontal: 14,
+      justifyContent: 'center',
+    },
+    unknownButtonText: {
+      color: c.muted,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    pressed: {
+      opacity: 0.82,
+      transform: [{ scale: 0.982 }],
+    },
+  });
+}
