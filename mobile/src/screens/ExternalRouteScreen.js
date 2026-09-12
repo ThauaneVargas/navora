@@ -11,6 +11,7 @@ import {
   View,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COLORS = {
   burgundy: '#980027',
@@ -75,13 +76,15 @@ const MAP_ZOOM = 14;
 
 export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}, activeHospital }) {
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const contentMaxWidth = Math.min(width, 430);
   const initialEntrance = HOSPITAL_ENTRANCES[routeParams.area] ? routeParams.area : 'sus';
   const [selectedEntrance, setSelectedEntrance] = useState(initialEntrance);
   const entrance = HOSPITAL_ENTRANCES[selectedEntrance];
-  const destination = entrance.mapQuery || entrance.address;
-  const mapsUrl = entrance.googleMapsUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(destination)}`;
-  const wazeUrl = `https://waze.com/ul?q=${encodeURIComponent(destination)}&navigate=yes`;
+  const { latitude, longitude } = entrance.coordinates;
+  // Navigation URLs: use coordinates so the app routes FROM user's current location TO the hospital
+  const mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&travelmode=driving`;
+  const wazeUrl = `https://waze.com/ul?ll=${latitude},${longitude}&navigate=yes`;
   const arrivalParams = {
     userType: routeParams.userType,
     area: entrance.id,
@@ -93,7 +96,7 @@ export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom + 24, 32) }]}
         showsVerticalScrollIndicator={false}
       >
         <View style={[styles.content, { maxWidth: contentMaxWidth }]}>
@@ -135,7 +138,7 @@ export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}
               <MaterialCommunityIcons name="map-marker" size={25} color={COLORS.burgundy} />
             </View>
             <View style={styles.addressCopy}>
-              <Text style={styles.addressLabel}>ENDERECO</Text>
+              <Text style={styles.addressLabel}>ENDEREÇO</Text>
               <Text style={styles.hospitalName}>{entrance.hospitalName}</Text>
               <Text style={styles.address}>{entrance.address}</Text>
               <View style={styles.confirmedRow}>
