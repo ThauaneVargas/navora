@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -17,8 +17,25 @@ import {
 } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
+import * as SecureStore from 'expo-secure-store';
 import { navoraApi, isNetworkError } from '../services/api';
 import { getAuthToken, saveAuthToken } from '../services/authToken';
+
+const REMEMBERED_EMAIL_KEY = 'navora.login.remembered_email';
+
+async function loadRememberedEmail() {
+  try {
+    return (await SecureStore.getItemAsync(REMEMBERED_EMAIL_KEY)) || '';
+  } catch { return ''; }
+}
+
+async function saveRememberedEmail(email) {
+  try { await SecureStore.setItemAsync(REMEMBERED_EMAIL_KEY, email); } catch {}
+}
+
+async function clearRememberedEmail() {
+  try { await SecureStore.deleteItemAsync(REMEMBERED_EMAIL_KEY); } catch {}
+}
 
 const COLORS = {
   burgundy: '#980027',
@@ -69,6 +86,15 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
   const [biometricLoading, setBiometricLoading] = useState(false);
   const profileAnim = useRef(new Animated.Value(1)).current;
 
+  useEffect(() => {
+    loadRememberedEmail().then((saved) => {
+      if (saved) {
+        setEmailOrCpf(saved);
+        setRememberData(true);
+      }
+    });
+  }, []);
+
   const handleProfileChange = (profile) => {
     if (profile === selectedProfile || loading) return;
 
@@ -116,6 +142,12 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
       }
 
       await saveAuthToken(auth.access_token);
+
+      if (rememberData) {
+        await saveRememberedEmail(emailOrCpf.trim());
+      } else {
+        await clearRememberedEmail();
+      }
 
       const patient = await navoraApi.getMyPatientProfile();
 
