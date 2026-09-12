@@ -26,15 +26,15 @@ import { assistantProvider, getNavoraAssistantResponse } from '../services/navor
 import { useApp } from '../context/AppContext';
 
 const suggestions = [
-  'Como chegar ao hospital',
-  'Estou em outra entrada',
-  'Quero visitar alguem',
-  'Estou perdido',
-  'Banheiro mais proximo',
-  'Rota acessivel',
-  'Ativar modo noturno',
-  'Apoio clinico',
-  'SOS Emergencia',
+  { label: 'Como chegar ao hospital', icon: 'map-marker-outline' },
+  { label: 'Estou em outra entrada', icon: 'door-open' },
+  { label: 'Quero visitar alguem', icon: 'account-heart-outline' },
+  { label: 'Estou perdido', icon: 'help-circle-outline' },
+  { label: 'Banheiro mais proximo', icon: 'human-male' },
+  { label: 'Rota acessivel', icon: 'wheelchair-accessibility' },
+  { label: 'Ativar modo noturno', icon: 'weather-night' },
+  { label: 'Apoio clinico', icon: 'stethoscope' },
+  { label: 'SOS Emergencia', icon: 'alarm-light-outline' },
 ];
 
 const initialMessages = [
@@ -242,11 +242,12 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
             <View style={styles.suggestions}>
               {suggestions.map((item) => (
                 <Pressable
-                  key={item}
-                  onPress={() => processMessage(item)}
+                  key={item.label}
+                  onPress={() => processMessage(item.label)}
                   style={({ pressed }) => [styles.suggestion, pressed && styles.pressed]}
                 >
-                  <Text numberOfLines={1} style={styles.suggestionText}>{item}</Text>
+                  <MaterialCommunityIcons name={item.icon} size={13} color={appColors.primary} />
+                  <Text numberOfLines={1} style={styles.suggestionText}>{item.label}</Text>
                 </Pressable>
               ))}
             </View>
@@ -414,8 +415,10 @@ const createStyles = (colors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: 11,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 5,
   },
   suggestionText: {
     color: colors.primary,

@@ -156,7 +156,10 @@ export const navoraApi = {
         demoMode: true,
       }
     ),
-  getNotifications: () => request('/notifications', {}, []),
+  getNotifications: () => request('/notifications/me', { authenticated: true }, []),
+  markNotificationRead: (id) => request(`/notifications/${id}/read`, { method: 'PUT', authenticated: true }),
+  markAllNotificationsRead: () => request('/notifications/me/read-all', { method: 'PUT', authenticated: true }),
+  deleteNotification: (id) => request(`/notifications/${id}`, { method: 'DELETE', authenticated: true }),
   getRoutes: () => request('/routes', {}, []),
   getNavigationBootstrap: () =>
     navigationRequest('/navigation/bootstrap', {}, fallbackNavigationBootstrap, normalizeNavigationBootstrap),

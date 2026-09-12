@@ -685,45 +685,31 @@ function App() {
     showToast('Sessao encerrada', 'info');
   };
 
-  const createStaffAccount = (data) => {
-    const emailExists = staffAccounts.some(
-      (item) => item.email.toLowerCase() === data.email.trim().toLowerCase()
-    );
-
-    if (emailExists) {
-      showToast('Ja existe uma conta com este e-mail', 'warning');
-      return;
+  const createStaffAccount = async (data) => {
+    const role = (data.role || 'reception').toUpperCase();
+    try {
+      const created = await adminApi.createStaff({
+        name: data.name.trim(),
+        email: data.email.trim(),
+        password: data.password,
+        role,
+      });
+      const account = mapUserToStaffAccount(created);
+      setStaffAccounts((items) => [account, ...items]);
+      setUsers((items) => [
+        { id: created.id, name: created.name, role: account.roleLabel, status: 'Ativo', location: data.sector || 'Recepcao', lastSeen: 'Nunca', accessibility: 'Nao' },
+        ...items,
+      ]);
+      showToast('Funcionario cadastrado com acesso ao sistema');
+      closeModal();
+    } catch (error) {
+      if (handleAuthFailure(error, 'Acesso negado para cadastrar funcionario')) return;
+      if (error?.status === 409) {
+        showToast('Ja existe uma conta com este e-mail', 'warning');
+        return;
+      }
+      showToast('Nao foi possivel cadastrar o funcionario agora', 'danger');
     }
-
-    const role = data.role || 'reception';
-    const roleLabel = role === 'admin' ? 'Administrador' : 'Recepcao';
-    const nextAccount = {
-      id: `AC-${Date.now()}`,
-      name: data.name,
-      email: data.email,
-      role,
-      roleLabel,
-      sector: data.sector || 'Recepcao',
-      status: data.status || 'Ativo',
-      createdAt: new Date().toLocaleDateString('pt-BR'),
-      lastLogin: 'Nunca',
-    };
-
-    setStaffAccounts((items) => [nextAccount, ...items]);
-    setUsers((items) => [
-      {
-        id: Date.now(),
-        name: nextAccount.name,
-        role: nextAccount.roleLabel,
-        status: nextAccount.status,
-        location: nextAccount.sector,
-        lastSeen: 'Nunca',
-        accessibility: 'Nao',
-      },
-      ...items,
-    ]);
-    showToast('Funcionario cadastrado com acesso ao sistema');
-    closeModal();
   };
 
   const toggleStaffStatus = (id) => {

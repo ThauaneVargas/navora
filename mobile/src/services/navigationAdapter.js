@@ -42,7 +42,7 @@ export const normalizeDestination = (destination = {}) => {
     distance: destination.distanceLabel || destination.distance || '80 m',
     time: destination.timeLabel || destination.time || '2 min',
     accessLevel: destination.accessLevel || destination.access_level || 'public',
-    sector: destination.sector,
+    sector: destination.sector?.name || (typeof destination.sector === 'string' ? destination.sector : null),
     navigationNode: destination.navigationNode,
     navigationNodeCode: destination.navigation_node_code || destination.navigationNode?.code || null,
     externalPatientAccess: Boolean(destination.externalPatientAccess),
@@ -196,7 +196,13 @@ export const normalizeRoutePreview = (preview = {}, source = 'api', fallbackDest
   const edges = Array.isArray(preview.edges) ? preview.edges : [];
   const steps = Array.isArray(preview.steps) ? preview.steps : [];
   const originNode = preview.origin || nodes[0] || null;
-  const destinationName = effectiveDestination?.name || preview.destination || fallbackDestination?.name || 'Destino';
+  const rawDest = preview.destination;
+  const destinationName =
+    effectiveDestination?.name ||
+    (typeof rawDest === 'string' ? rawDest : rawDest?.name) ||
+    fallbackDestination?.name ||
+    'Destino';
+  const rawOriginStr = typeof preview.origin === 'string' ? preview.origin : null;
   const totalDistance = preview.total_distance ?? preview.totalDistance ?? null;
   const estimatedTime = preview.estimated_time_seconds ?? preview.estimatedTime ?? null;
 
@@ -206,7 +212,7 @@ export const normalizeRoutePreview = (preview = {}, source = 'api', fallbackDest
     redirected: Boolean(preview.redirected),
     reason: preview.reason || null,
     accessibleRouteFound: preview.accessible_route_found ?? null,
-    origin: originNode?.label || originNode?.name || preview.origin || 'Origem',
+    origin: originNode?.label || originNode?.name || rawOriginStr || 'Origem',
     originNodeCode: originNode?.code || preview.origin_node_code || null,
     destination: destinationName,
     requestedDestination,

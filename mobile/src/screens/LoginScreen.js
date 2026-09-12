@@ -17,6 +17,8 @@ import {
 } from 'react-native';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
+import { navoraApi, isNetworkError } from '../services/api';
+import { saveAuthToken } from '../services/authToken';
 
 const COLORS = {
   burgundy: '#980027',
@@ -54,7 +56,7 @@ const shadow = {
 
 const GOOGLE_LOGO = require('../../assets/images/logo google.png');
 
-export const LoginScreen = ({ onLoginSuccess, onCreateAccount, onHowToGet }) => {
+export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, onHowToGet }) => {
   const { width, height } = useWindowDimensions();
   const stageMaxWidth = Math.min(width, 430);
   const compact = height < 720;
@@ -88,17 +90,54 @@ export const LoginScreen = ({ onLoginSuccess, onCreateAccount, onHowToGet }) => 
   };
 
   const handleLogin = async () => {
+    if (selectedProfile === 'VISITOR') {
+      onLoginSuccess?.('visitor');
+      return;
+    }
+
     if (!emailOrCpf || !password) {
-      Alert.alert('Atencao', 'Preencha e-mail ou CPF e senha.');
+      Alert.alert('Atencao', 'Preencha e-mail ou senha.');
       return;
     }
 
     setLoading(true);
 
-    setTimeout(() => {
+    try {
+      const auth = await navoraApi.login({ email: emailOrCpf.trim(), password });
+
+      if (!auth?.access_token) {
+        Alert.alert('Erro', 'Resposta invalida do servidor.');
+        return;
+      }
+
+      if (auth.user?.role !== 'PATIENT') {
+        Alert.alert('Acesso negado', 'Este aplicativo e exclusivo para pacientes.');
+        return;
+      }
+
+      await saveAuthToken(auth.access_token);
+
+      const patient = await navoraApi.getMyPatientProfile();
+
+      onPatientReady?.({
+        ...patient,
+        apiUser: auth.user,
+        authSource: 'api',
+        hasAccount: true,
+      });
+    } catch (error) {
+      if (isNetworkError(error)) {
+        Alert.alert('Sem conexao', 'Nao foi possivel conectar ao servidor. Verifique sua internet.');
+        return;
+      }
+      if (error?.status === 401 || error?.status === 403) {
+        Alert.alert('Acesso negado', 'E-mail ou senha incorretos.');
+        return;
+      }
+      Alert.alert('Erro', 'Nao foi possivel entrar agora. Tente novamente.');
+    } finally {
       setLoading(false);
-      onLoginSuccess?.(selectedProfile === 'VISITOR' ? 'visitor' : 'patient');
-    }, 700);
+    }
   };
 
   const handleForgotPassword = () => {

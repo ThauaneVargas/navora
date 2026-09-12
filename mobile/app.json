@@ -6,11 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/images/icone_app.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/images/icone_app.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#FFFFFF"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -21,7 +16,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icone_app.png",
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "edgeToEdge": true
     },
     "web": {
       "favicon": "./assets/images/icone_app.png"
@@ -30,7 +26,17 @@
       "expo-asset",
       "expo-font",
       "expo-audio",
-      "expo-secure-store"
+      "expo-location",
+      "expo-secure-store",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/icone_app.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#FFFFFF"
+        }
+      ]
     ]
   }
 }

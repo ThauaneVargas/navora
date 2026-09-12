@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, InternalServerErrorException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { User, UserRole } from '@prisma/client';
@@ -6,6 +6,7 @@ import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../database/prisma.service';
 import { JwtPayload, SafeUser } from './auth.types';
 import { LoginDto } from './dto/login.dto';
+import { RegisterStaffDto } from './dto/register-staff.dto';
 
 @Injectable()
 export class AuthService {
@@ -55,6 +56,29 @@ export class AuthService {
 
   async me(user: SafeUser) {
     return user;
+  }
+
+  async registerStaff(payload: RegisterStaffDto) {
+    const existing = await this.prisma.user.findUnique({
+      where: { email: payload.email.trim().toLowerCase() },
+    });
+
+    if (existing) {
+      throw new ConflictException('Ja existe um usuario com este e-mail');
+    }
+
+    const passwordHash = await bcrypt.hash(payload.password, 10);
+    const user = await this.prisma.user.create({
+      data: {
+        name: payload.name.trim(),
+        email: payload.email.trim().toLowerCase(),
+        passwordHash,
+        role: payload.role as any,
+        active: true,
+      },
+    });
+
+    return this.toSafeUser(user);
   }
 
   async issueAccessToken(user: Pick<User, 'id' | 'email' | 'role'>) {

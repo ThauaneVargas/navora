@@ -8,7 +8,6 @@ import {
 
 import {
   SafeAreaView,
-  useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
 import { StatusBar } from 'expo-status-bar';
@@ -29,7 +28,6 @@ export default function Screen({
   padded = true,
   withBottomTabs = false,
 }) {
-  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
   const {
@@ -62,17 +60,8 @@ export default function Screen({
 
   const bottomPadding =
     withBottomTabs
-      ? bottomTabHeight +
-        Math.max(
-          insets.bottom,
-          10
-        ) +
-        18
-      : Math.max(
-          insets.bottom,
-          10
-        ) +
-        18;
+      ? bottomTabHeight + 18
+      : 18;
 
   const contentStyle = [
     styles.content,
@@ -90,8 +79,10 @@ export default function Screen({
     return (
       <SafeAreaView
         edges={[
+          'top',
           'left',
           'right',
+          'bottom',
         ]}
         style={[
           styles.safe,

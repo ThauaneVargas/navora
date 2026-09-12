@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import { navoraApi, isNetworkError } from '../services/api';
 
 const options = [
   { key: 'none', title: 'Nao preciso de apoio', desc: 'Usar rotas padrao.', icon: 'check-circle-outline' },
@@ -20,12 +21,51 @@ const options = [
   { key: 'other', title: 'Outra necessidade', desc: 'Informe a recepcao durante o atendimento.', icon: 'plus-circle-outline' },
 ];
 
-export default function AccessibilityScreen({ navigate, goBack }) {
+// Maps screen option keys to backend API fields
+const screenToApi = {
+  wheelchair: 'wheelchair',
+  mobility: 'mobilityDifficulty',
+  avoidStairs: 'avoidStairs',
+  preferElevator: 'preferElevator',
+  walkingHelp: 'needsStretcher',
+  voiceGuidance: 'voiceGuidance',
+  largerText: 'largerText',
+  visualImpairment: 'highContrast',
+};
+
+function fromApiToScreen(apiPrefs) {
+  if (!apiPrefs || typeof apiPrefs !== 'object') return { none: true };
+  const hasAny = Object.entries(screenToApi).some(([, apiKey]) => Boolean(apiPrefs[apiKey]));
+  if (!hasAny) return { none: true };
+  const state = { none: false };
+  for (const [screenKey, apiKey] of Object.entries(screenToApi)) {
+    if (apiPrefs[apiKey]) state[screenKey] = true;
+  }
+  return state;
+}
+
+function fromScreenToApi(activeOptions) {
+  if (activeOptions.none) {
+    return Object.fromEntries(Object.values(screenToApi).map((k) => [k, false]));
+  }
+  const payload = {};
+  for (const [screenKey, apiKey] of Object.entries(screenToApi)) {
+    payload[apiKey] = Boolean(activeOptions[screenKey]);
+  }
+  return payload;
+}
+
+export default function AccessibilityScreen({ navigate, goBack, userProfile }) {
   const { appColors } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
-  const [activeOptions, setActiveOptions] = useState({
-    none: true,
-  });
+  const [activeOptions, setActiveOptions] = useState(() =>
+    fromApiToScreen(userProfile?.accessibility)
+  );
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setActiveOptions(fromApiToScreen(userProfile?.accessibility));
+  }, [userProfile?.accessibility]);
 
   const toggle = (key) => {
     setActiveOptions((current) => {
@@ -33,6 +73,23 @@ export default function AccessibilityScreen({ navigate, goBack }) {
       return { ...current, none: false, [key]: !current[key] };
     });
   };
+
+  const save = useCallback(async () => {
+    setSaving(true);
+    try {
+      await navoraApi.updateAccessibility(fromScreenToApi(activeOptions));
+      Alert.alert('Salvo', 'Suas preferencias de acessibilidade foram atualizadas.');
+      navigate('Menu');
+    } catch (error) {
+      if (isNetworkError(error)) {
+        Alert.alert('Sem conexao', 'Nao foi possivel salvar agora. Tente novamente.');
+      } else {
+        Alert.alert('Erro', 'Nao foi possivel salvar suas preferencias.');
+      }
+    } finally {
+      setSaving(false);
+    }
+  }, [activeOptions, navigate]);
 
   return (
     <Screen>
@@ -80,10 +137,15 @@ export default function AccessibilityScreen({ navigate, goBack }) {
       </View>
 
       <Pressable
-        onPress={() => navigate('Menu')}
-        style={({ pressed }) => [styles.saveButton, pressed && styles.pressed, shadows.soft]}
+        onPress={save}
+        disabled={saving}
+        style={({ pressed }) => [styles.saveButton, (pressed || saving) && styles.pressed, shadows.soft]}
       >
-        <Text style={styles.saveText}>Salvar preferências</Text>
+        {saving ? (
+          <ActivityIndicator color="#FFFFFF" size="small" />
+        ) : (
+          <Text style={styles.saveText}>Salvar preferencias</Text>
+        )}
       </Pressable>
     </Screen>
   );

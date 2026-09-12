@@ -103,6 +103,28 @@ enum CheckInStatus {
   CANCELED
 }
 
+enum NotificationCategory {
+  NAVIGATION
+  ACCESS
+  HELP_SOS
+}
+
+model Notification {
+  id          Int                  @id @default(autoincrement())
+  userId      Int                  @map("user_id")
+  category    NotificationCategory
+  icon        String
+  title       String
+  description String
+  read        Boolean              @default(false)
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("notifications")
+}
+
 model User {
   id           Int      @id @default(autoincrement())
   email        String   @unique
@@ -114,9 +136,10 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  staffProfile StaffProfile?
+  staffProfile   StaffProfile?
   patientProfile PatientProfile?
-  checkIns CheckIn[]
+  checkIns       CheckIn[]
+  notifications  Notification[]
 
   @@map("users")
 }

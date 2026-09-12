@@ -8,13 +8,13 @@ import { useApp } from '../context/AppContext';
 
 const menuItems = [
   { title: 'Meu perfil', subtitle: 'Dados pessoais e acessos', icon: 'account-outline', screen: 'Profile' },
-  { title: 'Como chegar ao hospital', subtitle: 'Rota ate a entrada principal', icon: 'map-marker-distance', screen: 'HowToGet' },
+  { title: 'Como chegar ao hospital', subtitle: 'Rota ate a entrada principal', icon: 'map-marker-distance', screen: 'ExternalRoute' },
   { title: 'Acessibilidade', subtitle: 'Rotas adaptadas', icon: 'wheelchair-accessibility', screen: 'Accessibility' },
   { title: 'Rotas de emergencia', subtitle: 'Saidas seguras', icon: 'exit-run', screen: 'EmergencyRoutes' },
-  { title: 'Historico de rotas', subtitle: 'Ultimos destinos', icon: 'history', screen: 'Profile' },
+  { title: 'Historico de rotas', subtitle: 'Ultimos destinos', icon: 'history', screen: 'RouteHistory' },
   { title: 'Notificacoes', subtitle: 'Avisos do Navora', icon: 'bell-outline', screen: 'Notifications' },
-  { title: 'Configuracoes', subtitle: 'Preferencias do app', icon: 'cog-outline', screen: 'Profile' },
-  { title: 'Privacidade', subtitle: 'Dados e permissoes', icon: 'shield-lock-outline', screen: 'Profile' },
+  { title: 'Configuracoes', subtitle: 'Preferencias do app', icon: 'cog-outline', screen: 'Settings' },
+  { title: 'Privacidade', subtitle: 'Dados e permissoes', icon: 'shield-lock-outline', screen: 'Privacy' },
   { title: 'Sair', subtitle: 'Encerrar sessao', icon: 'logout', screen: 'HomeStart', danger: true },
 ];
 

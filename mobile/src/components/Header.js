@@ -10,9 +10,6 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
-import {
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
 
 import {
   MaterialCommunityIcons,
@@ -44,9 +41,6 @@ export default function Header({
 
   notificationCount = 0,
 }) {
-  const insets =
-    useSafeAreaInsets();
-
   const { width } =
     useWindowDimensions();
 
@@ -65,12 +59,6 @@ export default function Header({
   const horizontalPadding =
     horizontalPaddingFor(
       availableWidth
-    );
-
-  const topPadding =
-    Math.max(
-      insets.top,
-      8
     );
 
   /*
@@ -111,8 +99,7 @@ export default function Header({
         style={[
           styles.header,
           {
-            paddingTop:
-              topPadding,
+            paddingTop: 8,
 
             paddingHorizontal:
               horizontalPadding,

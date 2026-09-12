@@ -1,94 +1,106 @@
-import React, { useMemo, useState } from 'react';
-import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import { isNetworkError, navoraApi } from '../services/api';
 
-const initialNotifications = [
+const DEMO_NOTIFICATIONS = [
   {
-    id: 'route-recalculated',
+    id: 'demo-1',
     category: 'Navegacao',
     icon: 'routes',
     title: 'Rota recalculada',
     description: 'Encontramos um caminho mais curto ate Tomografia.',
-    time: 'Agora',
+    createdAt: new Date().toISOString(),
     read: false,
   },
   {
-    id: 'reception-busy',
+    id: 'demo-2',
     category: 'Acesso',
     icon: 'account-group-outline',
     title: 'Local movimentado',
     description: 'A recepcao esta com maior movimento neste momento.',
-    time: '3 min',
+    createdAt: new Date().toISOString(),
     read: false,
   },
   {
-    id: 'help-received',
+    id: 'demo-3',
     category: 'Ajuda-SOS',
     icon: 'hand-heart-outline',
     title: 'Ajuda recebida',
     description: 'Seu pedido de apoio foi recebido pela equipe.',
-    time: '7 min',
-    read: true,
-  },
-  {
-    id: 'sos-sent',
-    category: 'Ajuda-SOS',
-    icon: 'alarm-light-outline',
-    title: 'SOS enviado',
-    description: 'O alerta urgente foi encaminhado para a recepcao.',
-    time: '12 min',
-    read: true,
-  },
-  {
-    id: 'appointment-soon',
-    category: 'Acesso',
-    icon: 'calendar-clock',
-    title: 'Consulta/exame proximo',
-    description: 'Seu exame esta previsto para iniciar em breve.',
-    time: '20 min',
-    read: true,
-  },
-  {
-    id: 'accessible-route',
-    category: 'Navegacao',
-    icon: 'elevator-passenger',
-    title: 'Rota com elevador',
-    description: 'A rota acessivel prioriza elevador e evita escadas.',
-    time: 'Hoje',
+    createdAt: new Date(Date.now() - 7 * 60000).toISOString(),
     read: true,
   },
 ];
 
-const filters = ['Todas', 'Acesso', 'Navegacao', 'Ajuda-SOS'];
+function formatTime(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'Agora';
+  if (diffMin < 60) return `${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH}h`;
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+
+const FILTERS = ['Todas', 'Acesso', 'Navegacao', 'Ajuda-SOS'];
 
 export default function NotificationsScreen({ navigate, goBack }) {
   const { appColors } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
-  const [notifications, setNotifications] = useState(initialNotifications);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState('Todas');
 
-  const unreadCount = useMemo(
-    () => notifications.filter((item) => !item.read).length,
-    [notifications]
-  );
-  const filteredNotifications = useMemo(
-    () => activeFilter === 'Todas'
-      ? notifications
-      : notifications.filter((item) => item.category === activeFilter),
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await navoraApi.getNotifications();
+      setNotifications(Array.isArray(data) && data.length > 0 ? data : DEMO_NOTIFICATIONS);
+    } catch {
+      setNotifications(DEMO_NOTIFICATIONS);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+
+  const filtered = useMemo(
+    () => activeFilter === 'Todas' ? notifications : notifications.filter((n) => n.category === activeFilter),
     [activeFilter, notifications]
   );
 
-  const markAllAsRead = () => {
-    setNotifications((current) => current.map((item) => ({ ...item, read: true })));
-  };
+  const markAllAsRead = useCallback(async () => {
+    const prev = notifications;
+    setNotifications((cur) => cur.map((n) => ({ ...n, read: true })));
+    try {
+      await navoraApi.markAllNotificationsRead();
+    } catch (err) {
+      if (!isNetworkError(err)) setNotifications(prev);
+    }
+  }, [notifications]);
 
-  const deleteNotification = (id) => {
-    setNotifications((current) => current.filter((item) => item.id !== id));
-  };
+  const handleDelete = useCallback(async (id) => {
+    const prev = notifications;
+    setNotifications((cur) => cur.filter((n) => n.id !== id && n.id !== String(id)));
+    try {
+      if (!String(id).startsWith('demo-')) {
+        await navoraApi.deleteNotification(id);
+      }
+    } catch (err) {
+      if (!isNetworkError(err)) setNotifications(prev);
+    }
+  }, [notifications]);
 
   const confirmClear = () => {
     if (!notifications.length) return;
@@ -97,7 +109,20 @@ export default function NotificationsScreen({ navigate, goBack }) {
       'Tem certeza que deseja remover todas as notificacoes?',
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Limpar', style: 'destructive', onPress: () => setNotifications([]) },
+        {
+          text: 'Limpar', style: 'destructive', onPress: async () => {
+            const prev = notifications;
+            setNotifications([]);
+            try {
+              await Promise.all(
+                prev.filter((n) => !String(n.id).startsWith('demo-'))
+                  .map((n) => navoraApi.deleteNotification(n.id))
+              );
+            } catch {
+              // best-effort
+            }
+          }
+        },
       ]
     );
   };
@@ -137,7 +162,7 @@ export default function NotificationsScreen({ navigate, goBack }) {
       </View>
 
       <View style={styles.filters}>
-        {filters.map((filter) => (
+        {FILTERS.map((filter) => (
           <Pressable
             key={filter}
             onPress={() => setActiveFilter(filter)}
@@ -148,13 +173,19 @@ export default function NotificationsScreen({ navigate, goBack }) {
         ))}
       </View>
 
-      {filteredNotifications.length ? (
+      {loading ? (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator color={appColors.primary} />
+        </View>
+      ) : filtered.length ? (
         <View style={styles.list}>
-          {filteredNotifications.map((item) => (
+          {filtered.map((item) => (
             <NotificationCard
               key={item.id}
               item={item}
-              onDelete={() => deleteNotification(item.id)}
+              onDelete={() => handleDelete(item.id)}
+              appColors={appColors}
+              styles={styles}
             />
           ))}
         </View>
@@ -171,9 +202,7 @@ export default function NotificationsScreen({ navigate, goBack }) {
   );
 }
 
-function NotificationCard({ item, onDelete }) {
-  const { appColors } = useApp();
-  const styles = useMemo(() => createStyles(appColors), [appColors]);
+function NotificationCard({ item, onDelete, appColors, styles }) {
   return (
     <View style={[styles.card, !item.read && styles.unreadCard, shadows.card]}>
       <View style={styles.iconBox}>
@@ -187,7 +216,7 @@ function NotificationCard({ item, onDelete }) {
             <Text style={[styles.readStatus, !item.read && styles.unreadStatus]}>
               {item.read ? 'Lida' : 'Nao lida'}
             </Text>
-            <Text style={styles.time}>{item.time}</Text>
+            <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
           </View>
         </View>
         <Text style={styles.cardTitle}>{item.title}</Text>
@@ -307,6 +336,10 @@ const createStyles = (colors) => StyleSheet.create({
   },
   filterTextActive: {
     color: '#FFFFFF',
+  },
+  loadingBox: {
+    paddingVertical: 48,
+    alignItems: 'center',
   },
   list: {
     gap: 12,

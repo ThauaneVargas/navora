@@ -1,6 +1,7 @@
-import React from 'react';
-import { View, Text, StyleSheet, Pressable, Image, Linking, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Pressable, Image, Linking, Alert, ActivityIndicator } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import { colors, shadows } from '../theme/colors';
@@ -10,14 +11,43 @@ const address = 'Rua Ronaldo Fiuza Manhaes, no 1, Centro, Vassouras - RJ';
 const encodedAddress = encodeURIComponent(address);
 
 export default function HowToGetScreen({ navigate, goBack }) {
-  const openMap = (provider) => {
-    const urls = {
-      google: `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`,
-      apple: `http://maps.apple.com/?q=${encodedAddress}`,
-      waze: `https://waze.com/ul?q=${encodedAddress}&navigate=yes`,
-    };
+  const [locating, setLocating] = useState(false);
 
-    const url = provider === 'auto' && Platform.OS === 'ios' ? urls.apple : urls[provider === 'auto' ? 'google' : provider];
+  const openMap = async (provider) => {
+    setLocating(true);
+    let origin = null;
+
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === 'granted') {
+        const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+        origin = `${pos.coords.latitude},${pos.coords.longitude}`;
+      } else {
+        Alert.alert(
+          'Localizacao nao disponivel',
+          'Nao foi possivel obter sua localizacao atual. O mapa vai abrir com o destino do hospital, mas sem rota a partir da sua posicao.',
+          [{ text: 'Entendi', style: 'default' }]
+        );
+      }
+    } catch {
+      // silent — fallback para URL sem origem
+    } finally {
+      setLocating(false);
+    }
+
+    let url;
+    if (provider === 'google') {
+      url = origin
+        ? `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${encodedAddress}`
+        : `https://www.google.com/maps/search/?api=1&query=${encodedAddress}`;
+    } else if (provider === 'apple') {
+      url = origin
+        ? `http://maps.apple.com/?saddr=${origin}&daddr=${encodedAddress}`
+        : `http://maps.apple.com/?q=${encodedAddress}`;
+    } else {
+      url = `https://waze.com/ul?q=${encodedAddress}&navigate=yes`;
+    }
+
     Linking.openURL(url);
   };
 
@@ -35,9 +65,9 @@ export default function HowToGetScreen({ navigate, goBack }) {
 
       <Text style={styles.sectionTitle}>Abrir no seu mapa favorito</Text>
       <View style={[styles.options, shadows.card]}>
-        <MapOption icon="google-maps" title="Google Maps" onPress={() => openMap('google')} />
-        <MapOption icon="apple" title="Apple Maps" onPress={() => openMap('apple')} />
-        <MapOption icon="waze" title="Waze" onPress={() => openMap('waze')} last />
+        <MapOption icon="google-maps" title="Google Maps" onPress={() => openMap('google')} loading={locating} />
+        <MapOption icon="apple" title="Apple Maps" onPress={() => openMap('apple')} loading={locating} />
+        <MapOption icon="waze" title="Waze" onPress={() => openMap('waze')} last loading={locating} />
       </View>
 
       <View style={[styles.infoCard, shadows.card]}>
@@ -50,12 +80,18 @@ export default function HowToGetScreen({ navigate, goBack }) {
   );
 }
 
-function MapOption({ icon, title, onPress, last }) {
+function MapOption({ icon, title, onPress, last, loading }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.option, !last && styles.optionBorder, pressed && styles.pressed]}>
+    <Pressable
+      onPress={onPress}
+      disabled={loading}
+      style={({ pressed }) => [styles.option, !last && styles.optionBorder, (pressed || loading) && styles.pressed]}
+    >
       <MaterialCommunityIcons name={icon} size={23} color={colors.primary} />
       <Text style={styles.optionText}>{title}</Text>
-      <MaterialCommunityIcons name="chevron-right" size={21} color={colors.muted} />
+      {loading
+        ? <ActivityIndicator size="small" color={colors.muted} />
+        : <MaterialCommunityIcons name="chevron-right" size={21} color={colors.muted} />}
     </Pressable>
   );
 }

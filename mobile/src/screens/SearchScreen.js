@@ -238,7 +238,7 @@ export default function SearchScreen({
               </View>
               <View style={styles.copy}>
                 <Text numberOfLines={1} style={styles.name}>{item.name}</Text>
-                <Text numberOfLines={1} style={styles.type}>{item.category} - {item.sector || 'Setor informado pela rota'}</Text>
+                <Text numberOfLines={1} style={styles.type}>{item.category} - {(typeof item.sector === 'object' ? item.sector?.name : item.sector) || 'Setor informado pela rota'}</Text>
                 <Text numberOfLines={1} style={styles.floor}>{item.floor || 'Andar nao informado'}</Text>
               </View>
               <View style={styles.metaBox}>

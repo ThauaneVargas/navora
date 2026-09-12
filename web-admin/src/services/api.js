@@ -144,4 +144,6 @@ export const adminApi = {
   getNavigationMap: () => requestFromApi('/navigation/map', { authenticated: true }),
   generateAdminReport: (payload = {}) =>
     request('/reports/admin', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }, { demoMode: true }),
+  createStaff: (payload) =>
+    request('/auth/register-staff', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }),
 };
