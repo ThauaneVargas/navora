@@ -11,7 +11,7 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 - Private e SUS têm estruturas separadas, não assumir que uma funciona igual na outra.
 - Antes de mudar algo, entender a estrutura atual e reutilizar o que já existe (não duplicar arquivos/componentes).
 
-## Bugs já diagnosticados
+## Bugs e features — status atual
 
 **1. Geolocalização real (HowToGetScreen) — RESOLVIDO**
 - `HowToGetScreen.js` usa `expo-location`, pede permissão foreground, pega posição real e passa como `origin` para Google Maps/Waze/Apple Maps com fallback claro.
@@ -33,13 +33,39 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 
 **6. Login falhando silenciosamente — RESOLVIDO**
 - Adicionado timeout de 20s via AbortController na função `request()` de `api.js`.
-- Erros de timeout agora mostram mensagem específica ("Servidor inicializando").
-- Erros 5xx têm mensagem própria.
-- `.env` já tinha URL correta do Render.com (`https://navora-backend-kpio.onrender.com`).
+- Mensagens específicas para timeout, rede, 401/403, 5xx.
+- `.env` mobile aponta para IP local: `http://192.168.29.66:8000`.
+
+**7. Sobreposição de elementos na tela de mapa — RESOLVIDO**
+- Badge "Terreo" (`floorPill`) agora só aparece no modo estático (não no DynamicRouteMap que tem seu próprio header).
+- Controles de zoom movidos de `top: 56` para `bottom: 12` — sem sobreposição com título/tabs do DynamicRouteMap.
+
+**8. Zoom do mapa não funciona — RESOLVIDO**
+- `DynamicRouteMap` agora recebe `zoom`, `pan` e `panHandlers` como props.
+- O canvas (`Animated.View`) aplica `transform: [translateX, translateY, scale]` — zoom e pan funcionam em ambos os modos (estático e dinâmico).
+
+**9. Falta seletor de andar — RESOLVIDO (básico)**
+- Constante `HOSPITAL_FLOORS` com 4 andares (Térreo, 2º, 3º, 4º).
+- `floorPill` virou `Pressable` que abre Alert com as 4 opções de andar.
+- Estado `staticFloor` atualiza o badge ao selecionar.
+- DynamicRouteMap já tinha tabs de andar quando `floors.length > 1` (não alterado).
+
+**10. Fluxo de "Preciso de ajuda" incompleto — RESOLVIDO (parcial)**
+- HelpScreen já tinha o menu com opções ("Preciso de ajuda", "SOS", "Estou perdido", "Acessibilidade", "Falar com a recepção").
+- Corrigido: "Falar com a recepção" usava `kind: 'help'` igual ao "Preciso de ajuda" → ambos mostravam spinner ao mesmo tempo. Separado para `kind: 'reception'`.
+- Spinner agora só aparece no botão certo. Timeout de 20s garante que não trava infinitamente.
+
+**11. Botão de SOS sem confirmação — RESOLVIDO**
+- `confirmSos()` já existia em HelpScreen.js com Alert.alert "Acionar SOS?" + botões Cancelar/Acionar.
+
+**12. "Suporte humano" não leva a lugar nenhum — RESOLVIDO**
+- "Suporte humano" é o subtitle do botão "Chamar ajuda" em LostScreen.js, que navega para `'Help'` screen.
+- O fluxo funciona: LostScreen → Help (HelpScreen). Não havia tela faltando.
 
 ## Nota de versão
 - Projeto está no **Expo SDK 57**.
-- Backend em produção: Render.com (pode demorar ~30s para acordar no plano gratuito).
+- Backend local: `http://192.168.29.66:8000` (NestJS + PostgreSQL via Docker).
+- Backend produção: `https://navora-backend-kpio.onrender.com` (Render.com — dorme após 15min).
 
 ## Identidade visual
 Fundo branco ou branco-gelo, detalhes em bordô (#980027), aparência limpa e premium, bastante espaço em branco, ícones simples, textos objetivos, botões grandes (público pode ter mobilidade reduzida/ansiedade).

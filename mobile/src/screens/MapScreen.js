@@ -21,6 +21,8 @@ const NAV_COLORS = {
   border: '#E7E9EE',
 };
 
+const HOSPITAL_FLOORS = ['Térreo', '2º Andar', '3º Andar', '4º Andar'];
+
 export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute, navigationProgress: selectedProgress, onEndRoute }) {
   const { activeRoute: fallbackRoute, appColors, isDark } = useApp();
   const { width, height } = useWindowDimensions();
@@ -28,6 +30,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
   const pan = useRef(new Animated.ValueXY()).current;
   const [zoom, setZoom] = useState(1);
   const [selectedFloor, setSelectedFloor] = useState(null);
+  const [staticFloor, setStaticFloor] = useState('Térreo');
   const routeNodes = Array.isArray(activeRoute?.nodes) ? activeRoute.nodes : [];
   const routeEdges = Array.isArray(activeRoute?.edges) ? activeRoute.edges : [];
   const useDynamicRoute = activeRoute?.source === 'api' && activeRoute?.routeFound !== false && routeNodes.length > 0;
@@ -86,6 +89,20 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
       toValue: { x: 0, y: 0 },
       useNativeDriver: false,
     }).start();
+  };
+
+  const selectFloor = () => {
+    Alert.alert(
+      'Selecionar andar',
+      null,
+      [
+        ...HOSPITAL_FLOORS.map((floor) => ({
+          text: floor,
+          onPress: () => setStaticFloor(floor),
+        })),
+        { text: 'Cancelar', style: 'cancel' },
+      ]
+    );
   };
 
   const confirmEndRoute = () => {
@@ -171,6 +188,9 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
             isDark={isDark}
             onFloorChange={setSelectedFloor}
             routeMap={routeMap}
+            zoom={zoom}
+            pan={pan}
+            panHandlers={panResponder.panHandlers}
           />
         ) : blockedApiRoute ? (
           <View style={styles.emptyRouteState}>
@@ -223,10 +243,22 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
           </Animated.View>
         )}
 
-        <View style={[styles.floorPill, { backgroundColor: appColors.surface, borderColor: appColors.border }]}>
-          <MaterialCommunityIcons name="layers-outline" size={15} color={appColors.primary} />
-          <Text style={[styles.floorPillText, { color: appColors.text }]}>{shortFloor(activeFloor || 'Piso Terreo')}</Text>
-        </View>
+        {!useDynamicRoute && !blockedApiRoute && (
+          <Pressable
+            onPress={selectFloor}
+            accessibilityRole="button"
+            accessibilityLabel="Selecionar andar"
+            style={({ pressed }) => [
+              styles.floorPill,
+              { backgroundColor: appColors.surface, borderColor: appColors.border },
+              pressed && styles.pressed,
+            ]}
+          >
+            <MaterialCommunityIcons name="layers-outline" size={15} color={appColors.primary} />
+            <Text style={[styles.floorPillText, { color: appColors.text }]}>{staticFloor}</Text>
+            <MaterialCommunityIcons name="chevron-down" size={14} color={appColors.muted} />
+          </Pressable>
+        )}
 
         <View style={styles.controls}>
           <Control icon="plus" label="Aproximar" onPress={zoomIn} appColors={appColors} />
@@ -327,7 +359,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
   );
 }
 
-function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFloorChange, routeMap }) {
+function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFloorChange, routeMap, zoom = 1, pan, panHandlers }) {
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const visibleNodes = routeMap.nodesByFloor.get(activeFloor) || [];
   const visibleLines = routeMap.lines.filter((line) => line.floor === activeFloor);
@@ -383,8 +415,26 @@ function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFl
         </View>
       ) : null}
 
-      <View
-        style={[styles.dynamicCanvas, { borderColor: appColors.border }]}
+      <Animated.View
+        {...(panHandlers || {})}
+        style={[
+          styles.dynamicCanvas,
+          { borderColor: appColors.border },
+          pan && zoom !== 1 ? {
+            transform: [
+              { translateX: pan.x },
+              { translateY: pan.y },
+              { scale: zoom },
+            ],
+          } : pan ? {
+            transform: [
+              { translateX: pan.x },
+              { translateY: pan.y },
+            ],
+          } : zoom !== 1 ? {
+            transform: [{ scale: zoom }],
+          } : undefined,
+        ]}
         onLayout={(event) => setCanvasSize(event.nativeEvent.layout)}
       >
         {visibleLines.map((line) => (
@@ -399,7 +449,7 @@ function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFl
             node={node}
           />
         ))}
-      </View>
+      </Animated.View>
 
       {floorTransfers.length ? (
         <View style={[styles.transferBox, { backgroundColor: isDark ? '#202029' : '#FFFFFF', borderColor: appColors.border }]}>
@@ -1055,7 +1105,7 @@ const styles = StyleSheet.create({
   controls: {
     position: 'absolute',
     right: 12,
-    top: 56,
+    bottom: 12,
     gap: 8,
   },
   floorPill: {

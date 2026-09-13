@@ -304,7 +304,7 @@ export default function HelpScreen({
 
     reception: () =>
       submit(
-        'help',
+        'reception',
         'Contato com recepção'
       ),
 
@@ -487,7 +487,7 @@ export default function HelpScreen({
             }
             loading={
               submittingKind ===
-              'help'
+              'reception'
             }
             appColors={
               appColors
