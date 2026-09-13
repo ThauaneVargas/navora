@@ -1,6 +1,7 @@
 import React from 'react';
 
 import {
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -105,10 +106,12 @@ export default function BottomTabs({
   } = useApp();
 
 
+  // Mínimo de 21px no Android para cobrir a barra de gestos (gesture nav pill),
+  // mesmo quando insets.bottom não é reportado corretamente em builds de dev.
   const bottomPadding =
     Math.max(
       insets.bottom,
-      8
+      Platform.OS === 'android' ? 21 : 8
     );
 
 

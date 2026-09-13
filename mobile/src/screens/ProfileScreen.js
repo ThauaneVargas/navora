@@ -1030,9 +1030,10 @@ export default function ProfileScreen({
           }
         >
           <Pressable
-            style={
-              styles.modalOverlay
-            }
+            style={[
+              styles.modalOverlay,
+              { paddingBottom: Math.max(insets.bottom, 16) },
+            ]}
             onPress={() =>
               setPhotoMenuVisible(
                 false

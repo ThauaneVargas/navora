@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  Platform,
   ScrollView,
   StyleSheet,
   View,
@@ -8,6 +9,7 @@ import {
 
 import {
   SafeAreaView,
+  useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 
 import { StatusBar } from 'expo-status-bar';
@@ -16,10 +18,14 @@ import { useApp } from '../context/AppContext';
 
 import {
   APP_MAX_WIDTH,
-  bottomTabHeight,
   horizontalPaddingFor,
   IS_WEB,
 } from '../theme/layout';
+
+
+// Mínimo seguro para Android quando o inset inferior não é reportado corretamente
+// (e.g., Expo Go sem configuração de edge-to-edge validada no dispositivo)
+const ANDROID_NAV_BAR_MIN = 21;
 
 export default function Screen({
   children,
@@ -29,6 +35,7 @@ export default function Screen({
   withBottomTabs = false,
 }) {
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const {
     isDark,
@@ -58,10 +65,24 @@ export default function Screen({
         )
       : 0;
 
-  const bottomPadding =
-    withBottomTabs
-      ? bottomTabHeight + 18
-      : 18;
+  // Para telas com BottomTabs, não incluir 'bottom' nas edges do SafeAreaView
+  // — o BottomTabs gerencia o inset inferior via useSafeAreaInsets próprio.
+  // Isso evita dupla contagem do inset (SafeAreaView + paddingBottom do BottomTabs).
+  const safeAreaEdges = withBottomTabs
+    ? ['top', 'left', 'right']
+    : ['top', 'left', 'right', 'bottom'];
+
+  // Padding inferior do conteúdo scrollável:
+  // withBottomTabs: altura do BottomTabs (62) + inset inferior do dispositivo + folga
+  // sem BottomTabs: inset inferior + folga mínima (coberto pelo SafeAreaView)
+  const bottomInset = Math.max(
+    insets.bottom,
+    withBottomTabs && Platform.OS === 'android' ? ANDROID_NAV_BAR_MIN : 0
+  );
+
+  const bottomPadding = withBottomTabs
+    ? 62 + bottomInset + 18
+    : 18;
 
   const contentStyle = [
     styles.content,
@@ -78,12 +99,7 @@ export default function Screen({
   if (!scroll) {
     return (
       <SafeAreaView
-        edges={[
-          'top',
-          'left',
-          'right',
-          'bottom',
-        ]}
+        edges={safeAreaEdges}
         style={[
           styles.safe,
 
@@ -128,12 +144,7 @@ export default function Screen({
 
   return (
     <SafeAreaView
-      edges={[
-        'top',
-        'left',
-        'right',
-        'bottom',
-      ]}
+      edges={safeAreaEdges}
       style={[
         styles.safe,
 
