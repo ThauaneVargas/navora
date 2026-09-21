@@ -7,7 +7,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,6 +14,7 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
@@ -73,7 +73,7 @@ const shadow = {
 
 const GOOGLE_LOGO = require('../../assets/images/logo google.png');
 
-export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, onHowToGet, navigate }) => {
+export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, navigate }) => {
   const { width, height } = useWindowDimensions();
   const stageMaxWidth = Math.min(width, 430);
   const compact = height < 720;
@@ -268,10 +268,6 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
     }
   };
 
-  const handleHowToGet = () => {
-    onHowToGet?.();
-  };
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -312,21 +308,6 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, o
                 />
               ))}
             </Animated.View>
-
-            <Pressable
-              onPress={handleHowToGet}
-              disabled={loading}
-              style={({ pressed }) => [
-                styles.directionsCard,
-                pressed && !loading && styles.directionsCardPressed,
-                loading && styles.disabled,
-              ]}
-              accessibilityRole="button"
-            >
-              <MaterialCommunityIcons name="map-marker-outline" size={19} color={COLORS.burgundy} />
-              <Text style={styles.directionsText}>Como chegar ao local</Text>
-              <MaterialCommunityIcons name="chevron-right" size={18} color={COLORS.burgundy} />
-            </Pressable>
 
             <View style={styles.form}>
               <LoginInput
@@ -657,32 +638,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.burgundy,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-
-  directionsCard: {
-    height: 46,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.background,
-    paddingHorizontal: 14,
-    marginBottom: 9,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-  },
-
-  directionsCardPressed: {
-    backgroundColor: COLORS.burgundyLight,
-    transform: [{ scale: 0.99 }],
-  },
-
-  directionsText: {
-    flex: 1,
-    color: COLORS.burgundy,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '700',
   },
 
   form: {

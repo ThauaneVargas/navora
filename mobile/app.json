@@ -10,14 +10,24 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.navora.app",
+      "config": {
+        "googleMapsApiKey": "AIzaSyDCmuG1j9cHkWDUKm17061ECLmdjlgqGiw"
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icone_app.png",
         "backgroundColor": "#FFFFFF"
       },
-      "edgeToEdge": true
+      "edgeToEdge": true,
+      "package": "com.navora.app",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyDCmuG1j9cHkWDUKm17061ECLmdjlgqGiw"
+        }
+      }
     },
     "web": {
       "favicon": "./assets/images/icone_app.png"

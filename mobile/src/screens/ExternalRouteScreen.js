@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Linking,
-  Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,6 +11,8 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Location from 'expo-location';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
 const COLORS = {
   burgundy: '#980027',
@@ -48,9 +50,10 @@ const HOSPITAL_ENTRANCES = {
     address: 'Av. Expedicionário Oswaldo de Almeida Ramos, 280, Centro, Vassouras - RJ, CEP 27700-000',
     mapQuery: 'Hospital Marco Capute, Av. Expedicionário Oswaldo de Almeida Ramos, 280, Centro, Vassouras - RJ, 27700-000',
     googleMapsUrl: 'https://maps.app.goo.gl/DetdpQ3aXDnCGHqm7',
+    // Coordenadas resolvidas a partir do link oficial do Google Maps acima (pin real do hospital).
     coordinates: {
-      latitude: -22.40921,
-      longitude: -43.66402,
+      latitude: -22.4022346,
+      longitude: -43.6540557,
     },
   },
   private: {
@@ -61,17 +64,15 @@ const HOSPITAL_ENTRANCES = {
     address: 'Rua Ronaldo Fiuza Manhães, 1, Centro, Vassouras - RJ, CEP 27700-000',
     mapQuery: 'HMC Private, Rua Ronaldo Fiuza Manhães, 1, Centro, Vassouras - RJ, 27700-000',
     googleMapsUrl: 'https://maps.app.goo.gl/VEsdFiPiorHj5UR99',
-    // Nominatim currently resolves the street, not the exact number. Replace with entrance-level GPS when available.
+    // Coordenadas resolvidas a partir do link oficial do Google Maps acima (pin real do hospital).
     coordinates: {
-      latitude: -22.4065817,
-      longitude: -43.6558581,
+      latitude: -22.4027895,
+      longitude: -43.652777,
     },
   },
 };
 
-const MAP_TILE_SIZE = 256;
 const MAP_HEIGHT = 196;
-const MAP_ZOOM = 14;
 
 export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}, activeHospital }) {
   const { width } = useWindowDimensions();
@@ -215,79 +216,57 @@ function IconButton({ icon, onPress }) {
   );
 }
 
-function getMapTile({ latitude, longitude }, zoom) {
-  const latitudeRadians = latitude * Math.PI / 180;
-  const scale = 2 ** zoom;
-  const x = (longitude + 180) / 360 * scale;
-  const y = (1 - Math.log(Math.tan(latitudeRadians) + 1 / Math.cos(latitudeRadians)) / Math.PI) / 2 * scale;
-
-  return {
-    x: Math.floor(x),
-    y: Math.floor(y),
-    offsetX: x - Math.floor(x),
-    offsetY: y - Math.floor(y),
-  };
-}
-
 function MapPreview({ entrance }) {
-  const { width } = useWindowDimensions();
   const { coordinates } = entrance;
-  const mapWidth = Math.max(260, Math.min(width, 430) - 48);
-  const tile = coordinates ? getMapTile(coordinates, MAP_ZOOM) : null;
-  const tileOffsets = [-1, 0, 1];
-  const tileSource = (x, y) => `https://tile.openstreetmap.org/${MAP_ZOOM}/${x}/${y}.png`;
-  const tilePosition = tile
-    ? {
-        left: mapWidth / 2 - (1 + tile.offsetX) * MAP_TILE_SIZE,
-        top: MAP_HEIGHT / 2 - (1 + tile.offsetY) * MAP_TILE_SIZE,
-      }
-    : null;
-  const mapUrl = entrance.googleMapsUrl
-    || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(entrance.mapQuery || entrance.address)}`;
+  const mapRef = useRef(null);
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
+
+  useEffect(() => {
+    Location.requestForegroundPermissionsAsync()
+      .then(({ status }) => setHasLocationPermission(status === 'granted'))
+      .catch(() => setHasLocationPermission(false));
+  }, []);
+
+  const recenter = () => {
+    mapRef.current?.animateToRegion(
+      {
+        latitude: coordinates.latitude,
+        longitude: coordinates.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      },
+      300
+    );
+  };
 
   return (
-    <Pressable onPress={() => Linking.openURL(mapUrl)} style={({ pressed }) => [styles.mapSurface, pressed && styles.pressed]}>
-      {tile ? (
-        <View style={[styles.tileMap, tilePosition]}>
-          {tileOffsets.map((rowOffset) => (
-            <View key={rowOffset} style={styles.tileRow}>
-              {tileOffsets.map((columnOffset) => (
-                <Image
-                  key={`${columnOffset}-${rowOffset}`}
-                  source={{ uri: tileSource(tile.x + columnOffset, tile.y + rowOffset) }}
-                  style={styles.mapTile}
-                  resizeMode="cover"
-                />
-              ))}
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      <View style={styles.centerMapPin}>
-        <MaterialCommunityIcons name="map-marker" size={36} color="#E94235" />
-      </View>
-
-      <View style={styles.mapLabel}>
-        <MaterialCommunityIcons name="hospital-building" size={15} color={COLORS.text} />
-        <View style={styles.mapLabelCopy}>
-          <Text style={styles.mapLabelText} numberOfLines={1}>{entrance.hospitalName}</Text>
-          <Text style={styles.mapLabelMeta} numberOfLines={1}>{entrance.label}</Text>
-        </View>
-      </View>
+    <View style={styles.mapSurface}>
+      <MapView
+        key={entrance.id}
+        ref={mapRef}
+        style={StyleSheet.absoluteFill}
+        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+        initialRegion={{
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        }}
+        showsUserLocation={hasLocationPermission}
+        showsMyLocationButton={false}
+        toolbarEnabled={false}
+      >
+        <Marker coordinate={coordinates} title={entrance.hospitalName} description={entrance.label} />
+      </MapView>
 
       <View style={styles.entranceMapTag}>
         <Text style={styles.entranceMapText} numberOfLines={1}>{entrance.label}</Text>
       </View>
 
-      <View style={styles.locateButton}>
+      <Pressable onPress={recenter} style={({ pressed }) => [styles.locateButton, pressed && styles.pressed]}>
         <MaterialCommunityIcons name="crosshairs-gps" size={18} color={COLORS.text} />
-      </View>
-
-      <View style={styles.mapFooter}>
-        <Text style={styles.mapFooterText}>Dados cartograficos OpenStreetMap</Text>
-      </View>
-    </Pressable>
+      </Pressable>
+    </View>
   );
 }
 
@@ -452,68 +431,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
 
-  tileMap: {
-    position: 'absolute',
-    width: MAP_TILE_SIZE * 3,
-    height: MAP_TILE_SIZE * 3,
-    zIndex: 0,
-  },
-
-  tileRow: {
-    flexDirection: 'row',
-  },
-
-  mapTile: {
-    width: MAP_TILE_SIZE,
-    height: MAP_TILE_SIZE,
-  },
-
-  centerMapPin: {
-    position: 'absolute',
-    left: '50%',
-    top: '50%',
-    marginLeft: -18,
-    marginTop: -32,
-    zIndex: 2,
-  },
-
-  mapLabel: {
-    position: 'absolute',
-    right: 22,
-    top: 60,
-    zIndex: 3,
-    maxWidth: 172,
-    minHeight: 42,
-    borderRadius: 6,
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: 9,
-    paddingVertical: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    ...cardShadow,
-  },
-
-  mapLabelCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-
-  mapLabelText: {
-    flexShrink: 1,
-    color: COLORS.text,
-    fontSize: 10,
-    lineHeight: 13,
-    fontWeight: '900',
-  },
-
-  mapLabelMeta: {
-    color: COLORS.burgundy,
-    fontSize: 9,
-    lineHeight: 12,
-    fontWeight: '900',
-  },
-
   entranceMapTag: {
     position: 'absolute',
     left: 12,
@@ -547,25 +464,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     ...cardShadow,
-  },
-
-  mapFooter: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-    minHeight: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.86)',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-  },
-
-  mapFooterText: {
-    color: COLORS.text,
-    fontSize: 9,
-    lineHeight: 12,
-    fontWeight: '600',
   },
 
   addressCard: {

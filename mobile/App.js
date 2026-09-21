@@ -2443,16 +2443,6 @@ export default function App() {
               setScreenStack(['PatientHome']);
             }}
 
-            onHowToGet={() =>
-              navigate(
-                'ExternalRoute',
-                {
-                  area:
-                    'unknown',
-                }
-              )
-            }
-
             onCreateAccount={() => {
               setRouteParams({});
 

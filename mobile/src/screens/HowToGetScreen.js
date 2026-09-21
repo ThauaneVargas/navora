@@ -1,17 +1,30 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Image, Linking, Alert, ActivityIndicator } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, Linking, Alert, ActivityIndicator, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import { colors, shadows } from '../theme/colors';
 
-const hospitalImage = require('../../assets/images/hmc_hospital.jpg');
 const address = 'Rua Ronaldo Fiuza Manhaes, no 1, Centro, Vassouras - RJ';
 const encodedAddress = encodeURIComponent(address);
 
+// Coordenadas resolvidas a partir do link oficial do Google Maps do HMC Private
+// (mesmo pin usado em ExternalRouteScreen.js) — mais precisas que geocodificação em tempo real.
+const hospitalCoords = { latitude: -22.4027895, longitude: -43.652777 };
+
 export default function HowToGetScreen({ navigate, goBack }) {
   const [locating, setLocating] = useState(false);
+  const mapRef = useRef(null);
+
+  const [hasLocationPermission, setHasLocationPermission] = useState(false);
+
+  useEffect(() => {
+    Location.requestForegroundPermissionsAsync()
+      .then(({ status }) => setHasLocationPermission(status === 'granted'))
+      .catch(() => setHasLocationPermission(false));
+  }, []);
 
   const openMap = async (provider) => {
     setLocating(true);
@@ -55,7 +68,28 @@ export default function HowToGetScreen({ navigate, goBack }) {
     <Screen>
       <Header title="Como chegar ao hospital" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
-      <Image source={hospitalImage} resizeMode="cover" style={styles.heroImage} />
+      <View style={styles.heroImage}>
+        <MapView
+          ref={mapRef}
+          style={styles.map}
+          provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
+          initialRegion={{
+            latitude: hospitalCoords.latitude,
+            longitude: hospitalCoords.longitude,
+            latitudeDelta: 0.01,
+            longitudeDelta: 0.01,
+          }}
+          showsUserLocation={hasLocationPermission}
+          showsMyLocationButton={false}
+          toolbarEnabled={false}
+        >
+          <Marker
+            coordinate={hospitalCoords}
+            title="HMC"
+            description={address}
+          />
+        </MapView>
+      </View>
 
       <View style={[styles.addressCard, shadows.card]}>
         <Text style={styles.kicker}>Abra a rota até a entrada principal.</Text>
@@ -103,6 +137,11 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     marginTop: 14,
     backgroundColor: colors.surfaceSoft,
+    overflow: 'hidden',
+  },
+  map: {
+    width: '100%',
+    height: '100%',
   },
   addressCard: {
     borderRadius: 20,
