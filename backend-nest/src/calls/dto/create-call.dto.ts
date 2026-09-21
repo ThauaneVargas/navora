@@ -47,6 +47,10 @@ export class CreateCallDto {
   message?: string;
 
   @IsOptional()
+  @IsString()
+  emergency_contact?: string;
+
+  @IsOptional()
   @IsEnum(Priority)
   priority = Priority.MEDIUM;
 }

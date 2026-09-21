@@ -60,6 +60,7 @@ export class PatientsService {
           patientCode: payload.patientCode,
           birthDate: payload.birthDate ? new Date(payload.birthDate) : undefined,
           accessibility: this.cleanAccessibility(payload.accessibility),
+          emergencyContact: payload.emergencyContact,
         },
         include: { user: true },
       });
@@ -101,6 +102,9 @@ export class PatientsService {
             : {}),
           ...(payload.accessibility !== undefined
             ? { accessibility: this.cleanAccessibility(payload.accessibility) }
+            : {}),
+          ...(payload.emergencyContact !== undefined
+            ? { emergencyContact: payload.emergencyContact || null }
             : {}),
         },
         include: { user: true },
@@ -168,6 +172,7 @@ export class PatientsService {
       patientCode: patient.patientCode,
       birthDate: patient.birthDate?.toISOString() ?? null,
       accessibility: patient.accessibility,
+      emergencyContact: patient.emergencyContact,
       user: this.authService.toSafeUser(patient.user),
       createdAt: patient.createdAt,
       updatedAt: patient.updatedAt,

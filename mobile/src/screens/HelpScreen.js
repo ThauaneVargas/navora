@@ -206,6 +206,13 @@ export default function HelpScreen({
       message:
         reason,
 
+      emergency_contact:
+        typeof userProfile?.emergencyContact ===
+        'string'
+          ? userProfile.emergencyContact
+          : userProfile?.emergencyContact?.phone ||
+            undefined,
+
       priority:
         isSos
           ? 'CRITICAL'
@@ -319,6 +326,7 @@ export default function HelpScreen({
     <Screen
       scroll={false}
       padded={false}
+      withBottomTabs
     >
       <View
         style={

@@ -27,4 +27,8 @@ export class RegisterPatientDto {
   @IsOptional()
   @IsObject()
   accessibility?: Record<string, boolean>;
+
+  @IsOptional()
+  @IsString()
+  emergencyContact?: string;
 }

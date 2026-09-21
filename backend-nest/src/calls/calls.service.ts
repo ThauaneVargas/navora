@@ -31,6 +31,7 @@ export class CallsService {
         sector: payload.sector ?? 'Entrada Principal',
         beaconCode: payload.beacon_code ?? null,
         message: payload.message ?? reason,
+        emergencyContact: payload.emergency_contact ?? null,
         status: CallStatus.PENDING,
         priority,
       },

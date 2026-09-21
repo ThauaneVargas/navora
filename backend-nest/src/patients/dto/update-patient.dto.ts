@@ -21,4 +21,8 @@ export class UpdatePatientDto {
   @IsOptional()
   @IsObject()
   accessibility?: Record<string, boolean>;
+
+  @IsOptional()
+  @IsString()
+  emergencyContact?: string;
 }

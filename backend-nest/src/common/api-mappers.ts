@@ -14,6 +14,7 @@ export function mapCallToApi(call: CallRequest) {
     sector: call.sector,
     beacon_code: call.beaconCode,
     message: call.message,
+    emergency_contact: call.emergencyContact,
     status: call.status,
     priority: call.priority,
     created_at: call.createdAt.toISOString(),

@@ -148,13 +148,14 @@ model User {
 }
 
 model PatientProfile {
-  id            Int      @id @default(autoincrement())
-  userId        Int      @unique @map("user_id")
-  patientCode   String?  @unique @map("patient_code")
-  birthDate     DateTime? @map("birth_date")
-  accessibility Json     @default("{}")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+  id               Int      @id @default(autoincrement())
+  userId           Int      @unique @map("user_id")
+  patientCode      String?  @unique @map("patient_code")
+  birthDate        DateTime? @map("birth_date")
+  accessibility    Json     @default("{}")
+  emergencyContact String?  @map("emergency_contact")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id])
 
@@ -189,6 +190,7 @@ model CallRequest {
   sector      String
   beaconCode  String?    @map("beacon_code")
   message     String?
+  emergencyContact String? @map("emergency_contact")
   status      CallStatus @default(PENDING)
   priority    Priority   @default(MEDIUM)
   createdAt   DateTime   @default(now()) @map("created_at")
