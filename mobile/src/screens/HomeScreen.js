@@ -61,7 +61,7 @@ export default function HomeScreen({ navigate, userProfile = { type: 'patient', 
   }, []);
 
   return (
-    <Screen scroll={false} padded={false}>
+    <Screen scroll={false} padded={false} withBottomTabs>
       <View style={[styles.screen, { backgroundColor: appColors.bg }]}>
         <AppHeader navigate={navigate} notificationCount={unreadCount} />
 

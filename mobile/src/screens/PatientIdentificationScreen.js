@@ -1,11 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import { radii, shadows, spacing, typography } from '../theme/colors';
 import { FormField, PrimaryButton } from '../components/PremiumUI';
 import { useApp } from '../context/AppContext';
+import { isValidBirthDate, isValidCPF, maskBirthDate, maskCPF, sanitizeName } from '../utils/masks';
 
 export default function PatientIdentificationScreen({
   navigate,
@@ -24,19 +25,25 @@ export default function PatientIdentificationScreen({
   const [selectedArea, setSelectedArea] = useState(routeParams.area || 'private');
   const area = selectedArea || 'private';
 
+  const birthError = birthDate && !isValidBirthDate(birthDate) ? 'Data inválida' : null;
+  const documentError = document && !isValidCPF(document) ? 'CPF inválido' : null;
+
   const updateFullName = (value) => {
-    setFullName(value);
-    onPatientIdentificationDraftChange?.({ fullName: value });
+    const clean = sanitizeName(value);
+    setFullName(clean);
+    onPatientIdentificationDraftChange?.({ fullName: clean });
   };
 
   const updateBirthDate = (value) => {
-    setBirthDate(value);
-    onPatientIdentificationDraftChange?.({ birthDate: value });
+    const masked = maskBirthDate(value);
+    setBirthDate(masked);
+    onPatientIdentificationDraftChange?.({ birthDate: masked });
   };
 
   const updateDocument = (value) => {
-    setDocument(value);
-    onPatientIdentificationDraftChange?.({ cpf: value, document: value });
+    const masked = maskCPF(value);
+    setDocument(masked);
+    onPatientIdentificationDraftChange?.({ cpf: masked, document: masked });
   };
 
   const submit = () => {
@@ -46,6 +53,10 @@ export default function PatientIdentificationScreen({
       return;
     }
     setNameError(null);
+
+    if (birthError || documentError) {
+      return;
+    }
 
     onPatientReady?.({
       type: 'patient',
@@ -101,9 +112,9 @@ export default function PatientIdentificationScreen({
           </View>
         </View>
 
-        <FormField label="Nome completo" value={fullName} onChangeText={updateFullName} placeholder="Ex.: Mariana Souza" error={nameError} />
-        <FormField label="Data de nascimento" value={birthDate} onChangeText={updateBirthDate} placeholder="DD/MM/AAAA" />
-        <FormField label="CPF" value={document} onChangeText={updateDocument} placeholder="Opcional" keyboardType="numeric" />
+        <FormField label="Nome completo" value={fullName} onChangeText={updateFullName} placeholder="Ex.: Mariana Souza" autoCapitalize="words" error={nameError} />
+        <FormField label="Data de nascimento" value={birthDate} onChangeText={updateBirthDate} placeholder="DD/MM/AAAA" keyboardType="number-pad" maxLength={10} error={birthError} />
+        <FormField label="CPF" value={document} onChangeText={updateDocument} placeholder="Opcional" keyboardType="number-pad" maxLength={14} error={documentError} />
 
         <PrimaryButton title="Continuar" onPress={submit} style={styles.primary} />
       </View>

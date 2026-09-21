@@ -198,7 +198,7 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
   };
 
   return (
-    <Screen scroll={false} padded={false}>
+    <Screen scroll={false} padded={false} withBottomTabs>
       <View style={styles.screen}>
         <Header title="Assistente Navora" subtitle="Orientação guiada" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 

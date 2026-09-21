@@ -5,6 +5,7 @@ import Screen from '../components/Screen';
 import Header from '../components/Header';
 import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import { maskBirthDate, maskPhone, sanitizeName } from '../utils/masks';
 
 export default function PatientQuickRegisterScreen({ navigate, goBack, routeParams = {}, onPatientReady }) {
   const { appColors } = useApp();
@@ -82,9 +83,29 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
           </View>
         </View>
 
-        <Input label="Nome completo" value={name} onChangeText={setName} placeholder="Seu nome completo" />
-        <Input label="Telefone opcional" value={phone} onChangeText={setPhone} placeholder="(00) 00000-0000" />
-        <Input label="Data de nascimento opcional" value={birth} onChangeText={setBirth} placeholder="DD/MM/AAAA" />
+        <Input
+          label="Nome completo"
+          value={name}
+          onChangeText={(value) => setName(sanitizeName(value))}
+          placeholder="Seu nome completo"
+          autoCapitalize="words"
+        />
+        <Input
+          label="Telefone opcional"
+          value={phone}
+          onChangeText={(value) => setPhone(maskPhone(value))}
+          placeholder="(00) 00000-0000"
+          keyboardType="phone-pad"
+          maxLength={15}
+        />
+        <Input
+          label="Data de nascimento opcional"
+          value={birth}
+          onChangeText={(value) => setBirth(maskBirthDate(value))}
+          placeholder="DD/MM/AAAA"
+          keyboardType="number-pad"
+          maxLength={10}
+        />
         <CheckRow title="Já sou paciente do hospital" active={alreadyPatient} onPress={() => setAlreadyPatient((value) => !value)} />
         <Text style={styles.question}>Precisa de acessibilidade?</Text>
         <View style={styles.binary}>

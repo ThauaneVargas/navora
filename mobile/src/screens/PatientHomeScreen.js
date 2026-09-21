@@ -506,6 +506,7 @@ export default function PatientHomeScreen({
     <Screen
       scroll={false}
       padded={false}
+      withBottomTabs
     >
       <View
         style={[

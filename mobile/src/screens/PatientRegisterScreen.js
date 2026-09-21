@@ -7,15 +7,26 @@ import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import { isAuthError, navoraApi } from '../services/api';
 import { saveAuthToken } from '../services/authToken';
+import {
+  isValidBirthDate,
+  isValidCPF,
+  isValidEmail,
+  maskBirthDate,
+  maskCPF,
+  maskPhone,
+  passwordStrength,
+  sanitizeName,
+} from '../utils/masks';
 
 const personalFields = [
-  { key: 'name', label: 'Nome completo', icon: 'account-outline' },
-  { key: 'birth', label: 'Data de nascimento ou idade', icon: 'calendar-outline' },
-  { key: 'document', label: 'CPF/documento', icon: 'card-account-details-outline' },
-  { key: 'phone', label: 'Telefone', icon: 'phone-outline' },
-  { key: 'email', label: 'E-mail', icon: 'email-outline' },
+  { key: 'name', label: 'Nome completo', icon: 'account-outline', mask: sanitizeName, autoCapitalize: 'words' },
+  { key: 'birth', label: 'Data de nascimento', icon: 'calendar-outline', mask: maskBirthDate, keyboardType: 'number-pad', maxLength: 10 },
+  { key: 'document', label: 'CPF', icon: 'card-account-details-outline', mask: maskCPF, keyboardType: 'number-pad', maxLength: 14 },
+  { key: 'phone', label: 'Telefone', icon: 'phone-outline', mask: maskPhone, keyboardType: 'phone-pad', maxLength: 15 },
+  { key: 'email', label: 'E-mail', icon: 'email-outline', keyboardType: 'email-address', autoCapitalize: 'none', autoCorrect: false },
   { key: 'password', label: 'Senha', icon: 'lock-outline', secure: true },
-  { key: 'emergencyContact', label: 'Contato de emergencia', icon: 'account-alert-outline' },
+  { key: 'confirmPassword', label: 'Confirmar senha', icon: 'lock-check-outline', secure: true },
+  { key: 'emergencyContact', label: 'Contato de emergência (telefone)', icon: 'account-alert-outline', mask: maskPhone, keyboardType: 'phone-pad', maxLength: 15 },
 ];
 
 const accessibilityOptions = [
@@ -61,18 +72,42 @@ export default function PatientRegisterScreen({ navigate, onPatientReady }) {
   const [selected, setSelected] = useState({});
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
+  const [visiblePasswords, setVisiblePasswords] = useState({});
 
   const updateField = (key, value) => {
-    setForm((current) => ({ ...current, [key]: value }));
+    const field = personalFields.find((item) => item.key === key);
+    const nextValue = field?.mask ? field.mask(value) : value;
+    setForm((current) => ({ ...current, [key]: nextValue }));
   };
 
   const toggleOption = (option) => {
     setSelected((current) => ({ ...current, [option]: !current[option] }));
   };
 
+  const togglePasswordVisibility = (key) => {
+    setVisiblePasswords((current) => ({ ...current, [key]: !current[key] }));
+  };
+
+  const fieldErrors = useMemo(() => ({
+    document: form.document && !isValidCPF(form.document) ? 'CPF inválido' : null,
+    email: form.email && !isValidEmail(form.email) ? 'E-mail inválido' : null,
+    birth: form.birth && !isValidBirthDate(form.birth) ? 'Data inválida' : null,
+    confirmPassword:
+      form.confirmPassword && form.confirmPassword !== form.password
+        ? 'As senhas não coincidem'
+        : null,
+  }), [form.document, form.email, form.birth, form.confirmPassword, form.password]);
+
+  const strength = useMemo(() => passwordStrength(form.password), [form.password]);
+
   const handleSubmit = async () => {
     if (!form.name?.trim() || !form.email?.trim() || !form.password?.trim()) {
       Alert.alert('Cadastro incompleto', 'Preencha nome, e-mail e senha para continuar.');
+      return;
+    }
+
+    if (Object.values(fieldErrors).some(Boolean)) {
+      Alert.alert('Confira os dados', 'Alguns campos precisam de atenção antes de continuar.');
       return;
     }
 
@@ -85,6 +120,7 @@ export default function PatientRegisterScreen({ navigate, onPatientReady }) {
       patientCode: form.document?.trim() || undefined,
       birthDate: parseBirthDate(form.birth),
       accessibility: buildAccessibility(selected),
+      emergencyContact: form.emergencyContact?.trim() || undefined,
     };
 
     try {
@@ -133,19 +169,50 @@ export default function PatientRegisterScreen({ navigate, onPatientReady }) {
 
       <Text style={styles.sectionTitle}>Dados pessoais</Text>
       <View style={styles.formList}>
-        {personalFields.map((field) => (
-          <View key={field.key} style={[styles.inputBox, shadows.card]}>
-            <MaterialCommunityIcons name={field.icon} size={21} color={appColors.muted} />
-            <TextInput
-              value={form[field.key] || ''}
-              onChangeText={(value) => updateField(field.key, value)}
-              placeholder={field.label}
-              placeholderTextColor={appColors.lightText}
-              secureTextEntry={field.secure}
-              style={styles.input}
-            />
-          </View>
-        ))}
+        {personalFields.map((field) => {
+          const isPasswordVisible = visiblePasswords[field.key];
+          const error = fieldErrors[field.key];
+
+          return (
+            <View key={field.key}>
+              <View style={[styles.inputBox, error && styles.inputBoxError, shadows.card]}>
+                <MaterialCommunityIcons name={field.icon} size={21} color={appColors.muted} />
+                <TextInput
+                  value={form[field.key] || ''}
+                  onChangeText={(value) => updateField(field.key, value)}
+                  placeholder={field.label}
+                  placeholderTextColor={appColors.lightText}
+                  secureTextEntry={field.secure && !isPasswordVisible}
+                  keyboardType={field.keyboardType}
+                  autoCapitalize={field.autoCapitalize}
+                  autoCorrect={field.autoCorrect}
+                  maxLength={field.maxLength}
+                  style={styles.input}
+                />
+                {field.secure ? (
+                  <Pressable
+                    onPress={() => togglePasswordVisibility(field.key)}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel={isPasswordVisible ? 'Ocultar senha' : 'Mostrar senha'}
+                  >
+                    <MaterialCommunityIcons
+                      name={isPasswordVisible ? 'eye-off-outline' : 'eye-outline'}
+                      size={19}
+                      color={appColors.muted}
+                    />
+                  </Pressable>
+                ) : null}
+              </View>
+              {field.key === 'password' && strength.label ? (
+                <Text style={[styles.hintText, { color: appColors.muted }]}>
+                  Força da senha: {strength.label}
+                </Text>
+              ) : null}
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            </View>
+          );
+        })}
       </View>
 
       <Text style={styles.sectionTitle}>Acessibilidade e mobilidade</Text>
@@ -225,6 +292,22 @@ const createStyles = (colors) => StyleSheet.create({
     color: colors.text,
     fontSize: 15,
     fontWeight: '700',
+  },
+  inputBoxError: {
+    borderColor: colors.danger || '#C0392B',
+  },
+  errorText: {
+    color: colors.danger || '#C0392B',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 6,
+    marginLeft: 4,
+  },
+  hintText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 6,
+    marginLeft: 4,
   },
   optionList: {
     gap: 10,

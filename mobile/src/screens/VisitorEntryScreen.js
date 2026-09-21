@@ -31,6 +31,12 @@ import {
   startVisitorAccessMonitor,
 } from '../services/visitorAccessMonitor';
 
+import {
+  maskBirthDate,
+  maskPhone,
+  sanitizeName,
+} from '../utils/masks';
+
 
 const PURPOSES = [
   {
@@ -276,28 +282,31 @@ export default function VisitorEntryScreen({
    */
 
   const updateName = (value) => {
-    setFullName(value);
+    const clean = sanitizeName(value);
+    setFullName(clean);
 
     onVisitorIdentificationDraftChange?.({
-      fullName: value,
+      fullName: clean,
     });
   };
 
 
   const updatePhone = (value) => {
-    setPhone(value);
+    const masked = maskPhone(value);
+    setPhone(masked);
 
     onVisitorIdentificationDraftChange?.({
-      phone: value,
+      phone: masked,
     });
   };
 
 
   const updateBirth = (value) => {
-    setBirthDate(value);
+    const masked = maskBirthDate(value);
+    setBirthDate(masked);
 
     onVisitorIdentificationDraftChange?.({
-      birthDate: value,
+      birthDate: masked,
     });
   };
 
@@ -1012,6 +1021,7 @@ export default function VisitorEntryScreen({
               updateName
             }
             placeholder="Ex.: Maria Silva"
+            autoCapitalize="words"
             appColors={
               appColors
             }
@@ -1024,8 +1034,9 @@ export default function VisitorEntryScreen({
             onChangeText={
               updatePhone
             }
-            placeholder="Opcional"
+            placeholder="(00) 00000-0000"
             keyboardType="phone-pad"
+            maxLength={15}
             appColors={
               appColors
             }
@@ -1040,7 +1051,9 @@ export default function VisitorEntryScreen({
             onChangeText={
               updateBirth
             }
-            placeholder="Opcional"
+            placeholder="DD/MM/AAAA"
+            keyboardType="number-pad"
+            maxLength={10}
             appColors={
               appColors
             }
@@ -1139,10 +1152,13 @@ export default function VisitorEntryScreen({
                 value={
                   patientName
                 }
-                onChangeText={
-                  setPatientName
+                onChangeText={(value) =>
+                  setPatientName(
+                    sanitizeName(value)
+                  )
                 }
                 placeholder="Ex.: Ana Souza"
+                autoCapitalize="words"
                 appColors={
                   appColors
                 }
@@ -2275,10 +2291,13 @@ function CompanionCard({
         value={
           companion.name
         }
-        onChangeText={
-          onChangeName
+        onChangeText={(value) =>
+          onChangeName(
+            sanitizeName(value)
+          )
         }
         placeholder="Ex.: João da Silva"
+        autoCapitalize="words"
         appColors={
           appColors
         }

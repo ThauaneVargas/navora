@@ -114,7 +114,7 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
           </Pressable>
         </View>
 
-        <View style={styles.inputBox}>
+        <View style={[styles.inputBox, confirmPassword && newPassword !== confirmPassword && styles.inputBoxError]}>
           <MaterialCommunityIcons name="lock-check-outline" size={19} color="#980027" />
           <TextInput
             style={styles.input}
@@ -126,6 +126,9 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
             editable={!loading}
           />
         </View>
+        {confirmPassword && newPassword !== confirmPassword ? (
+          <Text style={styles.errorText}>As senhas não coincidem.</Text>
+        ) : null}
 
         <Pressable
           onPress={handleReset}
@@ -159,6 +162,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 9,
   },
   input: { flex: 1, color: '#36383D', fontSize: 14, paddingVertical: 0 },
+  inputBoxError: { borderColor: '#C0392B' },
+  errorText: { color: '#C0392B', fontSize: 12, fontWeight: '700', marginTop: -8 },
   btn: {
     height: 50, borderRadius: 14, backgroundColor: '#980027',
     alignItems: 'center', justifyContent: 'center',

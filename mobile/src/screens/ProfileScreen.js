@@ -12,6 +12,7 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
 
 import {
@@ -106,6 +107,9 @@ export default function ProfileScreen({
 }) {
   const insets =
     useSafeAreaInsets();
+
+  const { height: windowHeight } =
+    useWindowDimensions();
 
   const {
     appColors,
@@ -597,6 +601,7 @@ export default function ProfileScreen({
     <Screen
       scroll={false}
       padded={false}
+      withBottomTabs
     >
       <View
         style={[
@@ -1048,6 +1053,12 @@ export default function ProfileScreen({
                 styles.photoMenu,
 
                 {
+                  maxHeight:
+                    Math.min(
+                      560,
+                      windowHeight * 0.85
+                    ),
+
                   backgroundColor:
                     appColors.surface,
 
@@ -1064,87 +1075,91 @@ export default function ProfileScreen({
                 }
               />
 
-              <Text
-                style={[
-                  styles.photoMenuTitle,
-
-                  {
-                    color:
-                      appColors.text,
-                  },
-                ]}
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
               >
-                Foto do perfil
-              </Text>
+                <Text
+                  style={[
+                    styles.photoMenuTitle,
 
-              <Text
-                style={[
-                  styles.photoMenuSubtitle,
+                    {
+                      color:
+                        appColors.text,
+                    },
+                  ]}
+                >
+                  Foto do perfil
+                </Text>
 
-                  {
-                    color:
-                      appColors.muted,
-                  },
-                ]}
-              >
-                Escolha como deseja alterar sua foto.
-              </Text>
+                <Text
+                  style={[
+                    styles.photoMenuSubtitle,
+
+                    {
+                      color:
+                        appColors.muted,
+                    },
+                  ]}
+                >
+                  Escolha como deseja alterar sua foto.
+                </Text>
 
 
-              {Platform.OS !==
-                'web' && (
+                {Platform.OS !==
+                  'web' && (
+                  <PhotoMenuItem
+                    icon="camera-outline"
+                    title="Tirar foto"
+                    subtitle="Usar a câmera do aparelho"
+                    appColors={
+                      appColors
+                    }
+                    onPress={
+                      handleTakePhoto
+                    }
+                  />
+                )}
+
+
                 <PhotoMenuItem
-                  icon="camera-outline"
-                  title="Tirar foto"
-                  subtitle="Usar a câmera do aparelho"
+                  icon="image-outline"
+                  title={
+                    Platform.OS ===
+                    'web'
+                      ? 'Escolher foto'
+                      : 'Escolher da galeria'
+                  }
+                  subtitle={
+                    Platform.OS ===
+                    'web'
+                      ? 'Selecionar uma imagem do computador'
+                      : 'Selecionar uma imagem existente'
+                  }
                   appColors={
                     appColors
                   }
                   onPress={
-                    handleTakePhoto
+                    handleChoosePhoto
                   }
                 />
-              )}
 
 
-              <PhotoMenuItem
-                icon="image-outline"
-                title={
-                  Platform.OS ===
-                  'web'
-                    ? 'Escolher foto'
-                    : 'Escolher da galeria'
-                }
-                subtitle={
-                  Platform.OS ===
-                  'web'
-                    ? 'Selecionar uma imagem do computador'
-                    : 'Selecionar uma imagem existente'
-                }
-                appColors={
-                  appColors
-                }
-                onPress={
-                  handleChoosePhoto
-                }
-              />
-
-
-              {photoUri && (
-                <PhotoMenuItem
-                  icon="trash-can-outline"
-                  title="Remover foto"
-                  subtitle="Voltar para o avatar padrão"
-                  appColors={
-                    appColors
-                  }
-                  danger
-                  onPress={
-                    handleAskRemovePhoto
-                  }
-                />
-              )}
-
+                {photoUri && (
+                  <PhotoMenuItem
+                    icon="trash-can-outline"
+                    title="Remover foto"
+                    subtitle="Voltar para o avatar padrão"
+                    appColors={
+                      appColors
+                    }
+                    danger
+                    onPress={
+                      handleAskRemovePhoto
+                    }
+                  />
+                )}
+              </ScrollView>
 
               <Pressable
                 onPress={() =>
