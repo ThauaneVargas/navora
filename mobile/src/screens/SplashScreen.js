@@ -1,29 +1,49 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   Animated,
   Easing,
-  Dimensions,
+  useWindowDimensions,
   Image,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-
-const { width, height } = Dimensions.get('window');
-
-const stageWidth = Math.min(width, 430);
-const stageHeight = height;
-
-const logoTop = Math.min(Math.max(stageHeight * 0.225, 108), 168);
-const logoSize = Math.min(stageWidth * 0.18, 72);
-const nameWidth = Math.min(stageWidth * 0.74, 300);
-const nameHeight = nameWidth / 6.89;
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const SplashScreen = ({
   onSplashFinish,
   duration = 4000,
 }) => {
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+
+  const {
+    stageWidth,
+    stageHeight,
+    logoTop,
+    logoSize,
+    nameWidth,
+    nameHeight,
+    loadingBottom,
+    trackWidth,
+  } = useMemo(() => {
+    const stageWidth = Math.min(width, 430);
+    const stageHeight = height;
+    const nameWidth = Math.min(stageWidth * 0.74, 300);
+
+    return {
+      stageWidth,
+      stageHeight,
+      logoTop: Math.min(Math.max(stageHeight * 0.225, 108), 168),
+      logoSize: Math.min(stageWidth * 0.15, 60),
+      nameWidth,
+      nameHeight: nameWidth / 6.89,
+      loadingBottom: Math.max(stageHeight * 0.045, 34) + insets.bottom,
+      trackWidth: Math.min(stageWidth * 0.28, 110),
+    };
+  }, [width, height, insets.bottom]);
+
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.96)).current;
   const progressAnim = useRef(new Animated.Value(0)).current;
@@ -69,6 +89,30 @@ export const SplashScreen = ({
     inputRange: [0, 1],
     outputRange: ['0%', '100%'],
   });
+
+  const styles = useMemo(
+    () =>
+      createStyles({
+        stageWidth,
+        stageHeight,
+        logoTop,
+        logoSize,
+        nameWidth,
+        nameHeight,
+        loadingBottom,
+        trackWidth,
+      }),
+    [
+      stageWidth,
+      stageHeight,
+      logoTop,
+      logoSize,
+      nameWidth,
+      nameHeight,
+      loadingBottom,
+      trackWidth,
+    ]
+  );
 
   return (
     <View style={styles.container}>
@@ -128,7 +172,16 @@ export const SplashScreen = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = ({
+  stageWidth,
+  stageHeight,
+  logoTop,
+  logoSize,
+  nameWidth,
+  nameHeight,
+  loadingBottom,
+  trackWidth,
+}) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFF7F8',
@@ -201,12 +254,12 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: Math.max(stageHeight * 0.045, 34),
+    bottom: loadingBottom,
     alignItems: 'center',
   },
 
   progressTrack: {
-    width: Math.min(stageWidth * 0.28, 110),
+    width: trackWidth,
     height: 3,
     borderRadius: 99,
     backgroundColor: 'rgba(244, 195, 190, 0.65)',

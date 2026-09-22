@@ -12,7 +12,7 @@ const encodedAddress = encodeURIComponent(address);
 
 // Coordenadas resolvidas a partir do link oficial do Google Maps do HMC Private
 // (mesmo pin usado em ExternalRouteScreen.js) — mais precisas que geocodificação em tempo real.
-const hospitalCoords = { latitude: -22.4027895, longitude: -43.652777 };
+const hospitalCoords = { latitude: -22.4030702, longitude: -43.6530921 };
 
 export default function HowToGetScreen({ navigate, goBack }) {
   const [locating, setLocating] = useState(false);

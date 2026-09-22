@@ -38,7 +38,7 @@ const destinationCards = [
     icon: 'map-marker-radius-outline',
     title: 'Como chegar ao hospital',
     subtitle: 'Navegação externa',
-    screen: 'HowToGet',
+    screen: 'ExternalRoute',
   },
 ];
 

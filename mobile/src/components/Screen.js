@@ -215,6 +215,7 @@ const styles =
     content: {
       width: '100%',
       paddingTop: 0,
+      flexGrow: 1,
     },
 
     fixedContent: {

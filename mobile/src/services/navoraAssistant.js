@@ -230,7 +230,7 @@ export function getNavoraAssistantResponse(message, userProfile = {}, visitorAcc
     return response(
       'Vou abrir a opcao de rota externa ate a entrada principal do hospital.',
       'Abrir rota externa',
-      'HowToGet'
+      'ExternalRoute'
     );
   }
 

@@ -440,7 +440,7 @@ export default function PatientHomeScreen({
       : [
           {
             icon:
-              'office-building-outline',
+              'office-building',
 
             title:
               'Setores',
@@ -457,7 +457,7 @@ export default function PatientHomeScreen({
 
           {
             icon:
-              'flask-outline',
+              'flask',
 
             title:
               'Exames',
@@ -645,6 +645,66 @@ export default function PatientHomeScreen({
                 }
               />
             </View>
+          </Pressable>
+
+
+          {/*
+           * COMO CHEGAR AO HOSPITAL
+           */}
+
+          <Pressable
+            onPress={() =>
+              navigate('ExternalRoute')
+            }
+            style={({ pressed }) => [
+              styles.directionsChip,
+
+              {
+                backgroundColor:
+                  appColors.primarySoft,
+              },
+
+              pressed &&
+                styles.pressed,
+            ]}
+          >
+            <View
+              style={[
+                styles.directionsChipIcon,
+
+                {
+                  backgroundColor:
+                    appColors.primary,
+                },
+              ]}
+            >
+              <MaterialCommunityIcons
+                name="map-marker-distance"
+                size={15}
+                color="#FFFFFF"
+              />
+            </View>
+
+            <Text
+              style={[
+                styles.directionsChipText,
+
+                {
+                  color:
+                    appColors.primary,
+                },
+              ]}
+            >
+              Como chegar ao hospital
+            </Text>
+
+            <MaterialCommunityIcons
+              name="chevron-right"
+              size={16}
+              color={
+                appColors.primary
+              }
+            />
           </Pressable>
 
 
@@ -1769,9 +1829,6 @@ function QuickCard({
         {
           backgroundColor:
             appColors.surface,
-
-          borderColor:
-            appColors.border,
         },
 
         shadows.card,
@@ -1786,16 +1843,16 @@ function QuickCard({
 
           {
             backgroundColor:
-              appColors.iconBg,
+              appColors.primary,
           },
+
+          shadows.soft,
         ]}
       >
         <MaterialCommunityIcons
           name={icon}
-          size={21}
-          color={
-            appColors.primary
-          }
+          size={22}
+          color="#FFFFFF"
         />
       </View>
 
@@ -2168,6 +2225,46 @@ const styles =
         'center',
     },
 
+    directionsChip: {
+      height: 42,
+
+      borderRadius: 21,
+
+      paddingHorizontal: 8,
+      paddingRight: 14,
+
+      flexDirection: 'row',
+
+      alignItems: 'center',
+
+      gap: 9,
+
+      alignSelf: 'flex-start',
+
+      marginBottom: 18,
+
+      marginTop: -8,
+    },
+
+    directionsChipIcon: {
+      width: 28,
+
+      height: 28,
+
+      borderRadius: 10,
+
+      alignItems: 'center',
+
+      justifyContent:
+        'center',
+    },
+
+    directionsChipText: {
+      fontSize: 12,
+
+      fontWeight: '800',
+    },
+
 
     /*
      * SEÇÕES
@@ -2206,24 +2303,25 @@ const styles =
     quickCard: {
       width: '48.5%',
 
-      minHeight: 92,
+      minHeight: 96,
 
-      borderRadius: 18,
+      borderRadius: 20,
 
-      borderWidth: 1,
+      padding: 14,
 
-      padding: 13,
+      alignItems: 'center',
 
-      justifyContent:
-        'space-between',
+      justifyContent: 'center',
+
+      gap: 9,
     },
 
     quickIcon: {
-      width: 40,
+      width: 44,
 
-      height: 40,
+      height: 44,
 
-      borderRadius: 13,
+      borderRadius: 14,
 
       alignItems: 'center',
 
@@ -2232,13 +2330,13 @@ const styles =
     },
 
     quickTitle: {
-      marginTop: 9,
-
       fontSize: 12.5,
 
       lineHeight: 16,
 
       fontWeight: '900',
+
+      textAlign: 'center',
     },
 
     accessNotice: {

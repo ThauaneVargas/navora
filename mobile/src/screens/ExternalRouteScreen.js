@@ -49,11 +49,11 @@ const HOSPITAL_ENTRANCES = {
     hospitalName: 'Hospital Marco Capute',
     address: 'Av. Expedicionário Oswaldo de Almeida Ramos, 280, Centro, Vassouras - RJ, CEP 27700-000',
     mapQuery: 'Hospital Marco Capute, Av. Expedicionário Oswaldo de Almeida Ramos, 280, Centro, Vassouras - RJ, 27700-000',
-    googleMapsUrl: 'https://maps.app.goo.gl/DetdpQ3aXDnCGHqm7',
-    // Coordenadas resolvidas a partir do link oficial do Google Maps acima (pin real do hospital).
+    googleMapsUrl: 'https://maps.app.goo.gl/M6xeehqrGhLXTyE79',
+    // Pin marcado pelo usuário na entrada real (frente, ao lado do corpo de bombeiros).
     coordinates: {
-      latitude: -22.4022346,
-      longitude: -43.6540557,
+      latitude: -22.4013901,
+      longitude: -43.6555672,
     },
   },
   private: {
@@ -63,11 +63,11 @@ const HOSPITAL_ENTRANCES = {
     hospitalName: 'HMC Private',
     address: 'Rua Ronaldo Fiuza Manhães, 1, Centro, Vassouras - RJ, CEP 27700-000',
     mapQuery: 'HMC Private, Rua Ronaldo Fiuza Manhães, 1, Centro, Vassouras - RJ, 27700-000',
-    googleMapsUrl: 'https://maps.app.goo.gl/VEsdFiPiorHj5UR99',
-    // Coordenadas resolvidas a partir do link oficial do Google Maps acima (pin real do hospital).
+    googleMapsUrl: 'https://maps.app.goo.gl/ZQs94Mjs3b6N36RH7',
+    // Pin marcado pelo usuário na entrada real (fundos, Rua da Betânia com Rua da CEDAE).
     coordinates: {
-      latitude: -22.4027895,
-      longitude: -43.652777,
+      latitude: -22.4030702,
+      longitude: -43.6530921,
     },
   },
 };
