@@ -2292,6 +2292,16 @@ input:focus, select:focus {
   font-weight: 750;
 }
 
+.call-emergency-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #B42318;
+  font-size: 12px;
+  font-weight: 750;
+  margin-top: 4px;
+}
+
 .call-time {
   flex: 0 0 auto;
   max-width: 100%;
@@ -3696,6 +3706,16 @@ button.danger,
   color: var(--nv-muted);
   font-size: 12px;
   font-weight: 750;
+}
+
+.reception-calls-page .call-card .call-emergency-contact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #B42318;
+  font-size: 12px;
+  font-weight: 750;
+  margin-top: 4px;
 }
 
 .reception-calls-page .call-actions {

@@ -172,6 +172,7 @@ function mapCallFromApi(call) {
     beacon: call.beacon_code || call.sector,
     priority: callApiPriorityToLabel[call.priority] || call.priority,
     status: callApiStatusToLabel[call.status] || call.status,
+    emergencyContact: call.emergency_contact || '',
     createdAt: created
       ? created.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       : 'Agora',
@@ -2031,6 +2032,9 @@ function CallCard({ call, app, reception = false, adminView = false }) {
 
         <p>{call.reason}</p>
         <span className="call-location"><MapIcon size={14} aria-hidden="true" />{call.location} - {call.beacon}</span>
+        {call.emergencyContact ? (
+          <span className="call-emergency-contact"><HeartPulse size={14} aria-hidden="true" />Contato de emergência: {call.emergencyContact}</span>
+        ) : null}
 
         <div className="badges call-badges">
           <em className={`call-badge ${getPriorityBadgeTone(call.priority)}`}>{call.priority}</em>
@@ -2072,6 +2076,9 @@ function CallCard({ call, app, reception = false, adminView = false }) {
 
       <p>{call.reason}</p>
       <span className="call-location"><MapIcon size={14} aria-hidden="true" />{call.location} - {call.beacon}</span>
+      {call.emergencyContact ? (
+        <span className="call-emergency-contact"><HeartPulse size={14} aria-hidden="true" />Contato de emergência: {call.emergencyContact}</span>
+      ) : null}
 
       <div className="badges call-badges">
         <em className={`call-badge ${getPriorityBadgeTone(call.priority)}`}>{call.priority}</em>
