@@ -69,7 +69,7 @@ async function parseResponse(response) {
   }
 }
 
-const REQUEST_TIMEOUT_MS = 20000;
+const REQUEST_TIMEOUT_MS = 60000;
 
 async function request(path, options = {}, fallback) {
   const { authenticated = false, headers, ...fetchOptions } = options;
