@@ -857,7 +857,7 @@ function App() {
       updateVisitor(visitor.id, { ...(updated.visitor_name ? mapVisitorAccessFromApi(updated) : { status }), ...changes }, toastMessage);
     } catch (error) {
       if (handleAuthFailure(error, 'Acesso negado para atualizar visitante')) return;
-      showToast('Visitante nao atualizado. Dados locais mantidos.', 'danger');
+      showToast(isNetworkError(error) ? 'Sem conexao com o servidor: o visitante NAO foi atualizado.' : (error?.payload?.message || 'Nao foi possivel atualizar o visitante.'), 'danger');
       return;
     }
     loadVisitorAccessRequests();
@@ -893,7 +893,7 @@ function App() {
       );
     } catch (error) {
       if (handleAuthFailure(error, 'Acesso negado para autorizar visitante')) return;
-      showToast('Acesso nao autorizado. Dados locais mantidos.', 'danger');
+      showToast(isNetworkError(error) ? 'Sem conexao com o servidor: a autorizacao NAO foi registrada.' : (error?.payload?.message || 'Nao foi possivel autorizar este visitante.'), 'danger');
       return;
     }
     closeModal();
@@ -911,7 +911,7 @@ function App() {
       );
     } catch (error) {
       if (handleAuthFailure(error, 'Acesso negado para negar visitante')) return;
-      showToast('Negativa nao registrada. Dados locais mantidos.', 'danger');
+      showToast(isNetworkError(error) ? 'Sem conexao com o servidor: a negativa NAO foi registrada.' : (error?.payload?.message || 'Nao foi possivel negar este pedido.'), 'danger');
       return;
     }
     closeModal();
@@ -1077,7 +1077,11 @@ function AdminDashboard({ app }) {
               {app.sectors.map((sector) => <option key={sector.id} value={sector.name}>{sector.name}</option>)}
             </select>
             <button onClick={() => app.showToast('Dados atualizados com sucesso')}>Atualizar dados</button>
-            <button onClick={() => app.openModal('Relatorio operacional', <ReportView report={report} />, <ReportFooter app={app} report={report} />)}>Gerar relatorio</button>
+            <button onClick={async () => {
+              // Antes usava uma variavel `report` inexistente neste componente (ReferenceError no clique).
+              const report = await app.generateReport('diario');
+              if (report) app.openModal('Relatorio operacional', <ReportView report={report} />, <ReportFooter app={app} report={report} />);
+            }}>Gerar relatorio</button>
           </Toolbar>
           <DashboardHeatmap sectors={heatmapSectors} nodes={heatmapNodes} floor={dashboardFloor} onSelect={(sector) => openSector(app, sector)} />
         </Panel>

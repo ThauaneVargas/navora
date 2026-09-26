@@ -30,7 +30,7 @@ export class VisitorAccessService {
     const destination = await this.findDestination(payload.requested_destination);
     const request = await this.prisma.visitorAccessRequest.create({
       data: {
-        visitorName: payload.visitor_name ?? 'Visitante Navora',
+        visitorName: payload.visitor_name,
         areaId: area.areaId,
         area: area.areaName,
         areaName: area.areaName,
@@ -41,7 +41,8 @@ export class VisitorAccessService {
         requestedDestination: payload.requested_destination,
         reason: payload.reason ?? 'Visita',
         accessibility: payload.accessibility ?? 'Nao',
-        status: this.normalizeStatus(payload.status ?? VisitorAccessStatus.PENDING),
+        // Todo pedido publico nasce pendente; a decisao e sempre da recepcao.
+        status: VisitorAccessStatus.PENDING,
         beacon: payload.beacon || payload.current_beacon || null,
         destinationId: destination?.id,
       },
@@ -51,6 +52,7 @@ export class VisitorAccessService {
 
   async approve(requestId: number, payload: AuthorizeVisitorAccessDto) {
     const request = await this.find(requestId);
+    this.ensureValidTransition(request.status, VisitorAccessStatus.APPROVED);
     const minutes = this.resolvePermissionMinutes(payload);
     const route = payload.authorizedRoute ?? payload.authorized_route ?? payload.allowed_route ?? this.defaultRoute(request);
     const authorizedAt = new Date();
@@ -74,7 +76,8 @@ export class VisitorAccessService {
   }
 
   async deny(requestId: number, payload: DenyVisitorAccessDto) {
-    await this.find(requestId);
+    const request = await this.find(requestId);
+    this.ensureValidTransition(request.status, VisitorAccessStatus.DENIED);
     const reason = payload.deniedReason || payload.denial_reason;
     const updated = await this.prisma.visitorAccessRequest.update({
       where: { id: requestId },

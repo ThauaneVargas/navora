@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View, Text, StyleSheet, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
@@ -18,9 +18,11 @@ const statusLabels = {
   IN_ROUTE: 'Em rota',
   ARRIVED: 'Chegou ao destino',
   OFF_ROUTE: 'Fora da rota',
-  DENIED: 'Acesso negado',
   FINISHED: 'Finalizado',
 };
+
+// IDs locais (VAR-..., LOCAL-VIS-...) indicam que o pedido ainda nao chegou ao backend.
+const isServerRequestId = (id) => /^\d+$/.test(String(id ?? ''));
 
 export default function VisitorAccessStatusScreen({
   navigate,
@@ -31,10 +33,24 @@ export default function VisitorAccessStatusScreen({
   onStartRoute,
   onResolveNavigationAccess,
   onCancelVisitorAccessRequest,
+  onCreateVisitorAccessRequest,
   navigationData,
 }) {
   const [syncedRequest, setSyncedRequest] = useState(visitorAccessRequest || routeParams.request);
+  const [refreshing, setRefreshing] = useState(false);
+  const [refreshMessage, setRefreshMessage] = useState(null);
   const request = syncedRequest || visitorAccessRequest || routeParams.request;
+  const notSent = Boolean(request?.syncError) || !isServerRequestId(request?.id);
+
+  // O App troca o pedido local (VAR-...) pelo pedido real do backend depois que a tela
+  // ja foi montada. Sem esta sincronizacao a tela ficava presa ao ID local e nunca
+  // conseguia consultar a decisao da recepcao.
+  useEffect(() => {
+    if (visitorAccessRequest) {
+      setSyncedRequest(visitorAccessRequest);
+      setRefreshMessage(null);
+    }
+  }, [visitorAccessRequest]);
   const area = getAreaById(request?.area || userProfile?.area);
   const reception = getReceptionDestination(area.id);
   const statusLabel = statusLabels[request?.status] || request?.status || 'Aguardando autorizacao';
@@ -49,9 +65,34 @@ export default function VisitorAccessStatusScreen({
   );
 
   const goReception = () => onStartRoute?.(reception);
+  const retrySend = () => {
+    setRefreshMessage(null);
+    onCreateVisitorAccessRequest?.(
+      {
+        visitorName: request?.visitorName,
+        destinationCode: request?.destinationCode,
+        requestedDestination: request?.requestedDestination,
+        reason: request?.reason,
+        accessibility: request?.accessibility,
+      },
+      { skipNavigate: true }
+    );
+  };
+
   const refreshStatus = async () => {
+    if (refreshing) return;
+    if (notSent) {
+      setRefreshMessage('Sua solicitacao ainda nao chegou a recepcao. Toque em "Enviar novamente" ou procure a recepcao.');
+      return;
+    }
+    setRefreshing(true);
+    setRefreshMessage(null);
     try {
       const updated = await navoraApi.getVisitorAccessRequest(request?.id);
+      if (updated?.demoMode) {
+        setRefreshMessage('Sem conexao no momento. Tente novamente em instantes.');
+        return;
+      }
       if (updated) {
         setSyncedRequest({
           id: updated.id,
@@ -70,8 +111,13 @@ export default function VisitorAccessStatusScreen({
           allowedRoute: updated.authorized_route || updated.allowed_route,
           allowedTime: updated.permission_minutes ? `${updated.permission_minutes} minutos` : updated.allowed_time,
         });
+        setRefreshMessage(updated.status === 'PENDING' ? 'Ainda aguardando a decisao da recepcao.' : null);
       }
-    } catch (error) {}
+    } catch (error) {
+      setRefreshMessage('Nao foi possivel atualizar agora. Se precisar, procure a recepcao.');
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const cancel = () => {
@@ -86,7 +132,7 @@ export default function VisitorAccessStatusScreen({
         <View style={styles.statusIcon}>
           <MaterialCommunityIcons name={authorized ? 'check-circle-outline' : denied ? 'close-circle-outline' : 'clock-alert-outline'} size={32} color="#FFFFFF" />
         </View>
-        <Text style={styles.title}>{statusLabel}</Text>
+        <Text style={styles.title}>{notSent && !authorized && !denied ? 'Solicitacao nao enviada' : statusLabel}</Text>
         <Text style={styles.text}>Destino solicitado:</Text>
         <Text style={styles.destination}>{request?.requestedDestination || 'Visita / Internacao'}</Text>
         <Text style={styles.description}>
@@ -94,7 +140,9 @@ export default function VisitorAccessStatusScreen({
             ? 'Seu acesso foi liberado. Siga apenas pela rota autorizada.'
             : denied
               ? 'Procure a recepcao para receber orientacao presencial.'
-              : 'Enquanto isso, vamos te orientar ate a recepcao correta.'}
+              : notSent
+                ? 'Nao conseguimos enviar seu pedido para a recepcao. Tente novamente ou procure a recepcao.'
+                : 'Enquanto isso, vamos te orientar ate a recepcao correta.'}
         </Text>
         <View style={styles.infoBox}>
           <Text style={styles.infoLabel}>Area</Text>
@@ -134,10 +182,28 @@ export default function VisitorAccessStatusScreen({
             <Text style={styles.primaryText}>Ir para destino liberado</Text>
           </Pressable>
         ) : null}
-        <Pressable onPress={refreshStatus} style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}>
-          <MaterialCommunityIcons name="refresh" size={18} color={colors.primary} />
-          <Text style={styles.secondaryText}>Atualizar status</Text>
-        </Pressable>
+        {refreshMessage ? (
+          <Text style={styles.feedback} accessibilityLiveRegion="polite">{refreshMessage}</Text>
+        ) : null}
+        {notSent && !authorized && !denied ? (
+          <Pressable onPress={retrySend} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
+            <MaterialCommunityIcons name="send-outline" size={18} color="#FFFFFF" />
+            <Text style={styles.primaryText}>Enviar novamente</Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            onPress={refreshStatus}
+            disabled={refreshing}
+            style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
+          >
+            {refreshing ? (
+              <ActivityIndicator size="small" color={colors.primary} />
+            ) : (
+              <MaterialCommunityIcons name="refresh" size={18} color={colors.primary} />
+            )}
+            <Text style={styles.secondaryText}>{refreshing ? 'Atualizando...' : 'Atualizar status'}</Text>
+          </Pressable>
+        )}
         <Pressable onPress={goReception} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed]}>
           <MaterialCommunityIcons name="navigation-variant" size={18} color="#FFFFFF" />
           <Text style={styles.primaryText}>Ir ate a recepcao</Text>
@@ -190,6 +256,7 @@ const styles = StyleSheet.create({
   infoLabel: { color: colors.muted, fontSize: 10, fontWeight: '900', textTransform: 'uppercase', marginTop: 4 },
   infoValue: { color: colors.text, fontSize: 13, fontWeight: '900', marginTop: 2 },
   actions: { gap: 10, marginTop: 16 },
+  feedback: { color: colors.text, fontSize: 13, lineHeight: 19, fontWeight: '700', textAlign: 'center', paddingHorizontal: 6 },
   primaryButton: {
     height: 52,
     borderRadius: 17,

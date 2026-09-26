@@ -118,14 +118,16 @@ export const adminApi = {
     request(`/calls/${id}/status`, { method: 'PATCH', authenticated: true, body: JSON.stringify({ status }) }, { id, status, demoMode: true }),
   getVisitorAccessRequests: (status) =>
     request(status ? `/visitor-access?status=${encodeURIComponent(status)}` : '/visitor-access', { authenticated: true }, []),
+  // Decisoes sobre visitantes NAO tem fallback local: sem backend o app do visitante nunca
+  // recebe a decisao, entao a recepcao precisa ver o erro em vez de um falso sucesso.
   approveVisitorAccess: (id, data) =>
-    request(`/visitor-access/${id}/approve`, { method: 'PATCH', authenticated: true, body: JSON.stringify(data) }, { id, ...data, status: 'APPROVED', demoMode: true }),
+    request(`/visitor-access/${id}/approve`, { method: 'PATCH', authenticated: true, body: JSON.stringify(data) }),
   authorizeVisitorAccess: (id, payload) =>
-    request(`/visitor-access/${id}/approve`, { method: 'PATCH', authenticated: true, body: JSON.stringify(payload) }, { id, ...payload, status: 'APPROVED', demoMode: true }),
+    request(`/visitor-access/${id}/approve`, { method: 'PATCH', authenticated: true, body: JSON.stringify(payload) }),
   denyVisitorAccess: (id, deniedReason) =>
-    request(`/visitor-access/${id}/deny`, { method: 'PATCH', authenticated: true, body: JSON.stringify(typeof deniedReason === 'string' ? { deniedReason } : deniedReason) }, { id, status: 'DENIED', deniedReason, demoMode: true }),
+    request(`/visitor-access/${id}/deny`, { method: 'PATCH', authenticated: true, body: JSON.stringify(typeof deniedReason === 'string' ? { deniedReason } : deniedReason) }),
   updateVisitorAccessStatus: (id, status) =>
-    request(`/visitor-access/${id}/status`, { method: 'PATCH', authenticated: true, body: JSON.stringify({ status }) }, { id, status, demoMode: true }),
+    request(`/visitor-access/${id}/status`, { method: 'PATCH', authenticated: true, body: JSON.stringify({ status }) }),
   getDashboardSummary: () => request('/dashboard/summary', { authenticated: true }, fallbackSummary),
   getCheckIns: () => request('/check-ins', { authenticated: true }),
   createCheckIn: (payload) => request('/check-ins', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }),

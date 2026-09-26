@@ -78,14 +78,18 @@ export default function HelpScreen({ navigate, goBack, routeParams = {}, userTyp
           ? await navoraApi.createCall(payload)
           : await navoraApi.createHelpRequest(payload);
       const request = apiResponse?.demoMode ? onCreateHelpRequest?.(localRequest) : null;
+      const notSent = Boolean(apiResponse?.demoMode);
+      const sentTitle = isSos ? 'SOS enviado' : isDoctor ? 'Solicitacao medica enviada' : 'Pedido de ajuda enviado';
+      const notSentTitle = isSos ? 'SOS NAO enviado' : isDoctor ? 'Solicitacao medica nao enviada' : 'Pedido de ajuda nao enviado';
 
       setConfirmation({
         kind,
-        title: isSos ? 'SOS enviado' : isDoctor ? 'Solicitacao medica enviada' : 'Pedido de ajuda enviado',
-        text: apiResponse?.demoMode
-          ? 'API indisponivel: solicitacao registrada localmente para demonstracao.'
+        notSent,
+        title: notSent ? notSentTitle : sentTitle,
+        text: notSent
+          ? 'Sem conexao com a recepcao: o pedido NAO foi recebido. Procure a recepcao ou um profissional do hospital agora.'
           : 'Solicitacao enviada para a recepcao.',
-        protocol: apiResponse?.id || request?.id || 'NAVORA',
+        protocol: notSent ? null : apiResponse?.id || request?.id || 'NAVORA',
       });
     } catch (error) {
       Alert.alert(
@@ -102,19 +106,32 @@ export default function HelpScreen({ navigate, goBack, routeParams = {}, userTyp
       <Screen withBottomTabs>
         <Header title="Ajuda e SOS" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
         <View style={[styles.confirmCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
-          <View style={[styles.confirmIcon, confirmation.kind === 'sos' && styles.confirmIconDanger]}>
+          <View style={[styles.confirmIcon, (confirmation.kind === 'sos' || confirmation.notSent) && styles.confirmIconDanger]}>
             <MaterialCommunityIcons
-              name={confirmation.kind === 'sos' ? 'alarm-light-outline' : 'check-circle-outline'}
+              name={confirmation.notSent ? 'wifi-off' : confirmation.kind === 'sos' ? 'alarm-light-outline' : 'check-circle-outline'}
               size={58}
-              color={confirmation.kind === 'sos' ? colors.danger : colors.success}
+              color={confirmation.kind === 'sos' || confirmation.notSent ? colors.danger : colors.success}
             />
           </View>
-          <Text style={[styles.confirmTitle, { color: appColors.text }]}>{confirmation.title}</Text>
+          <Text style={[styles.confirmTitle, { color: confirmation.notSent ? colors.danger : appColors.text }]}>{confirmation.title}</Text>
           <Text style={[styles.confirmText, { color: appColors.muted }]}>{confirmation.text}</Text>
-          <Text style={styles.protocol}>Protocolo: {confirmation.protocol}</Text>
-          <Pressable onPress={() => navigate('Notifications')} style={[styles.primaryButton, shadows.soft]}>
-            <Text style={styles.primaryText}>Ver notificacoes</Text>
-          </Pressable>
+          {confirmation.protocol ? <Text style={styles.protocol}>Protocolo: {confirmation.protocol}</Text> : null}
+          {confirmation.notSent ? (
+            <Pressable
+              onPress={() => {
+                const kind = confirmation.kind;
+                setConfirmation(null);
+                submit(kind);
+              }}
+              style={[styles.primaryButton, shadows.soft]}
+            >
+              <Text style={styles.primaryText}>Tentar enviar novamente</Text>
+            </Pressable>
+          ) : (
+            <Pressable onPress={() => navigate('Notifications')} style={[styles.primaryButton, shadows.soft]}>
+              <Text style={styles.primaryText}>Ver notificacoes</Text>
+            </Pressable>
+          )}
           <Pressable onPress={() => navigate('Home')} style={styles.secondaryButton}>
             <Text style={styles.secondaryText}>Voltar para Home</Text>
           </Pressable>

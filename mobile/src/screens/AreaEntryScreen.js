@@ -1,11 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Screen from '../components/Screen';
 import { colors, shadows } from '../theme/colors';
 import { hospitalAreas, getAreaById, getReceptionDestination } from '../data/routes';
 
 export default function AreaEntryScreen({ navigate, onAreaProfileSelect, onStartRoute, navigationData, navigationSource = 'fallback' }) {
+  const insets = useSafeAreaInsets();
   const areas = navigationSource === 'api' ? navigationData?.areas || hospitalAreas : hospitalAreas;
   const chooseProfile = (area, type) => onAreaProfileSelect?.({ area, type });
   const goReception = () => {
@@ -17,7 +19,7 @@ export default function AreaEntryScreen({ navigate, onAreaProfileSelect, onStart
 
   return (
     <Screen>
-      <View style={styles.hero}>
+      <View style={[styles.hero, { marginTop: Math.max(insets.top, 12) + 12 }]}>
         <View style={styles.brandMark}>
           <MaterialCommunityIcons name="navigation-variant" size={28} color="#FFFFFF" />
         </View>

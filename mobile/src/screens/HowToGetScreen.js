@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Image, Linking, Platform } from 'react-native';
+import { Alert, View, Text, StyleSheet, Pressable, Image, Linking, Platform } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
@@ -18,7 +18,14 @@ export default function HowToGetScreen({ navigate, goBack }) {
     };
 
     const url = provider === 'auto' && Platform.OS === 'ios' ? urls.apple : urls[provider === 'auto' ? 'google' : provider];
-    Linking.openURL(url);
+    Linking.openURL(url).catch(() => {
+      // Sem app de mapas/navegador capaz de abrir o link: tenta o Google Maps na web
+      // e, se tambem falhar, mostra o endereco para o usuario seguir manualmente.
+      const openFallback = url === urls.google ? Promise.reject() : Linking.openURL(urls.google);
+      openFallback.catch(() => {
+        Alert.alert('Nao foi possivel abrir o mapa', `Endereco do hospital:\n${address}`);
+      });
+    });
   };
 
   return (

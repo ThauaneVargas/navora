@@ -1,16 +1,18 @@
 import React from 'react';
 import { Image, ImageBackground, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Screen from '../components/Screen';
 import { colors, shadows } from '../theme/colors';
 
 export default function HomeStartScreen({ navigate }) {
   const detectArrival = () => navigate('ArrivalDetected', { area: 'unknown' });
+  const insets = useSafeAreaInsets();
 
   return (
     <Screen scroll={false} padded={false}>
       <ImageBackground source={require('../../assets/images/hmc_hospital.jpg')} resizeMode="cover" style={styles.stage} imageStyle={styles.bg}>
-        <View style={styles.overlay}>
+        <View style={[styles.overlay, { paddingTop: Math.max(insets.top + 12, 42), paddingBottom: Math.max(insets.bottom + 12, 24) }]}>
           <View style={styles.top}>
             <View style={styles.brand}>
               <ImageLogo />

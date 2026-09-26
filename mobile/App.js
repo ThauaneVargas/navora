@@ -712,7 +712,7 @@ export default function App() {
     createdAt: request?.created_at || fallback.createdAt || new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
   });
 
-  const handleVisitorAccessRequest = async (request) => {
+  const handleVisitorAccessRequest = async (request, options = {}) => {
     const area = getCurrentAreaById(userProfile?.area);
     const reception = getCurrentReceptionDestination(userProfile?.area);
     const fallbackRequest = {
@@ -734,7 +734,9 @@ export default function App() {
 
     setVisitorAccessRequest(fallbackRequest);
     setActiveRoute(null);
-    navigate('VisitorAccessStatus', { request: fallbackRequest });
+    if (!options.skipNavigate) {
+      navigate('VisitorAccessStatus', { request: fallbackRequest });
+    }
 
     try {
       const apiRequest = await navoraApi.createVisitorAccessRequest({
@@ -749,12 +751,20 @@ export default function App() {
         accessibility: fallbackRequest.accessibility,
         beacon: area.entry,
       });
+      if (apiRequest?.demoMode) {
+        // Sem conexao: o pedido existe so no aparelho e a recepcao nao o recebeu.
+        const unsentRequest = { ...fallbackRequest, syncError: true };
+        setVisitorAccessRequest(unsentRequest);
+        return unsentRequest;
+      }
       const syncedRequest = normalizeVisitorAccessRequest(apiRequest, fallbackRequest);
       setVisitorAccessRequest(syncedRequest);
       setRouteParams({ request: syncedRequest });
       return syncedRequest;
     } catch (error) {
-      return fallbackRequest;
+      const unsentRequest = { ...fallbackRequest, syncError: true };
+      setVisitorAccessRequest(unsentRequest);
+      return unsentRequest;
     }
   };
 

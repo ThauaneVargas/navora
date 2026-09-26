@@ -1,6 +1,8 @@
 import * as assert from 'node:assert/strict';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import 'reflect-metadata';
+import { BadRequestException, NotFoundException, ValidationPipe } from '@nestjs/common';
 import { VisitorAccessStatus } from '@prisma/client';
+import { CreateVisitorAccessDto } from './dto/create-visitor-access.dto';
 import { VisitorAccessService } from './visitor-access.service';
 
 function makePrisma() {
@@ -61,7 +63,6 @@ async function run() {
     requested_destination: 'private-imaging',
     reason: 'Visita',
     accessibility: 'Nao',
-    status: VisitorAccessStatus.PENDING,
   });
   assert.equal(created.status, VisitorAccessStatus.PENDING);
   assert.equal(created.destination_id, 10);
@@ -99,6 +100,36 @@ async function run() {
   });
   assert.equal(deniedResult.status, VisitorAccessStatus.DENIED);
   assert.equal(deniedResult.denied_reason, 'Destino restrito');
+
+  // Pedido negado ou finalizado nao pode ser reaprovado/negado novamente.
+  await assert.rejects(() => service.approve(denied.id, {} as any), BadRequestException);
+  await assert.rejects(() => service.deny(created.id, {} as any), BadRequestException);
+
+  // Mesmo que um cliente envie `status`, o pedido publico nasce pendente.
+  const forged = await service.create({
+    visitor_name: 'Visitante Forjado',
+    requested_destination: 'private-imaging',
+    status: VisitorAccessStatus.APPROVED,
+  } as any);
+  assert.equal(forged.status, VisitorAccessStatus.PENDING);
+
+  // Area SUS informada no formato legado nao pode virar Private.
+  const sus = await service.create({
+    visitor_name: 'Visitante SUS',
+    area: 'sus',
+    requested_destination: 'sus-visita',
+  } as any);
+  assert.equal(sus.area_id, 'sus');
+  assert.equal(sus.area_name, 'Hospital Marco Capute');
+  assert.equal(sus.entrance, 'Entrada pela frente');
+
+  // Mesmo pipe global do main.ts: descarta `status` e exige nome do visitante.
+  const pipe = new ValidationPipe({ whitelist: true, transform: true, forbidNonWhitelisted: false });
+  const bodyMeta = { type: 'body' as const, metatype: CreateVisitorAccessDto };
+  const validated = await pipe.transform({ visitor_name: 'Ana', requested_destination: 'private-visita', status: 'APPROVED' }, bodyMeta);
+  assert.equal((validated as any).status, undefined);
+  await assert.rejects(() => pipe.transform({ visitor_name: '   ', requested_destination: 'private-visita' }, bodyMeta), BadRequestException);
+  await assert.rejects(() => pipe.transform({ requested_destination: 'private-visita' }, bodyMeta), BadRequestException);
 
   console.log('visitor access service tests passed');
 }
