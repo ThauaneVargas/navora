@@ -113,3 +113,15 @@ App de navegação indoor/outdoor para dois hospitais (HMC Private e HMC Marco C
 ## 5. Rastreabilidade — requisito × teste automatizado
 
 Ver `docs/casos_de_teste.md` para a tabela completa de onde cada requisito funcional tem cobertura automatizada (unitária/e2e) e onde só existe validação manual.
+
+## Regras de segurança do Web Admin
+
+### RS-01 — Funcionários nunca são excluídos, apenas desativados
+
+- Usuários da equipe (Recepção e Administrador) não podem ser apagados do sistema.
+- Para retirar o acesso de alguém, o administrador **desativa** o usuário. A pessoa deixa de conseguir entrar no painel imediatamente, inclusive sessões já abertas.
+- O histórico continua salvo para consulta futura: quais visitantes o funcionário autorizou ou negou, quando, e quem desativou/reativou o acesso dele (com motivo).
+- Um usuário desativado pode ser reativado com o mesmo perfil.
+- Um administrador não pode desativar a si mesmo, e o último administrador ativo não pode ser desativado.
+- A regra é garantida em três camadas: interface (não existe botão de excluir), API (`DELETE /staff/:id` responde 405) e banco de dados (triggers recusam a exclusao).
+- Escopo: vale para funcionários. Pacientes seguem as regras próprias de cadastro/LGPD.

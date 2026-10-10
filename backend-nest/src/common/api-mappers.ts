@@ -53,6 +53,8 @@ export function mapVisitorAccessToApi(request: VisitorAccessRequest) {
     authorized_at: request.authorizedAt?.toISOString() ?? null,
     expires_at: request.expiresAt?.toISOString() ?? null,
     finished_at: request.finishedAt?.toISOString() ?? null,
+    decided_by_id: request.decidedById ?? null,
+    decided_at: request.decidedAt?.toISOString() ?? null,
     created_at: request.createdAt.toISOString(),
     updated_at: request.updatedAt.toISOString(),
   };

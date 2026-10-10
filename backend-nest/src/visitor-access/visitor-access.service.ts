@@ -68,7 +68,7 @@ export class VisitorAccessService {
     return { ...mapVisitorAccessToApi(request), access_token: accessToken };
   }
 
-  async approve(requestId: number, payload: AuthorizeVisitorAccessDto) {
+  async approve(requestId: number, payload: AuthorizeVisitorAccessDto, actor?: AuthenticatedUser) {
     const request = await this.find(requestId);
     const minutes = this.resolvePermissionMinutes(payload);
     const route = payload.authorizedRoute ?? payload.authorized_route ?? payload.allowed_route ?? this.defaultRoute(request);
@@ -87,12 +87,14 @@ export class VisitorAccessService {
         releaseType: payload.release_type,
         deniedReason: null,
         denialReason: null,
+        decidedById: actor?.id ?? null,
+        decidedAt: authorizedAt,
       },
     });
     return mapVisitorAccessToApi(updated);
   }
 
-  async deny(requestId: number, payload: DenyVisitorAccessDto) {
+  async deny(requestId: number, payload: DenyVisitorAccessDto, actor?: AuthenticatedUser) {
     await this.find(requestId);
     const reason = payload.deniedReason || payload.denial_reason;
     const updated = await this.prisma.visitorAccessRequest.update({
@@ -106,6 +108,8 @@ export class VisitorAccessService {
         allowedTime: null,
         permissionMinutes: null,
         releaseType: null,
+        decidedById: actor?.id ?? null,
+        decidedAt: new Date(),
       },
     });
     return mapVisitorAccessToApi(updated);

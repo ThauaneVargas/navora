@@ -43,22 +43,34 @@ export class VisitorAccessController {
   @Patch(':requestId/approve')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.RECEPTION)
-  approve(@Param('requestId', ParseIntPipe) requestId: number, @Body() payload: AuthorizeVisitorAccessDto) {
-    return this.visitorAccessService.approve(requestId, payload);
+  approve(
+    @Param('requestId', ParseIntPipe) requestId: number,
+    @Body() payload: AuthorizeVisitorAccessDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.visitorAccessService.approve(requestId, payload, actor);
   }
 
   @Patch(':requestId/authorize')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.RECEPTION)
-  authorize(@Param('requestId', ParseIntPipe) requestId: number, @Body() payload: AuthorizeVisitorAccessDto) {
-    return this.visitorAccessService.approve(requestId, payload);
+  authorize(
+    @Param('requestId', ParseIntPipe) requestId: number,
+    @Body() payload: AuthorizeVisitorAccessDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.visitorAccessService.approve(requestId, payload, actor);
   }
 
   @Patch(':requestId/deny')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.RECEPTION)
-  deny(@Param('requestId', ParseIntPipe) requestId: number, @Body() payload: DenyVisitorAccessDto) {
-    return this.visitorAccessService.deny(requestId, payload);
+  deny(
+    @Param('requestId', ParseIntPipe) requestId: number,
+    @Body() payload: DenyVisitorAccessDto,
+    @CurrentUser() actor: AuthenticatedUser,
+  ) {
+    return this.visitorAccessService.deny(requestId, payload, actor);
   }
 
   @Patch(':requestId/status')

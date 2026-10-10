@@ -79,11 +79,17 @@ async function run() {
   const pending = await service.list(VisitorAccessStatus.PENDING);
   assert.equal(pending.length, 1);
 
-  const approved = await service.approve(created.id, {
-    release_type: 'Liberar rota ate o destino',
-    release_time: '30 minutos',
-  });
+  const approved = await service.approve(
+    created.id,
+    {
+      release_type: 'Liberar rota ate o destino',
+      release_time: '30 minutos',
+    },
+    { id: 2, name: 'Recepcao', email: 'recepcao@navora.com', phone: null, role: 'RECEPTION' as any, active: true },
+  );
   assert.equal(approved.status, VisitorAccessStatus.APPROVED);
+  assert.equal(approved.decided_by_id, 2, 'registra qual funcionario autorizou');
+  assert.ok(approved.decided_at);
   assert.equal(approved.permission_minutes, 30);
 
   assert.match(created.access_token, /^[0-9a-f]{48}$/, 'criar devolve o codigo secreto do visitante');

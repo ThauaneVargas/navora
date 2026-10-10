@@ -136,6 +136,11 @@ model User {
   active               Boolean   @default(true)
   passwordResetToken   String?   @unique @map("password_reset_token")
   passwordResetExpires DateTime? @map("password_reset_expires")
+  // Regra de seguranca: funcionarios (RECEPTION/ADMIN) nunca sao excluidos,
+  // apenas desativados, para preservar a auditoria do que fizeram no sistema.
+  // Um trigger no PostgreSQL bloqueia DELETE desses usuarios.
+  deactivatedAt        DateTime? @map("deactivated_at")
+  deactivatedById      Int?      @map("deactivated_by_id")
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
@@ -144,7 +149,34 @@ model User {
   checkIns       CheckIn[]
   notifications  Notification[]
 
+  deactivatedBy      User?  @relation("UserDeactivatedBy", fields: [deactivatedById], references: [id], onDelete: Restrict)
+  deactivatedUsers   User[] @relation("UserDeactivatedBy")
+  statusChanges      UserStatusChange[] @relation("UserStatusChangeTarget")
+  statusChangesMade  UserStatusChange[] @relation("UserStatusChangeActor")
+  visitorDecisions   VisitorAccessRequest[] @relation("VisitorAccessDecidedBy")
+
   @@map("users")
+}
+
+enum UserStatusAction {
+  DEACTIVATED
+  REACTIVATED
+}
+
+// Historico imutavel de ativacoes/desativacoes de usuarios do painel.
+model UserStatusChange {
+  id            Int              @id @default(autoincrement())
+  userId        Int              @map("user_id")
+  action        UserStatusAction
+  reason        String?
+  performedById Int              @map("performed_by_id")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  user        User @relation("UserStatusChangeTarget", fields: [userId], references: [id], onDelete: Restrict)
+  performedBy User @relation("UserStatusChangeActor", fields: [performedById], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@map("user_status_changes")
 }
 
 model PatientProfile {
@@ -240,10 +272,14 @@ model VisitorAccessRequest {
   authorizedAt         DateTime?           @map("authorized_at")
   expiresAt            DateTime?           @map("expires_at")
   finishedAt           DateTime?           @map("finished_at")
+  // Funcionario que autorizou ou negou a solicitacao (auditoria).
+  decidedById          Int?                @map("decided_by_id")
+  decidedAt            DateTime?           @map("decided_at")
   createdAt            DateTime            @default(now()) @map("created_at")
   updatedAt            DateTime            @updatedAt @map("updated_at")
 
   destination Destination? @relation(fields: [destinationId], references: [id])
+  decidedBy   User?        @relation("VisitorAccessDecidedBy", fields: [decidedById], references: [id], onDelete: Restrict)
   checkIns CheckIn[]
 
   @@map("visitor_access_requests")
