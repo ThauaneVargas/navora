@@ -142,6 +142,13 @@ export const adminApi = {
   getNavigationAreas: () => requestFromApi('/navigation/areas', { authenticated: true }),
   getNavigationDestinations: () => requestFromApi('/navigation/destinations', { authenticated: true }),
   getNavigationMap: () => requestFromApi('/navigation/map', { authenticated: true }),
+  // Funcionarios: nunca ha exclusao, apenas desativacao/reativacao (regra de seguranca).
+  getStaff: () => requestFromApi('/staff', { authenticated: true }),
+  getStaffAudit: (id) => request(`/staff/${id}/audit`, { authenticated: true }),
+  deactivateStaff: (id, reason) =>
+    request(`/staff/${id}/deactivate`, { method: 'PATCH', authenticated: true, body: JSON.stringify({ reason }) }),
+  reactivateStaff: (id, reason) =>
+    request(`/staff/${id}/reactivate`, { method: 'PATCH', authenticated: true, body: JSON.stringify({ reason }) }),
   generateAdminReport: (payload = {}) =>
     request('/reports/admin', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }, { demoMode: true }),
 };

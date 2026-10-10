@@ -150,6 +150,32 @@ function mapUserToStaffAccount(user) {
   };
 }
 
+function formatStaffDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('pt-BR');
+}
+
+function mapStaffFromApi(staff) {
+  const role = roleMap[staff?.role];
+  const active = staff?.active !== false;
+  return {
+    id: `API-${staff?.id}`,
+    apiId: staff?.id,
+    name: staff?.name || 'Funcionario Navora',
+    email: staff?.email,
+    phone: staff?.phone,
+    role,
+    roleLabel: roleLabelMap[role] || staff?.role,
+    sector: staff?.sector_name || staff?.job_title || (role === 'admin' ? 'Gestao' : 'Recepcao'),
+    status: active ? 'Ativo' : 'Desativado',
+    createdAt: formatStaffDate(staff?.created_at),
+    deactivatedAt: formatStaffDate(staff?.deactivated_at),
+    deactivatedBy: staff?.deactivated_by?.name || '',
+    authSource: 'api',
+  };
+}
+
 const callLabelToApiStatus = Object.fromEntries(
   Object.entries(callApiStatusToLabel).map(([key, value]) => [value, key])
 );
@@ -363,6 +389,7 @@ function App() {
   const [authRestoring, setAuthRestoring] = useState(true);
   const [users, setUsers] = useState(initialUsers);
   const [staffAccounts, setStaffAccounts] = useState(initialStaffAccounts);
+  const [staffSource, setStaffSource] = useState('fallback');
   const [calls, setCalls] = useState(initialCalls);
   const [beacons, setBeacons] = useState(initialBeacons);
   const [beaconsSource, setBeaconsSource] = useState('fallback');
@@ -521,6 +548,19 @@ function App() {
     }
   };
 
+  const loadStaff = async () => {
+    try {
+      const { data: apiStaff, source } = await adminApi.getStaff();
+      if (!Array.isArray(apiStaff)) throw new Error('Formato invalido de funcionarios');
+      setStaffAccounts(apiStaff.map(mapStaffFromApi));
+      setStaffSource(source);
+    } catch (error) {
+      if (handleAuthFailure(error)) return;
+      setStaffAccounts(initialStaffAccounts);
+      setStaffSource('fallback');
+    }
+  };
+
   const loadNavigationData = async () => {
     try {
       const { data: bootstrap } = await adminApi.getNavigationBootstrap();
@@ -556,6 +596,7 @@ function App() {
       loadSectors();
       loadBeacons();
       loadNavigationData();
+      if (currentRole === 'admin') loadStaff();
     }
   }, [currentRole]);
 
@@ -726,15 +767,59 @@ function App() {
     closeModal();
   };
 
-  const toggleStaffStatus = (id) => {
+  // Regra de seguranca: funcionarios nunca sao excluidos, apenas desativados.
+  // A desativacao bloqueia o acesso ao painel e preserva o historico de acoes.
+  const applyStaffStatusLocally = (account, deactivate) => {
     setStaffAccounts((items) =>
       items.map((item) =>
-        item.id === id
-          ? { ...item, status: item.status === 'Ativo' ? 'Inativo' : 'Ativo' }
+        item.id === account.id
+          ? {
+              ...item,
+              status: deactivate ? 'Desativado' : 'Ativo',
+              deactivatedAt: deactivate ? new Date().toLocaleDateString('pt-BR') : '',
+              deactivatedBy: deactivate ? currentUser?.name || '' : '',
+            }
           : item
       )
     );
-    showToast('Status de acesso atualizado');
+  };
+
+  const changeStaffStatus = async (account, deactivate, reason) => {
+    if (!account.apiId) {
+      applyStaffStatusLocally(account, deactivate);
+      closeModal();
+      showToast(deactivate ? 'Perfil local desativado (modo demonstracao)' : 'Perfil local reativado (modo demonstracao)', 'warning');
+      return;
+    }
+
+    try {
+      const updated = deactivate
+        ? await adminApi.deactivateStaff(account.apiId, reason)
+        : await adminApi.reactivateStaff(account.apiId, reason);
+      setStaffAccounts((items) => items.map((item) => (item.id === account.id ? mapStaffFromApi(updated) : item)));
+      closeModal();
+      showToast(deactivate ? `Acesso de ${account.name} desativado. Historico preservado.` : `Acesso de ${account.name} reativado.`);
+    } catch (error) {
+      if (handleAuthFailure(error, 'Somente administradores podem alterar acessos da equipe')) return;
+      if (isNetworkError(error)) {
+        showToast('API indisponivel. Nenhuma alteracao foi feita.', 'danger');
+        return;
+      }
+      const message = error?.payload?.message;
+      showToast(typeof message === 'string' ? message : 'Nao foi possivel alterar o acesso.', 'danger');
+    }
+  };
+
+  const openStaffStatusChange = (account) => {
+    const deactivate = account.status === 'Ativo';
+    openModal(
+      deactivate ? 'Desativar acesso' : 'Reativar acesso',
+      <StaffStatusForm account={account} deactivate={deactivate} onSubmit={(reason) => changeStaffStatus(account, deactivate, reason)} />
+    );
+  };
+
+  const openStaffAudit = (account) => {
+    openModal(`Historico de ${account.name}`, <StaffAuditView account={account} />);
   };
 
   const applyCallStatus = (id, status, extra = {}) => {
@@ -982,7 +1067,7 @@ function App() {
     updateCallStatus, assignTeam, closeCall, createCheckin, updateCheckinStatus,
     updateBeacon, restartBeacon, createMessage, saveSettings, generateReport, exportToCSV,
     setSectors, setMessages, setCalls, setUsers, setVisitors, updateVisitor, updateVisitorAccessStatus, authorizeVisitor, denyVisitor,
-    createStaffAccount, toggleStaffStatus, updateCurrentUserProfile,
+    createStaffAccount, openStaffStatusChange, openStaffAudit, staffSource, updateCurrentUserProfile,
   };
 
   if (authRestoring) return <LoginPage onLogin={login} toast={toast} />;
@@ -1312,6 +1397,11 @@ function UsersPage({ app }) {
       <FilterChips items={['Todos', 'Administrador', 'Recepcao', 'Pacientes']} active={filter} onChange={setFilter} />
 
       <SectionCard title="Acessos administrativos" subtitle="Controle de acessos da equipe interna ao sistema.">
+        <p className="form-note staff-rule-note">
+          <ShieldCheck size={15} />
+          Por seguranca, funcionarios nao podem ser excluidos. Ao desativar, a pessoa perde o acesso ao painel na hora, mas o historico do que ela autorizou ou negou continua registrado.
+          {app.staffSource !== 'api' ? ' Exibindo perfis de demonstracao.' : ''}
+        </p>
         <PremiumTable
           rows={staffQuery}
           columns={[
@@ -1320,16 +1410,30 @@ function UsersPage({ app }) {
             { key: 'roleLabel', label: 'Perfil', render: (account) => <RoleBadge value={account.roleLabel} /> },
             { key: 'sector', label: 'Setor', render: (account) => account.sector },
             { key: 'status', label: 'Status', render: (account) => <NvBadge value={account.status} /> },
-            { key: 'lastLogin', label: 'Ultimo acesso', render: (account) => account.lastLogin },
-            { key: 'actions', label: 'Acoes', render: (account) => (
-              <RowActions>
-                <button className="btn btn-secondary" onClick={() => app.openModal('Perfil administrativo', <Details data={account} />)}>Ver perfil</button>
-                <ActionMenu>
-                  <button onClick={() => app.toggleStaffStatus(account.id)}>{account.status === 'Ativo' ? 'Desativar' : 'Ativar'}</button>
-                  <button onClick={() => app.openModal('Dados de acesso', <Details data={account} />)}>Ver dados</button>
-                </ActionMenu>
-              </RowActions>
+            { key: 'registro', label: 'Registro', render: (account) => (
+              account.status === 'Ativo'
+                ? (account.lastLogin ? `Ultimo acesso: ${account.lastLogin}` : `Desde ${account.createdAt || '-'}`)
+                : `Desativado${account.deactivatedAt ? ` em ${account.deactivatedAt}` : ''}${account.deactivatedBy ? ` por ${account.deactivatedBy}` : ''}`
             ) },
+            { key: 'actions', label: 'Acoes', render: (account) => {
+              const isSelf = Boolean(app.currentUser?.email) && app.currentUser.email === account.email;
+              return (
+                <RowActions>
+                  <button className="btn btn-secondary" onClick={() => app.openStaffAudit(account)}>Historico</button>
+                  <ActionMenu>
+                    <button
+                      className={account.status === 'Ativo' ? 'menu-danger' : ''}
+                      disabled={isSelf}
+                      title={isSelf ? 'Voce nao pode desativar o seu proprio acesso' : undefined}
+                      onClick={() => app.openStaffStatusChange(account)}
+                    >
+                      {account.status === 'Ativo' ? 'Desativar acesso' : 'Reativar acesso'}
+                    </button>
+                    <button onClick={() => app.openModal('Dados de acesso', <Details data={account} />)}>Ver dados</button>
+                  </ActionMenu>
+                </RowActions>
+              );
+            } },
           ]}
         />
       </SectionCard>
@@ -1575,7 +1679,7 @@ function NvBadge({ value }) {
   const label = String(value || 'Nao informado');
   const normalized = comparableLocation(label);
   const tone =
-    normalized.includes('bloqueado') || normalized.includes('offline') || normalized.includes('negado')
+    normalized.includes('bloqueado') || normalized.includes('offline') || normalized.includes('negado') || normalized.includes('desativado') || normalized.includes('inativo')
       ? 'danger'
       : normalized.includes('aguardando') || normalized.includes('atencao') || normalized.includes('manutencao') || normalized.includes('bateria')
         ? 'warning'
@@ -2340,6 +2444,114 @@ function VisitorAuthorizationForm({ visitor, onSubmit }) {
       <div className="route-preview"><b>Rota permitida</b><span>{routePreview}</span></div>
       <button className="primary">Confirmar autorizacao</button>
     </form>
+  );
+}
+
+function StaffStatusForm({ account, deactivate, onSubmit }) {
+  const [reason, setReason] = useState('');
+  const [sending, setSending] = useState(false);
+  const submit = async (event) => {
+    event.preventDefault();
+    if (sending) return;
+    setSending(true);
+    try {
+      await onSubmit(reason.trim());
+    } finally {
+      setSending(false);
+    }
+  };
+  return (
+    <form className="modal-form" onSubmit={submit}>
+      <Details data={{ funcionario: account.name, email: account.email, perfil: account.roleLabel }} />
+      <p className="form-note">
+        {deactivate
+          ? 'A pessoa nao conseguira mais entrar no painel e sessoes abertas serao encerradas. Os registros do que ela fez (autorizacoes, recusas e alteracoes) continuam salvos. Funcionarios nunca sao excluidos.'
+          : 'A pessoa volta a ter acesso ao painel com o mesmo perfil de antes.'}
+      </p>
+      <label>Motivo (opcional)
+        <textarea
+          rows={3}
+          maxLength={300}
+          value={reason}
+          placeholder={deactivate ? 'Ex.: desligamento, troca de setor, ferias' : 'Ex.: retorno ao setor'}
+          onChange={(event) => setReason(event.target.value)}
+        />
+      </label>
+      <button className={`primary ${deactivate ? 'danger' : ''}`} disabled={sending}>
+        {sending ? 'Salvando...' : deactivate ? 'Confirmar desativacao' : 'Confirmar reativacao'}
+      </button>
+    </form>
+  );
+}
+
+const visitorDecisionLabels = {
+  APPROVED: 'Autorizado',
+  DENIED: 'Negado',
+  IN_ROUTE: 'Autorizado',
+  ARRIVED: 'Autorizado',
+  OFF_ROUTE: 'Autorizado',
+  FINISHED: 'Autorizado',
+  EXPIRED: 'Autorizado',
+  CANCELED: 'Cancelado',
+};
+
+function StaffAuditView({ account }) {
+  const [state, setState] = useState({ loading: Boolean(account.apiId), data: null, error: '' });
+
+  useEffect(() => {
+    if (!account.apiId) return undefined;
+    let active = true;
+    adminApi
+      .getStaffAudit(account.apiId)
+      .then((data) => active && setState({ loading: false, data, error: '' }))
+      .catch((error) => active && setState({
+        loading: false,
+        data: null,
+        error: isNetworkError(error) ? 'API indisponivel. Tente novamente em instantes.' : 'Nao foi possivel carregar o historico.',
+      }));
+    return () => {
+      active = false;
+    };
+  }, [account.apiId]);
+
+  if (!account.apiId) {
+    return <p className="form-note">O historico fica disponivel quando o painel esta conectado a API. Este e um perfil de demonstracao.</p>;
+  }
+  if (state.loading) return <p className="form-note">Carregando historico...</p>;
+  if (state.error) return <p className="form-error">{state.error}</p>;
+
+  const changes = state.data?.status_changes || [];
+  const decisions = state.data?.visitor_decisions || [];
+  const when = (value) => (value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
+
+  return (
+    <div className="staff-audit">
+      <Details data={{ funcionario: account.name, situacao: account.status, perfil: account.roleLabel }} />
+      <h3>Alteracoes de acesso</h3>
+      {changes.length ? (
+        <ul className="staff-audit-list">
+          {changes.map((change) => (
+            <li key={change.id}>
+              <b>{change.action === 'DEACTIVATED' ? 'Desativado' : 'Reativado'}</b>
+              <span>{when(change.created_at)} por {change.performed_by?.name || '-'}</span>
+              {change.reason ? <small>Motivo: {change.reason}</small> : null}
+            </li>
+          ))}
+        </ul>
+      ) : <p className="form-note">Nenhuma alteracao de acesso registrada.</p>}
+      <h3>Decisoes sobre visitantes</h3>
+      {decisions.length ? (
+        <ul className="staff-audit-list">
+          {decisions.map((decision) => (
+            <li key={decision.id}>
+              <b>{visitorDecisionLabels[decision.status] || decision.status}: {decision.visitor_name}</b>
+              <span>{decision.requested_destination} - {decision.area_name} - {when(decision.decided_at)}</span>
+              {decision.denied_reason ? <small>Motivo: {decision.denied_reason}</small> : null}
+            </li>
+          ))}
+        </ul>
+      ) : <p className="form-note">Nenhuma autorizacao ou recusa registrada para este funcionario.</p>}
+    </div>
   );
 }
 

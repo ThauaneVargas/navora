@@ -122,7 +122,21 @@ Consulta publica do pedido.
 
 `GET /visitor-access`, `PATCH /visitor-access/:requestId/approve`, `PATCH /visitor-access/:requestId/authorize`, `PATCH /visitor-access/:requestId/deny`, `PATCH /visitor-access/:requestId/status`
 
-Protegidos para `ADMIN`/`RECEPTION`.
+Protegidos para `ADMIN`/`RECEPTION`. Ao autorizar ou negar, o pedido grava `decided_by_id` e `decided_at` com o funcionario que tomou a decisao (auditoria).
+
+## Staff (equipe do Web Admin)
+
+**Regra de seguranca: funcionarios (`RECEPTION`/`ADMIN`) nunca sao excluidos, apenas desativados.** A desativacao bloqueia o login e invalida tokens ja emitidos (o `JwtAuthGuard` confere `active` a cada requisicao), mas preserva o historico do que a pessoa fez: autorizacoes e recusas de visitantes e alteracoes de acesso de outros usuarios. O PostgreSQL reforca a regra com triggers que recusam `DELETE` em funcionarios e em `staff_profiles`, e impedem rebaixar um funcionario para `PATIENT`.
+
+Todos os endpoints sao exclusivos de `ADMIN`.
+
+`GET /staff` lista a equipe (ativos e desativados).
+
+`GET /staff/:userId/audit` retorna `status_changes` (desativacoes/reativacoes, quem fez e motivo) e `visitor_decisions` (ultimas 100 autorizacoes/recusas do funcionario).
+
+`PATCH /staff/:userId/deactivate` e `PATCH /staff/:userId/reactivate` com corpo opcional `{ "reason": "..." }`. Cada alteracao gera um registro em `user_status_changes`. Regras: o admin nao pode desativar a si mesmo e o ultimo administrador ativo nao pode ser desativado.
+
+`DELETE /staff/:userId` sempre responde `405 Method Not Allowed`.
 
 ## Check-ins
 

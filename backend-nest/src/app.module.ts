@@ -11,6 +11,7 @@ import { NavigationModule } from './navigation/navigation.module';
 import { OperationalMessagesModule } from './operational-messages/operational-messages.module';
 import { PatientsModule } from './patients/patients.module';
 import { ReportsModule } from './reports/reports.module';
+import { StaffModule } from './staff/staff.module';
 import { VisitorAccessModule } from './visitor-access/visitor-access.module';
 
 @Module({
@@ -28,6 +29,7 @@ import { VisitorAccessModule } from './visitor-access/visitor-access.module';
     OperationalMessagesModule,
     PatientsModule,
     ReportsModule,
+    StaffModule,
   ],
 })
 export class AppModule {}

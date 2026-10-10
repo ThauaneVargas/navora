@@ -3899,3 +3899,49 @@ button.danger,
   .login-panel { padding: 26px; }
   .table-head, .table-row { min-width: 760px; }
 }
+
+/* Equipe: regra de desativacao (funcionarios nunca sao excluidos) */
+.staff-rule-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.staff-rule-note svg { flex-shrink: 0; color: var(--primary); margin-top: 1px; }
+.modal-form textarea {
+  width: 100%;
+  min-height: 72px;
+  resize: vertical;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font: inherit;
+  color: var(--text);
+  background: var(--card);
+}
+.modal-form textarea:focus { outline: 2px solid var(--primary-soft); border-color: var(--primary); }
+.modal-form button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.menu-danger:disabled,
+button:disabled[title] { opacity: 0.5; cursor: not-allowed; }
+.staff-audit { display: grid; gap: 12px; }
+.staff-audit h3 { margin: 6px 0 0; font-size: 14px; }
+.staff-audit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.staff-audit-list li {
+  display: grid;
+  gap: 2px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--card-soft);
+  overflow-wrap: anywhere;
+}
+.staff-audit-list span { color: var(--muted); font-size: 12px; }
+.staff-audit-list small { color: var(--ink); font-size: 12px; }
