@@ -618,6 +618,27 @@ async function main() {
     },
   });
 
+  // Unidade física real (Feasycom FSC-BP104D, comprada em 16/10). Code segue a
+  // convenção combinada em docs/BLE_HARDWARE_VALIDATION.md: FSC-<major>-<minor>.
+  // Ainda não há scanner BLE real no app — este registro so deixa o backend
+  // pronto para reconhecer o beacon no momento em que a fase 2 (dev build +
+  // react-native-ble-plx) existir. Nao afeta o funcionamento atual do app.
+  await prisma.beacon.upsert({
+    where: { code: 'FSC-04-01' },
+    update: { navigationNodeId: nodes.get('private-entry')?.id },
+    create: {
+      code: 'FSC-04-01',
+      name: 'Entrada Private (Feasycom FSC-BP104D #1)',
+      area: 'private',
+      areaName: 'HMC Private',
+      location: 'Entrada pelos fundos',
+      sector: 'Entrada Private',
+      battery: 100,
+      status: 'Online',
+      navigationNodeId: nodes.get('private-entry')?.id,
+    },
+  });
+
   const calls = await prisma.callRequest.count();
   if (calls === 0) {
     await prisma.callRequest.createMany({

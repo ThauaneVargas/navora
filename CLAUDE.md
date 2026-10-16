@@ -102,6 +102,13 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 - Só a config — nenhum componente de mapa usa `react-native-maps` ainda (o mapa atual continua o esquemático/custom em `MapScreen.js`). A chave fica pronta pra quando o mapa real for implementado.
 - Directions API e Chave 2 seguem fora de uso (decisão do usuário).
 
+**17. Beacon físico real comprado (16/10) — PREPARADO (aguardando configuração física)**
+- Hardware definido: **Feasycom FSC-BP104D** (BLE 5.1, chipset DA14531), substitui o candidato genérico "Minew MBM02" citado antes em `docs/BLE_HARDWARE_VALIDATION.md`. Documento reescrito com specs reais (TX power -19,5 a +2,5 dBm, intervalo 100-10000ms, app de configuração FeasyBeacon) e passo a passo pra configurar a primeira unidade.
+- Convenção definida: Major=4/Minor=1 pra esta unidade, código `FSC-04-01` (padrão `FSC-<major>-<minor>`, consistente com a família `MBM04-*` já usada nos beacons simulados).
+- Já preparado no código, sem nenhum risco e sem ligar nada na UI: `backend-nest/prisma/seed.ts` tem o beacon `FSC-04-01` vinculado ao nó de navegação da entrada Private; `mobile/src/data/routes.js` tem `'FSC-04-01'` na lista de `beaconCodes` da entrada `PRIVATE_BACK`. `POST /beacons/detect` já reconhece esse código assim que o seed rodar (rota já existente, nada novo).
+- **Não instalado ainda:** nenhuma biblioteca BLE nativa (`react-native-ble-plx`), nenhum scanner real. Isso é a fase 2, documentada no mesmo arquivo, e exige development build novo (mesmo processo já feito pro Poco X7 Pro) — não é "trabalho rápido", é sessão própria.
+- Pendente do usuário: abrir o app FeasyBeacon na unidade física, configurar Major/Minor/TX power/intervalo conforme o documento, e mandar a config final (print da tela) pra fase 2 começar com certeza do protocolo real.
+
 ## Nota de versão
 - Projeto está no **Expo SDK 57**.
 - Backend local: IP Wi-Fi da máquina de dev + porta 8000 (NestJS + PostgreSQL via Docker) — conferir `mobile/.env` bate com o IP atual.
