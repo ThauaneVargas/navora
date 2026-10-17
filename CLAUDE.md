@@ -101,9 +101,9 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 - Importante: pré-preencher a acessibilidade salva no modo de edição era necessário pra não perder os dados — sem isso, salvar qualquer campo zeraria a acessibilidade já cadastrada (o PATCH sempre reenvia o objeto de acessibilidade inteiro).
 - Fora do escopo desta correção: o toggle binário "Precisa de acessibilidade?" e o checkbox "Já sou paciente" do `PatientQuickRegisterScreen` não têm campo correspondente no backend hoje (nunca tiveram) — continuam só de interface no caminho "Primeiro acesso"; quem quiser detalhar acessibilidade agora faz isso na grade completa (9 opções) que já existe dentro do `PatientRegisterScreen`.
 
-**16. Google Maps API — RESOLVIDO (config adicionada)**
+**16. Google Maps API — RESOLVIDO (config + mapa real implementado)**
 - Chave 1 (Maps SDK Android/iOS, restrita ao pacote `com.navora.app`) adicionada em `mobile/app.json`: `android.config.googleMaps.apiKey` e `ios.config.googleMapsApiKey`.
-- Só a config — nenhum componente de mapa usa `react-native-maps` ainda (o mapa atual continua o esquemático/custom em `MapScreen.js`). A chave fica pronta pra quando o mapa real for implementado.
+- **Nota corrigida (16/10):** esta entrada dizia "nenhum componente usa react-native-maps ainda" — isso ficou desatualizado a partir do commit `a084bff` ("substitui mapa estático por Google Maps real"). Hoje `ExternalRouteScreen.js` (tela "Como chegar ao hospital") já importa e usa `MapView`/`Marker`/`PROVIDER_GOOGLE` de `react-native-maps` de verdade, com localização real do usuário. O mapa esquemático/custom (`MapScreen.js`) continua existindo em paralelo pra navegação interna (corredores/setores do hospital) — são dois mapas com propósitos diferentes, não um substituindo o outro.
 - Directions API e Chave 2 seguem fora de uso (decisão do usuário).
 
 **17. Beacon físico real comprado (16/10) — PREPARADO (aguardando configuração física)**
