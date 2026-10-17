@@ -58,6 +58,12 @@ const parseBirthDate = (value) => {
   return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : undefined;
 };
 
+// Inverso de parseBirthDate: data ISO (vinda da API) -> DD/MM/AAAA (formato do input mascarado).
+const isoToBrDate = (iso) => {
+  const match = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : '';
+};
+
 const buildAccessibility = (selected) =>
   Object.fromEntries(
     Object.entries(accessibilityMap)
@@ -65,11 +71,35 @@ const buildAccessibility = (selected) =>
       .map(([, key]) => [key, true])
   );
 
-export default function PatientRegisterScreen({ navigate, onPatientReady }) {
+// Inverso de accessibilityMap (chave do backend -> label do checkbox), usado pra
+// pre-marcar as opções já salvas quando a tela abre em modo de edição.
+const accessibilityKeyToLabel = Object.fromEntries(
+  Object.entries(accessibilityMap).map(([label, key]) => [key, label])
+);
+
+const buildSelectedFromAccessibility = (accessibility = {}) =>
+  Object.fromEntries(
+    Object.entries(accessibility || {})
+      .filter(([key, value]) => value && accessibilityKeyToLabel[key])
+      .map(([key]) => [accessibilityKeyToLabel[key], true])
+  );
+
+export default function PatientRegisterScreen({ navigate, onPatientReady, routeParams = {} }) {
   const { appColors } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
-  const [form, setForm] = useState({});
-  const [selected, setSelected] = useState({});
+  // mode: 'edit' vem do ProfileScreen (editar cadastro existente via PATCH /patients/me).
+  // Sem mode, é cadastro novo (do "Cadastre-se" ou do "Primeiro acesso" do acesso rápido,
+  // que so preenche nome/telefone/nascimento em initialValues e deixa o resto pra aqui).
+  const isEditMode = routeParams.mode === 'edit';
+  const initialValues = routeParams.initialValues || {};
+  const [form, setForm] = useState(() => ({
+    name: initialValues.name || '',
+    phone: initialValues.phone ? maskPhone(initialValues.phone) : '',
+    document: initialValues.document ? maskCPF(initialValues.document) : '',
+    birth: initialValues.birthDateIso ? isoToBrDate(initialValues.birthDateIso) : (initialValues.birth || ''),
+    emergencyContact: initialValues.emergencyContact ? maskPhone(initialValues.emergencyContact) : '',
+  }));
+  const [selected, setSelected] = useState(() => buildSelectedFromAccessibility(initialValues.accessibility));
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [visiblePasswords, setVisiblePasswords] = useState({});
@@ -101,6 +131,49 @@ export default function PatientRegisterScreen({ navigate, onPatientReady }) {
   const strength = useMemo(() => passwordStrength(form.password), [form.password]);
 
   const handleSubmit = async () => {
+    if (isEditMode) {
+      if (!form.name?.trim()) {
+        Alert.alert('Nome obrigatório', 'Informe seu nome completo para continuar.');
+        return;
+      }
+
+      if (Object.values(fieldErrors).some(Boolean)) {
+        Alert.alert('Confira os dados', 'Alguns campos precisam de atenção antes de continuar.');
+        return;
+      }
+
+      setLoading(true);
+      const editPayload = {
+        name: form.name.trim(),
+        phone: form.phone?.trim() || undefined,
+        patientCode: form.document?.trim() || undefined,
+        birthDate: parseBirthDate(form.birth),
+        accessibility: buildAccessibility(selected),
+        emergencyContact: form.emergencyContact?.trim() || undefined,
+      };
+
+      try {
+        // PATCH/PUT real em /patients/me — ao contrário do fluxo de criação abaixo,
+        // nunca chama registerPatient (evita o 409 "E-mail ja cadastrado"/duplicata).
+        await navoraApi.updateMyPatientProfile(editPayload);
+        const authUser = await navoraApi.getAuthMe();
+        const patient = await navoraApi.getMyPatientProfile();
+        onPatientReady?.({ ...patient, apiUser: authUser, authSource: 'api', hasAccount: true });
+        Alert.alert('Dados atualizados', 'Suas informações foram salvas com sucesso.');
+        navigate('Profile');
+      } catch (error) {
+        if (isAuthError(error)) {
+          Alert.alert('Sessão expirada', 'Entre novamente para salvar suas informações.');
+          navigate('Login');
+          return;
+        }
+        Alert.alert('Não foi possível salvar', error?.payload?.message || 'Confira os dados e tente novamente.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     if (!form.name?.trim() || !form.email?.trim() || !form.password?.trim()) {
       Alert.alert('Cadastro incompleto', 'Preencha nome, e-mail e senha para continuar.');
       return;
@@ -163,13 +236,23 @@ export default function PatientRegisterScreen({ navigate, onPatientReady }) {
     }
   };
 
+  // Em edição, e-mail/senha ficam fora — essa tela nunca muda credenciais
+  // (isso já tem fluxo próprio em "Segurança da conta").
+  const visibleFields = isEditMode
+    ? personalFields.filter((field) => !['email', 'password', 'confirmPassword'].includes(field.key))
+    : personalFields;
+
   return (
     <Screen>
-      <Header title="Cadastro do paciente" centerTitle onBack={() => navigate('Login')} />
+      <Header
+        title={isEditMode ? 'Editar meus dados' : 'Cadastro do paciente'}
+        centerTitle
+        onBack={() => navigate(isEditMode ? 'Profile' : 'Login')}
+      />
 
       <Text style={styles.sectionTitle}>Dados pessoais</Text>
       <View style={styles.formList}>
-        {personalFields.map((field) => {
+        {visibleFields.map((field) => {
           const isPasswordVisible = visiblePasswords[field.key];
           const error = fieldErrors[field.key];
 
@@ -258,7 +341,11 @@ export default function PatientRegisterScreen({ navigate, onPatientReady }) {
         disabled={loading}
         style={({ pressed }) => [styles.mainButton, pressed && styles.pressed, loading && styles.disabled, shadows.soft]}
       >
-        {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.mainButtonText}>Criar cadastro</Text>}
+        {loading ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <Text style={styles.mainButtonText}>{isEditMode ? 'Salvar alterações' : 'Criar cadastro'}</Text>
+        )}
       </Pressable>
     </Screen>
   );

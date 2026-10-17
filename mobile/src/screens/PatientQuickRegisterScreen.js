@@ -24,6 +24,17 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
       Alert.alert('Nome completo', 'Informe seu nome completo para continuar.');
       return;
     }
+
+    if (!quick) {
+      // "Primeiro acesso" promete criar uma conta de verdade — isso só existe no
+      // cadastro completo (PatientRegisterScreen, que chama navoraApi.registerPatient).
+      // O que foi digitado aqui só vai como prefill; e-mail/senha são preenchidos lá.
+      navigate('PatientRegister', {
+        initialValues: { name: name.trim(), phone, birth },
+      });
+      return;
+    }
+
     const patient = {
       type: 'patient',
       name: name.trim().split(' ')[0] || 'Paciente',

@@ -98,6 +98,20 @@ function getEmergencyContactSummary(
     : 'Não informado';
 }
 
+// Monta o prefill pra PatientRegisterScreen abrir em modo de edição (PATCH /patients/me)
+// em vez de criar um cadastro novo — era isto que faltava pros tiles "Dados pessoais" e
+// "Contato de emergência" e pro botão de editar (lápis) funcionarem de verdade.
+function buildEditInitialValues(userProfile = {}) {
+  return {
+    name: userProfile?.fullName || userProfile?.name || '',
+    phone: userProfile?.phone || '',
+    document: userProfile?.patientCode || '',
+    birthDateIso: userProfile?.birthDate || null,
+    emergencyContact: userProfile?.emergencyContact || '',
+    accessibility: userProfile?.accessibility || {},
+  };
+}
+
 
 export default function ProfileScreen({
   navigate,
@@ -360,7 +374,8 @@ export default function ProfileScreen({
           ? undefined
           : () =>
               navigate(
-                'PatientRegister'
+                'PatientRegister',
+                { mode: 'edit', initialValues: buildEditInitialValues(userProfile) }
               ),
     },
 
@@ -381,7 +396,8 @@ export default function ProfileScreen({
           ? undefined
           : () =>
               navigate(
-                'PatientRegister'
+                'PatientRegister',
+                { mode: 'edit', initialValues: buildEditInitialValues(userProfile) }
               ),
     },
 
@@ -779,7 +795,8 @@ export default function ProfileScreen({
               <Pressable
                 onPress={() =>
                   navigate(
-                    'PatientRegister'
+                    'PatientRegister',
+                    { mode: 'edit', initialValues: buildEditInitialValues(userProfile) }
                   )
                 }
                 accessibilityRole="button"
