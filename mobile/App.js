@@ -8,9 +8,7 @@ import HomeStartScreen from './src/screens/HomeStartScreen';
 import HelpChoiceScreen from './src/screens/HelpChoiceScreen';
 import CareAreaChoiceScreen from './src/screens/CareAreaChoiceScreen';
 import ExternalRouteScreen from './src/screens/ExternalRouteScreen';
-import ArrivalDetectedScreen from './src/screens/ArrivalDetectedScreen';
 import ArrivalPreparationScreen from './src/screens/ArrivalPreparationScreen';
-import ArrivalConfirmedScreen from './src/screens/ArrivalConfirmedScreen';
 import ProfileChoiceScreen from './src/screens/ProfileChoiceScreen';
 import PatientAccessChoiceScreen from './src/screens/PatientAccessChoiceScreen';
 import PatientIdentificationScreen from './src/screens/PatientIdentificationScreen';
@@ -64,9 +62,7 @@ const screens = {
   HelpChoice: HelpChoiceScreen,
   CareAreaChoice: CareAreaChoiceScreen,
   ExternalRoute: ExternalRouteScreen,
-  ArrivalDetected: ArrivalDetectedScreen,
   ArrivalPreparation: ArrivalPreparationScreen,
-  ArrivalConfirmed: ArrivalConfirmedScreen,
   ProfileChoice: ProfileChoiceScreen,
   PatientAccessChoice: PatientAccessChoiceScreen,
   PatientIdentification: PatientIdentificationScreen,

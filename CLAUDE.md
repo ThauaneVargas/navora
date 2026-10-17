@@ -42,8 +42,11 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 **4. "Pedir correção na recepção" — RESOLVIDO (nota antiga estava errada)**
 - O botão existe e funciona: `ArrivalPreparationScreen.js`, linha do `SecondaryButton title="Pedir correção na recepção"`, chama `useReception()` — marca a origem como `'reception-pending'` via `onAreaDetected` e navega pra `Search` já com a busca "Recepção" preenchida. A tela é alcançada de fato (importada em `App.js` e referenciada por outras telas do fluxo de chegada). A nota anterior ("não encontrado no código") estava errada — não precisa confirmar nada com o usuário, o fluxo já é real.
 
-**5. ArrivalDetectedScreen.js visual — baixa prioridade**
-- Visualmente fraco comparado a outras telas. Reforçar hierarquia visual seguindo padrão do app (fundo branco/gelo, bordô).
+**5. ArrivalDetectedScreen.js visual — RESOLVIDO (era tela morta, não era bug visual) (16/10)**
+- Investigando pra melhorar o visual, achei que `ArrivalDetectedScreen.js` já tinha sido redesenhado faz tempo (commit `6959e6c`, "ArrivalDetected redesign") — animação de entrada, anel de ícone com pulso, card com sombra, tudo no padrão bordô/branco do app. O visual nunca foi o problema.
+- **O problema real: ninguém navega pra essa tela.** Busca em todo `mobile/` (fora build antigo) não encontrou nenhum `navigate('ArrivalDetected', ...)` em lugar nenhum além do próprio arquivo. O fluxo real de chegada é `ArrivalPreparationScreen` → `Search`, direto — ele lê o mesmo estado (`hospitalDetection`, de `hospitalDetectionService`, que esse sim é usado de verdade por `handleAreaDetected`/`handleLoginSuccess`/etc. em `App.js`) só que sem passar por nenhuma tela dedicada de "chegada confirmada".
+- **Achado por tabela:** `ArrivalConfirmedScreen.js` estava na mesma situação — só se chamava recursivamente (correção de entrada), nunca tinha um ponto de entrada externo real.
+- **Decisão do usuário (16/10): apagar as duas.** Removidos `mobile/src/screens/ArrivalDetectedScreen.js` e `ArrivalConfirmedScreen.js`, e os imports/registros (`ArrivalDetected`/`ArrivalConfirmed`) em `App.js`. `ArrivalPreparationScreen.js` continua sendo a única tela real desse passo, inalterada. Verificado: `App.js` continua passando no parse do Babel depois da remoção, e não sobrou nenhuma referência aos dois componentes em lugar nenhum do código.
 
 **6. Login falhando — RESOLVIDO**
 - Timeout de 20s via AbortController em `api.js`, mensagens específicas por tipo de erro.
