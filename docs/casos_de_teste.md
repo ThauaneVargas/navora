@@ -1,6 +1,6 @@
 # Casos de Teste — Navora
 
-> Catálogo extraído dos testes que **já existem e já passam** no backend (`backend-nest/src/**/*.spec.ts`), mais os casos manuais cobrindo fluxos do mobile que ainda não têm automação. Rodado nesta sessão (20/10/2026): `npm test` → **13/13 suítes passando**. `npm run test:e2e` não pôde ser executado nesta sessão (Docker Desktop estava fora do ar — precisa de Postgres local; ver §4).
+> Catálogo extraído dos testes que **já existem e já passam** no backend (`backend-nest/src/**/*.spec.ts`), mais os casos manuais cobrindo fluxos do mobile que ainda não têm automação. Última execução (20/10/2026): `npm test` → **15/15 suítes passando**; `npm run test:e2e` → **4/4 passando** (depois da correção do rate limit, ver §4).
 
 ## 1. Estratégia de teste
 
@@ -115,15 +115,25 @@ Validados via `curl` reproduzindo o payload exato que a tela monta (contra backe
 | CTM-08 | App funciona sem beacon físico | Nenhum hardware BLE conectado | Usar o app normalmente (login, navegar, SOS) | Nenhuma tela trava esperando Bluetooth | ✅ (regra de escopo, violação seria bug crítico) |
 | CTM-09 | Fallback offline | Backend inacessível | Pedir rota com a API fora do ar | `navigationAdapter.js` responde com rota simulada, sem tela em branco/erro fatal | `PENDENTE` — não reexecutado nesta sessão |
 
-## 4. Lacunas de execução nesta sessão
+## 4. E2E e achados de lint (20/10)
 
-- `npm run test:e2e` não foi executado em 20/10: Docker Desktop estava parado (container `navora-postgres` inacessível) e a decisão foi não religar o Docker fora de uma tarefa que precisasse disso de verdade. **Pendente**: rodar `npm run test:e2e` na próxima sessão com backend local de pé.
+- **E2E estava quebrado e ninguém sabia.** `auth-dashboard.e2e.spec.ts` faz 6 `POST /auth/login` seguidos, mas a rota tem `@Throttle({ limit: 5, ttl: 60000 })` (proteção contra força bruta, adicionada depois do teste). A 6ª chamada tomava `429` em vez do `400` esperado. Correção no **teste**, não na proteção: `app.module.ts` passou a registrar o guard global com `useExisting` (padrão da doc do NestJS — comportamento de produção idêntico), e o e2e usa `overrideProvider(ThrottlerGuard)` pra desligar o limite só ali. Verificado à parte que, sem o override, 5 logins errados dão `401` e o 6º dá `429` — a proteção continua ativa.
+- **Bug real achado pelo lint no web-admin:** botão "Gerar relatório" do dashboard admin (`AdminDashboard` em `web-admin/src/App.jsx`) usava uma variável `report` que não existia naquele componente — clicar lançava `ReferenceError` e o modal não abria. Corrigido reaproveitando `app.generateReport('diario')` (mesmo fluxo da página de Relatórios: API, fallback local, aviso de acesso negado).
+- **`mobile/src/screens/MapScreen.js` não era lido pelo ESLint:** dois `->` crus em texto JSX (`{origem} -> {destino}`) são JSX inválido. O Babel do Metro tolera, então o app funcionava, mas o arquivo de mapa (1384 linhas) ficava sem nenhuma checagem. Trocado por `{'->'}` (mesmo texto na tela).
+- Lint agora roda nos 3 projetos: backend `0 erros / 161 avisos`, mobile `0 erros / 74 avisos`, web-admin `0 erros / 63 avisos`. Avisos são majoritariamente `any` (backend), regras do React Compiler (projeto não usa o compiler — idioma `useRef(new Animated.Value()).current` do RN cai aqui) e variáveis não usadas.
+
+## 5. Lacunas que continuam
+
 - CTM-05 e CTM-06 (os dois fluxos corrigidos no item 15 do `CLAUDE.md`) foram validados pela lógica do código e por teste de API equivalente (CTM-01/CTM-02), mas **não num celular físico renderizando a tela real**. Recomendado antes de considerar o item 15 definitivamente encerrado.
 
-## 5. Como rodar
+## 6. Como rodar
 
 ```bash
 cd backend-nest
 npm test          # unitário, nao precisa de banco
-npm run test:e2e  # precisa de Postgres local rodando (docker compose up -d, ou container navora-postgres)
+npm run test:e2e  # precisa de Postgres local rodando (container navora-postgres)
+npm run lint
+
+cd ../mobile && npm run lint
+cd ../web-admin && npm run lint
 ```

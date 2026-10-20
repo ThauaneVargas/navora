@@ -1041,6 +1041,14 @@ function AdminDashboard({ app }) {
   const heatmapSectors = app.sectors.filter((sector) => sectorBelongsToFloor(sector, dashboardFloorKey) && (app.filters.sector === 'Todos' || matchesSector(app.filters.sector, sector)));
   const heatmapNodes = (app.navigationMap?.nodes || []).filter((node) => nodeBelongsToFloor(node, dashboardFloorKey));
 
+  // Mesmo fluxo da ReportsPage: app.generateReport já cai pro relatório local se
+  // a API estiver fora e já avisa em caso de acesso negado.
+  const openDailyReport = async () => {
+    const report = await app.generateReport('diario');
+    if (report?.source === 'auth-error') return;
+    app.openModal('Relatorio operacional', <ReportView report={report} />, <ReportFooter app={app} report={report} />);
+  };
+
   return (
     <div className="page-stack">
       <section className="stats-grid">
@@ -1064,7 +1072,7 @@ function AdminDashboard({ app }) {
               {app.sectors.map((sector) => <option key={sector.id} value={sector.name}>{sector.name}</option>)}
             </select>
             <button onClick={() => app.showToast('Dados atualizados com sucesso')}>Atualizar dados</button>
-            <button onClick={() => app.openModal('Relatorio operacional', <ReportView report={report} />, <ReportFooter app={app} report={report} />)}>Gerar relatorio</button>
+            <button onClick={openDailyReport}>Gerar relatorio</button>
           </Toolbar>
           <DashboardHeatmap sectors={heatmapSectors} nodes={heatmapNodes} floor={dashboardFloor} onSelect={(sector) => openSector(app, sector)} />
         </Panel>

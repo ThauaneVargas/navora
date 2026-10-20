@@ -164,7 +164,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
           <Text style={[styles.label, { color: appColors.muted }]}>Rota para</Text>
           <Text style={[styles.routeTitle, { color: appColors.text }]} numberOfLines={1}>{activeRoute.destination}</Text>
           <Text style={[styles.routePath, { color: appColors.text }]} numberOfLines={1}>
-            {activeRoute.origin} -> {activeRoute.destination}
+            {activeRoute.origin} {'->'} {activeRoute.destination}
           </Text>
           <Text style={[styles.routeMetaText, { color: appColors.muted }]} numberOfLines={1}>
             {remainingDistance} - aproximadamente {remainingTime}
@@ -456,7 +456,7 @@ function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFl
           <MaterialCommunityIcons name="swap-vertical" size={18} color={appColors.primary} />
           <View style={styles.transferCopy}>
             <Text style={[styles.transferTitle, { color: appColors.text }]}>
-              {floorTransfers[0].fromFloor} -> {floorTransfers[0].toFloor}
+              {floorTransfers[0].fromFloor} {'->'} {floorTransfers[0].toFloor}
             </Text>
             <Text style={[styles.transferText, { color: appColors.muted }]} numberOfLines={2}>
               {floorTransfers[0].instruction || `Continua em ${floorTransfers[0].toFloor}.`}
