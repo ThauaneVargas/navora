@@ -86,7 +86,7 @@ flowchart LR
 | Ambiente | Backend | Banco | Observações |
 |---|---|---|---|
 | Local (dev) | `npm run start:dev` (porta 8000) | PostgreSQL via Docker (`navora-postgres`) | IP Wi-Fi da máquina muda — `mobile/.env` precisa acompanhar. |
-| Produção | Render.com (`navora-backend-kpio.onrender.com`) | Postgres gerenciado pelo Render (free tier, expira 2026-10-10 — **conferir se foi renovado**) | Plano free dorme após 15 min; cold start ~50s — por isso `REQUEST_TIMEOUT_MS = 60000` no mobile. Deploy não roda seed automaticamente (`render.yaml` só roda migrations); população inicial foi manual. |
+| Produção | Render.com (`navora-backend-kpio.onrender.com`) | Postgres gerenciado pelo Render (free tier) | **Confirmado em 20/10 via Render API: o Postgres expirou em 10/10 e está suspenso por cobrança (`status: suspended`, `suspenders: ["billing"]`).** O serviço web não está suspenso, mas fica em crash-loop: `prisma migrate deploy` falha com `P1001: Can't reach database server`, reinicia, falha de novo — nunca chega a escutar porta, por isso qualquer request trava até o timeout do cliente. Produção está **fora do ar** desde então. Decisão de como resolver (recriar Postgres free, ou plano pago) é do usuário — não executado nesta sessão. Último deploy bem-sucedido: 10/09, commit `b93df9d` (23/08) — confirma a nota de "produção desatualizada" abaixo. |
 | Mobile (distribuição) | — | — | Dois caminhos testados: Expo Go (LAN ou túnel `exp.direct`) e APK standalone assinado com keystore de debug, apontando pra produção. |
 
 ## 8. Decisões arquiteturais que não são triviais de inferir do código
