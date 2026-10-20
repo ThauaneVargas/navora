@@ -34,6 +34,9 @@ import { VisitorAccessModule } from './visitor-access/visitor-access.module';
     PatientsModule,
     ReportsModule,
   ],
-  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
+  // `useExisting` (e não `useClass`) é o padrão da doc do NestJS pra guard global
+  // poder ser substituído em teste via `overrideProvider(ThrottlerGuard)`.
+  // Em produção o comportamento é idêntico: o mesmo ThrottlerGuard vale pra todas as rotas.
+  providers: [ThrottlerGuard, { provide: APP_GUARD, useExisting: ThrottlerGuard }],
 })
 export class AppModule {}

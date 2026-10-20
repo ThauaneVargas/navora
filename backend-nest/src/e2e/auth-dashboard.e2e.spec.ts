@@ -1,13 +1,19 @@
 import { ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import * as assert from 'node:assert/strict';
 import request = require('supertest');
 import { AppModule } from '../app.module';
 
 async function run() {
+  // Rate limiting (5 logins/min em /auth/login) é proteção de produção; este
+  // teste faz 6 logins seguidos e tomaria 429. Desligado só aqui no teste.
   const moduleRef = await Test.createTestingModule({
     imports: [AppModule],
-  }).compile();
+  })
+    .overrideProvider(ThrottlerGuard)
+    .useValue({ canActivate: () => true })
+    .compile();
 
   const app = moduleRef.createNestApplication();
 
