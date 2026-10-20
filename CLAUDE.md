@@ -117,6 +117,7 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 - Projeto está no **Expo SDK 57**.
 - Backend local: IP Wi-Fi da máquina de dev + porta 8000 (NestJS + PostgreSQL via Docker) — conferir `mobile/.env` bate com o IP atual.
 - Backend produção: `https://navora-backend-kpio.onrender.com` (Render.com — dorme após 15min, primeiro request pode levar 30-50s).
+- **Banco de produção é Postgres FREE e expira a cada ~30 dias.** O original expirou em 10/10 e derrubou a produção por 10 dias sem ninguém notar. Recriado em 20/10 como `navora-db-2` — **expira em 19/11/2026**. Procedimento de recriação (migrations+seed vindos de `main`, não desta branch) documentado em `docs/arquitetura.md` §7. Pra checar se produção está viva, testar **login**, não `/health` (que não consulta o banco).
 - **Produção está com o backend desatualizado em relação a esta branch** (`finalizacao-sem-ble`): faltam lá a tabela `notifications`, colunas `google_id`/`password_reset_token`/`password_reset_expires` em `users`, e o rate-limiting (`@nestjs/throttler`) + `helmet`. Antes de fazer merge pra `main`, avaliar esse gap com calma (não é automático — decisão do usuário).
 
 ## Identidade visual

@@ -86,7 +86,20 @@ flowchart LR
 | Ambiente | Backend | Banco | Observações |
 |---|---|---|---|
 | Local (dev) | `npm run start:dev` (porta 8000) | PostgreSQL via Docker (`navora-postgres`) | IP Wi-Fi da máquina muda — `mobile/.env` precisa acompanhar. |
-| Produção | Render.com (`navora-backend-kpio.onrender.com`) | Postgres gerenciado pelo Render (free tier) | **Confirmado em 20/10 via Render API: o Postgres expirou em 10/10 e está suspenso por cobrança (`status: suspended`, `suspenders: ["billing"]`).** O serviço web não está suspenso, mas fica em crash-loop: `prisma migrate deploy` falha com `P1001: Can't reach database server`, reinicia, falha de novo — nunca chega a escutar porta, por isso qualquer request trava até o timeout do cliente. Produção está **fora do ar** desde então. Decisão de como resolver (recriar Postgres free, ou plano pago) é do usuário — não executado nesta sessão. Último deploy bem-sucedido: 10/09, commit `b93df9d` (23/08) — confirma a nota de "produção desatualizada" abaixo. |
+| Produção | Render.com (`navora-backend-kpio.onrender.com`), roda a branch `main` (commit `b93df9d`, de 23/08) | Postgres free `navora-db-2` (Oregon, v16), **expira 19/11/2026** | Plano free dorme após 15 min; cold start ~50s — por isso `REQUEST_TIMEOUT_MS = 60000` no mobile. O start command roda `prisma migrate deploy`, mas **não roda seed** — banco novo precisa ser populado à mão (ver procedimento abaixo). |
+
+### Incidente 10/10–20/10 e procedimento de recriação do banco
+
+- O Postgres free original (`navora-db`) expirou em 10/10 e foi suspenso por cobrança. O serviço web ficou em crash-loop (`prisma migrate deploy` → `P1001: Can't reach database server`), sem nunca escutar porta — produção ficou fora do ar por 10 dias sem ninguém notar.
+- Resolvido em 20/10 criando `navora-db-2` (free). **O free tier expira a cada ~30 dias — este procedimento vai precisar ser repetido até 19/11, ou trocar pra plano pago.**
+- Procedimento usado (repetível):
+  1. Criar Postgres free no Render, mesma região do serviço (Oregon), versão 16.
+  2. No painel do banco, em **PostgreSQL Inbound IP Rules**, adicionar `0.0.0.0/0` (temporário — a regra de workspace não vale pro banco).
+  3. Copiar a **External Database URL**.
+  4. Fazer `git worktree add` de `origin/main` (o código que a produção roda — esta branch tem 3 migrations a mais que `main`, então migrations/seed precisam vir de `main`), `npm ci`, `npx prisma generate`, e com `DATABASE_URL` = URL externa (`?sslmode=require`): `npx prisma migrate deploy` e `npx prisma db seed`.
+  5. No serviço, atualizar a env `DATABASE_URL` para a URL **interna** (a externa sem o sufixo `.oregon-postgres.render.com`) — isso já dispara o deploy.
+  6. Validar: login de `admin@navora.com`/`recepcao@navora.com`/`paciente@navora.com` (senha `navora-demo-123`) deve dar 201 — `/health` sozinho não prova nada, ele não consulta o banco.
+  7. Remover a regra `0.0.0.0/0` do banco (o serviço usa a URL interna, não precisa dela).
 | Mobile (distribuição) | — | — | Dois caminhos testados: Expo Go (LAN ou túnel `exp.direct`) e APK standalone assinado com keystore de debug, apontando pra produção. |
 
 ## 8. Decisões arquiteturais que não são triviais de inferir do código
