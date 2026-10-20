@@ -14,7 +14,9 @@ import { RolesGuard } from './roles.guard';
 
 const GUARDS_METADATA = '__guards__';
 
-function contextFor(handler: Function, user?: { role?: UserRole }, authorization?: string): ExecutionContext {
+type AnyFunction = (...args: any[]) => any;
+
+function contextFor(handler: AnyFunction, user?: { role?: UserRole }, authorization?: string): ExecutionContext {
   return {
     getHandler: () => handler,
     getClass: () => class TestController {},
@@ -27,17 +29,17 @@ function contextFor(handler: Function, user?: { role?: UserRole }, authorization
   } as unknown as ExecutionContext;
 }
 
-function guardNames(handler: Function) {
-  return (Reflect.getMetadata(GUARDS_METADATA, handler) || []).map((guard: Function) => guard.name);
+function guardNames(handler: AnyFunction) {
+  return (Reflect.getMetadata(GUARDS_METADATA, handler) || []).map((guard: AnyFunction) => guard.name);
 }
 
-function assertAdminEndpoint(handler: Function) {
+function assertAdminEndpoint(handler: AnyFunction) {
   const guards = guardNames(handler);
   assert.ok(guards.includes('JwtAuthGuard'), 'endpoint administrativo exige JwtAuthGuard');
   assert.ok(guards.includes('RolesGuard'), 'endpoint administrativo exige RolesGuard');
 }
 
-function assertPublicEndpoint(handler: Function) {
+function assertPublicEndpoint(handler: AnyFunction) {
   assert.equal(Reflect.getMetadata(GUARDS_METADATA, handler), undefined, 'endpoint publico nao deve exigir guard');
 }
 
