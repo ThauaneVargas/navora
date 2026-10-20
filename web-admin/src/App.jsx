@@ -95,6 +95,9 @@ const pagePaths = {
   'reception-settings': '/recepcao/configuracoes',
 };
 const pathPages = Object.fromEntries(Object.entries(pagePaths).map(([page, path]) => [path, page]));
+
+// Intervalo da atualização automática do painel (chamados/SOS, visitantes, resumo).
+const OPERATIONAL_REFRESH_MS = 15000;
 const profileOverrideKey = 'navora.admin.profile_overrides';
 
 const statusOrder = {
@@ -378,6 +381,7 @@ function App() {
   const [visitors, setVisitors] = useState(initialVisitors);
   const [settings, setSettings] = useState(initialSettings);
   const [dashboardSummary, setDashboardSummary] = useState(null);
+  const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState(null);
   const [filters, setFilters] = useState({});
@@ -432,34 +436,51 @@ function App() {
     return false;
   };
 
-  const loadVisitorAccessRequests = async () => {
+  // Atualização automática (silent): sessão expirada ainda desloga, mas falha de
+  // rede/permissão não vira aviso a cada ciclo e os dados atuais ficam na tela —
+  // o backend free do Render dorme e acorda, isso é esperado.
+  const handleSilentRefreshFailure = (error) => {
+    if (isUnauthorizedError(error)) handleAuthFailure(error);
+    return false;
+  };
+
+  const loadVisitorAccessRequests = async ({ silent = false } = {}) => {
     try {
       const requests = await adminApi.getVisitorAccessRequests();
       setVisitors(requests.map(mapVisitorAccessFromApi));
+      return true;
     } catch (error) {
-      if (handleAuthFailure(error)) return;
+      if (silent) return handleSilentRefreshFailure(error);
+      if (handleAuthFailure(error)) return false;
       showToast('API indisponível, mantendo dados simulados de visitantes', 'warning');
+      return false;
     }
   };
 
-  const loadCalls = async () => {
+  const loadCalls = async ({ silent = false } = {}) => {
     try {
       const requests = await adminApi.getCalls();
       setCalls(requests.map(mapCallFromApi));
+      return true;
     } catch (error) {
-      if (handleAuthFailure(error)) return;
+      if (silent) return handleSilentRefreshFailure(error);
+      if (handleAuthFailure(error)) return false;
       showToast('API indisponível, mantendo chamados simulados', 'warning');
+      return false;
     }
   };
 
-  const loadDashboardSummary = async () => {
+  const loadDashboardSummary = async ({ silent = false } = {}) => {
     try {
       const summary = await adminApi.getDashboardSummary();
       setDashboardSummary(summary);
+      return true;
     } catch (error) {
-      if (handleAuthFailure(error)) return;
+      if (silent) return handleSilentRefreshFailure(error);
+      if (handleAuthFailure(error)) return false;
       setDashboardSummary(null);
       showToast('API indisponível, mantendo resumo local', 'warning');
+      return false;
     }
   };
 
@@ -491,7 +512,7 @@ function App() {
     }
   };
 
-  const loadSectors = async () => {
+  const loadSectors = async ({ silent = false } = {}) => {
     try {
       const { data: apiSectors, source } = await adminApi.getSectors();
       if (!Array.isArray(apiSectors)) throw new Error('Formato invalido de setores');
@@ -499,26 +520,32 @@ function App() {
       const structuralSectors = apiSectors.map(normalizeSectorFromApi);
       setSectors(mergeSectorOperationalFallback(structuralSectors, initialSectors));
       setSectorsSource(source);
+      return true;
     } catch (error) {
-      if (handleAuthFailure(error)) return;
+      if (silent) return handleSilentRefreshFailure(error);
+      if (handleAuthFailure(error)) return false;
       setSectors(initialSectors);
       setSectorsSource('fallback');
       showToast('API indisponível, usando setores simulados', 'warning');
+      return false;
     }
   };
 
-  const loadBeacons = async () => {
+  const loadBeacons = async ({ silent = false } = {}) => {
     try {
       const { data: apiBeacons, source } = await adminApi.getBeacons();
       if (!Array.isArray(apiBeacons)) throw new Error('Formato invalido de beacons');
 
       setBeacons(apiBeacons.map(normalizeBeaconFromApi));
       setBeaconsSource(source);
+      return true;
     } catch (error) {
-      if (handleAuthFailure(error)) return;
+      if (silent) return handleSilentRefreshFailure(error);
+      if (handleAuthFailure(error)) return false;
       setBeacons(initialBeacons);
       setBeaconsSource('fallback');
       showToast('API indisponível, usando beacons simulados', 'warning');
+      return false;
     }
   };
 
@@ -547,17 +574,44 @@ function App() {
     }
   };
 
+  // Dados que mudam durante o plantão (chamados/SOS, visitantes, resumo, setores, beacons).
+  // silent: atualização automática, sem avisos. announce: mostra "Dados atualizados"
+  // (só no clique em "Atualizar dados" — no login e no timer, não).
+  const refreshOperationalData = async ({ silent = false, announce = !silent } = {}) => {
+    const results = await Promise.all([
+      loadCalls({ silent }),
+      loadVisitorAccessRequests({ silent }),
+      loadDashboardSummary({ silent }),
+      loadSectors({ silent }),
+      loadBeacons({ silent }),
+    ]);
+    const allLoaded = results.every(Boolean);
+    if (allLoaded) setLastRefreshedAt(new Date());
+    if (announce && allLoaded) showToast('Dados atualizados');
+    return allLoaded;
+  };
+
   useEffect(() => {
     if (currentRole) {
-      loadVisitorAccessRequests();
-      loadCalls();
-      loadDashboardSummary();
+      refreshOperationalData({ announce: false });
       loadCheckIns();
       loadMessages();
-      loadSectors();
-      loadBeacons();
       loadNavigationData();
     }
+  }, [currentRole]);
+
+  // Sem isto, um SOS criado no celular só aparecia no painel depois de recarregar a
+  // página — a lista de chamados só era buscada no login. Pula quando a aba está
+  // em segundo plano pra não gastar requisição à toa.
+  useEffect(() => {
+    if (!currentRole) return undefined;
+    const timer = window.setInterval(() => {
+      if (document.hidden) return;
+      refreshOperationalData({ silent: true });
+    }, OPERATIONAL_REFRESH_MS);
+    return () => window.clearInterval(timer);
+    // refreshOperationalData só usa setters e o adminApi — não fica com estado velho.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRole]);
 
   useEffect(() => {
@@ -964,7 +1018,7 @@ function App() {
   const app = {
     users, staffAccounts, currentUser, calls, beacons, beaconsSource, checkins, sectors, sectorsSource,
     navigationSource, navigationAreas, navigationDestinations, navigationMap,
-    messages, visitors, settings, filters, dashboardSummary,
+    messages, visitors, settings, filters, dashboardSummary, lastRefreshedAt, refreshOperationalData,
     setCurrentPage: navigatePage, setFilters, showToast, openModal, closeModal,
     updateCallStatus, assignTeam, closeCall, createCheckin, updateCheckinStatus,
     updateBeacon, restartBeacon, createMessage, saveSettings, generateReport, exportToCSV,
@@ -1071,7 +1125,7 @@ function AdminDashboard({ app }) {
               <option value="Todos">Todos os setores</option>
               {app.sectors.map((sector) => <option key={sector.id} value={sector.name}>{sector.name}</option>)}
             </select>
-            <button onClick={() => app.showToast('Dados atualizados com sucesso')}>Atualizar dados</button>
+            <button onClick={() => app.refreshOperationalData()}>Atualizar dados</button>
             <button onClick={openDailyReport}>Gerar relatorio</button>
           </Toolbar>
           <DashboardHeatmap sectors={heatmapSectors} nodes={heatmapNodes} floor={dashboardFloor} onSelect={(sector) => openSector(app, sector)} />
@@ -1088,16 +1142,7 @@ function AdminHeatmap({ app }) {
   const initialSector = app.sectors.find((sector) => matchesSector(app.filters.sector, sector));
   const [floorKey, setFloorKey] = useState(normalizeHeatmapFloor(app.filters.floor) || normalizeHeatmapFloor(initialSector?.floor) || 'terreo');
   const [sectorKey, setSectorKey] = useState(app.filters.sector || 'Todos');
-  const [lastUpdated, setLastUpdated] = useState(() => new Date());
   const activeFloor = getHeatmapFloorOption(floorKey);
-  const refreshMap = (silent = false) => {
-    setLastUpdated(new Date());
-    if (!silent) app.showToast('Mapa atualizado');
-  };
-  useEffect(() => {
-    const timer = window.setInterval(() => refreshMap(true), 60000);
-    return () => window.clearInterval(timer);
-  }, []);
   const floorSectors = app.sectors.filter((sector) => sectorBelongsToFloor(sector, floorKey));
   const visible = floorSectors.filter((sector) => sectorKey === 'Todos' || matchesSector(sectorKey, sector));
   const floorNodes = (app.navigationMap?.nodes || []).filter((node) => nodeBelongsToFloor(node, floorKey));
@@ -1135,7 +1180,7 @@ function AdminHeatmap({ app }) {
           <option value="Todos">Todos os setores</option>
           {floorSectors.map((s) => <option key={s.id} value={s.code || s.name}>{s.name}</option>)}
         </select>
-        <button className="heatmap-refresh" onClick={() => refreshMap()}>
+        <button className="heatmap-refresh" onClick={() => app.refreshOperationalData()}>
           <RefreshCw size={16} />Atualizar dados
         </button>
         <button className="heatmap-export" onClick={() => app.exportToCSV('heatmap-setores.csv', visible)}>
@@ -1150,7 +1195,7 @@ function AdminHeatmap({ app }) {
         <article><Activity size={16} /><span>Fluxo alto</span><b>{highFlowSectors}</b></article>
       </section>
       <div className="heatmap-layout heatmap-screen-layout">
-        <Heatmap sectors={visible} nodes={floorNodes} floor={activeFloor} beacons={floorBeacons} onSelect={(sector) => openSector(app, sector)} large lastUpdated={lastUpdated} />
+        <Heatmap sectors={visible} nodes={floorNodes} floor={activeFloor} beacons={floorBeacons} onSelect={(sector) => openSector(app, sector)} large lastUpdated={app.lastRefreshedAt} />
         <aside className="rank-panel" aria-label="Setores monitorados">
           <div className="rank-panel-head">
             <h3>Setores monitorados</h3>
@@ -1912,7 +1957,7 @@ function Heatmap({ sectors, nodes = [], floor = heatmapFloorOptions[0], beacons 
         {updatedLabel ? (
           <div className="heatmap-update" aria-live="polite">
             <span><Clock3 size={14} />Atualizado as {updatedLabel}</span>
-            <small>Auto a cada 60s</small>
+            <small>Auto a cada {OPERATIONAL_REFRESH_MS / 1000}s</small>
           </div>
         ) : null}
       </header>

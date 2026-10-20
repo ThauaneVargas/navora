@@ -23,6 +23,10 @@ const NAV_COLORS = {
 
 const HOSPITAL_FLOORS = ['Térreo', '2º Andar', '3º Andar', '4º Andar'];
 
+// Array vazio compartilhado: um `[]` novo a cada render fazia o useMemo do
+// routeMap recalcular o mapa inteiro em toda renderização.
+const EMPTY_LIST = [];
+
 export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute, navigationProgress: selectedProgress, onEndRoute }) {
   const { activeRoute: fallbackRoute, appColors, isDark } = useApp();
   const { width, height } = useWindowDimensions();
@@ -31,8 +35,8 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
   const [zoom, setZoom] = useState(1);
   const [selectedFloor, setSelectedFloor] = useState(null);
   const [staticFloor, setStaticFloor] = useState('Térreo');
-  const routeNodes = Array.isArray(activeRoute?.nodes) ? activeRoute.nodes : [];
-  const routeEdges = Array.isArray(activeRoute?.edges) ? activeRoute.edges : [];
+  const routeNodes = Array.isArray(activeRoute?.nodes) ? activeRoute.nodes : EMPTY_LIST;
+  const routeEdges = Array.isArray(activeRoute?.edges) ? activeRoute.edges : EMPTY_LIST;
   const useDynamicRoute = activeRoute?.source === 'api' && activeRoute?.routeFound !== false && routeNodes.length > 0;
   const blockedApiRoute = activeRoute?.source === 'api' && activeRoute?.routeFound === false;
   const fallbackProgress = useMemo(

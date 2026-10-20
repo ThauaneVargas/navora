@@ -113,6 +113,8 @@ Validados via `curl` reproduzindo o payload exato que a tela monta (contra backe
 | CTM-06 | Editar perfil pela tela | Conta logada | `ProfileScreen` → "Dados pessoais" ou "Contato de emergência" ou lápis | Abre `PatientRegisterScreen` em modo edição, sem campos de e-mail/senha, pré-preenchido | `PENDENTE` — validado por leitura de código, não em dispositivo físico |
 | CTM-07 | SOS com confirmação | App aberto | `HelpScreen` → SOS → confirmar no alerta | `POST /calls/sos` disparado só após confirmar; chamado aparece no `web-admin` com contato de emergência | ✅ (sessão de 26/09, ponta a ponta) |
 | CTM-08 | App funciona sem beacon físico | Nenhum hardware BLE conectado | Usar o app normalmente (login, navegar, SOS) | Nenhuma tela trava esperando Bluetooth | ✅ (regra de escopo, violação seria bug crítico) |
+| CTM-10 | SOS novo aparece no painel sem recarregar | `web-admin` aberto e logado como recepção, aba visível | Disparar SOS pelo celular e **não** tocar no painel | Chamado aparece na lista em até ~15 s (atualização automática). Antes de 20/10 só aparecia depois de recarregar a página | `PENDENTE` — implementado e compilado, não exercitado num navegador |
+| CTM-11 | Botão "Atualizar dados" busca de verdade | Painel logado | Dashboard admin ou Mapa de calor → "Atualizar dados" | Lista/contadores refletem o backend; toast "Dados atualizados" só se todas as buscas derem certo; horário do mapa de calor muda. Antes: só mostrava o toast, sem buscar nada | `PENDENTE` — idem |
 | CTM-09 | Fallback offline | Backend inacessível | Pedir rota com a API fora do ar | `navigationAdapter.js` responde com rota simulada, sem tela em branco/erro fatal | `PENDENTE` — não reexecutado nesta sessão |
 
 ## 4. E2E e achados de lint (20/10)
