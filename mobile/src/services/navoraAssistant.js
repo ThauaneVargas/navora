@@ -61,8 +61,10 @@ const reply = (intent, text, action = null) => ({
 
 // --- Vocabulário (sempre sem acento — o texto é normalizado antes) ----------
 
+// Sem "urgente": "preciso ir no banheiro urgente" não é emergência.
+// ("pronto socorro" cai em "socorro" de propósito.)
 const EMERGENCY_TERMS = [
-  'sos', 'socorro', 'emergencia', 'urgente', 'urgencia', 'passando mal',
+  'sos', 'socorro', 'emergencia', 'urgencia', 'passando mal',
   'dor no peito', 'infarto', 'avc', 'derrame', 'falta de ar', 'sem ar',
   'nao consigo respirar', 'desmaio', 'desmaiei', 'desmaiou', 'convulsao',
   'sangrando', 'sangramento', 'hemorragia', 'perdendo sangue',
@@ -102,8 +104,21 @@ const THEME_TERMS = [
 const END_ROUTE_TERMS = ['finalizar rota', 'encerrar rota', 'parar rota', 'cancelar rota', 'sair da rota'];
 const ARRIVED_TERMS = ['cheguei', 'ja cheguei', 'estou no destino', 'aguardando atendimento', 'esperando atendimento'];
 const LOST_TERMS = ['perdido', 'perdida', 'me perdi', 'nao sei onde estou', 'onde estou'];
-const RESTRICTED_TERMS = ['centro cirurgico', 'bloco cirurgico', 'cirurgia'];
+// Genéricos: só valem se a frase não citar um destino ("não acho a saída" é destino).
+const LOST_GENERIC_TERMS = ['nao acho', 'nao encontro', 'nao consigo achar', 'nao sei chegar'];
+const RESTRICTED_TERMS = ['centro cirurgico', 'bloco cirurgico', 'cirurgia', 'uti', 'terapia intensiva'];
 const EMERGENCY_EXIT_TERMS = ['saida de emergencia', 'rota de fuga', 'evacuacao', 'evacuar'];
+
+// Regra de escopo do projeto: o Navora não faz agendamento.
+const SCHEDULING_TERMS = [
+  'marcar consulta', 'marcar uma consulta', 'marcar exame', 'marcar um exame', 'agendar',
+  'agendamento', 'remarcar', 'desmarcar', 'cancelar consulta', 'cancelar exame',
+];
+
+const PARKING_TERMS = ['estacionamento', 'estacionar', 'estaciono', 'vaga de carro', 'onde paro o carro'];
+
+// O app não tem horário de funcionamento nos dados — não inventar.
+const HOURS_TERMS = ['horario', 'horarios', 'que horas', 'funcionamento', 'hora de visita'];
 
 // Específico o bastante pra vir antes da busca de destino.
 const EXTERNAL_ROUTE_TERMS = [
@@ -114,6 +129,8 @@ const EXTERNAL_ROUTE_TERMS = [
 const ACCESSIBILITY_TERMS = [
   'cadeira de rodas', 'cadeirante', 'acessivel', 'acessibilidade', 'elevador',
   'sem escada', 'evitar escada', 'escada', 'mobilidade', 'muleta', 'andador', 'maca',
+  'letra', 'fonte maior', 'alto contraste', 'enxergo mal', 'nao enxergo', 'baixa visao',
+  'surdo', 'surda', 'cego', 'cega', 'deficiente', 'deficiencia',
 ];
 
 const HELP_TERMS = ['ajuda', 'preciso de ajuda', 'chamar ajuda', 'falar com alguem', 'atendente', 'funcionario'];
@@ -136,16 +153,16 @@ const coreName = (name = '') =>
 const DESTINATION_SYNONYMS = [
   { terms: ['recepcao', 'balcao', 'guiche'], cores: ['recepcao', 'recepcao mais proxima'] },
   { terms: ['banheiro', 'sanitario', 'toalete', 'wc'], cores: ['banheiro'] },
-  { terms: ['sala de espera'], cores: ['sala de espera'] },
-  { terms: ['saida', 'ir embora', 'sair do hospital'], cores: ['saida'] },
+  { terms: ['sala de espera', 'esperar', 'aguardar'], cores: ['sala de espera'] },
+  { terms: ['saida', 'ir embora', 'sair do hospital', 'sair daqui', 'como saio'], cores: ['saida'] },
   { terms: ['tomografia'], cores: ['tomografia'] },
   { terms: ['raio-x', 'raio x', 'raiox', 'rx'], cores: ['raio-x'] },
   { terms: ['mamografia'], cores: ['mamografia'] },
   { terms: ['ultrassonografia', 'ultrassom', 'ultrasom', 'ultra som'], cores: ['ultrassonografia'] },
   { terms: ['setor de imagem', 'exame de imagem', 'imagem'], cores: ['setor de imagem'] },
   { terms: ['exame de sangue', 'coleta', 'sangue'], cores: ['exame de sangue', 'laboratorio'] },
-  { terms: ['laboratorio'], cores: ['laboratorio'] },
-  { terms: ['atendimento', 'consulta', 'consultorio', 'clinico geral'], cores: ['atendimento'] },
+  { terms: ['laboratorio', 'urina', 'exame de urina', 'fezes'], cores: ['laboratorio'] },
+  { terms: ['atendimento', 'consulta', 'consultorio', 'clinico geral', 'ser atendido', 'atendido'], cores: ['atendimento'] },
   { terms: ['visita', 'visitar', 'internacao', 'internado', 'internada', 'quarto', 'leito'], cores: ['visita / internacao'] },
 ];
 
@@ -294,8 +311,32 @@ export function getNavoraAssistantResponse(message, context = {}) {
   if (hasAny(text, RESTRICTED_TERMS)) {
     return reply(
       'restricted_area',
-      'O Centro Cirúrgico é uma área restrita: só a equipe do hospital entra. Se você tem cirurgia marcada, procure a recepção.',
+      'Essa é uma área restrita do hospital: só a equipe entra. Se você tem cirurgia marcada ou quer notícias de um paciente, procure a recepção.',
       goToReception
+    );
+  }
+
+  if (hasAny(text, SCHEDULING_TERMS)) {
+    return reply(
+      'no_scheduling',
+      'O Navora não faz agendamento de consultas ou exames. A recepção pode marcar ou remarcar para você.',
+      goToReception
+    );
+  }
+
+  if (hasAny(text, HOURS_TERMS)) {
+    return reply(
+      'hours',
+      'Não tenho os horários atualizados no app. A recepção confirma os horários de exames e de visitas.',
+      goToReception
+    );
+  }
+
+  if (hasAny(text, PARKING_TERMS)) {
+    return reply(
+      'parking',
+      'Ainda não tenho informações de estacionamento no app. Posso mostrar a rota até a entrada do hospital.',
+      { label: 'Como chegar', screen: 'ExternalRoute' }
     );
   }
 
@@ -338,6 +379,14 @@ export function getNavoraAssistantResponse(message, context = {}) {
 
   // 8. Genéricos — depois dos destinos ("como chegar na tomografia" é destino,
   //    "banheiro do Marco Capute" é destino, não troca de unidade).
+  if (hasAny(text, LOST_GENERIC_TERMS)) {
+    return reply(
+      'lost',
+      'Não consigo ver sua posição exata dentro do hospital. Me diga o lugar que você procura, ou posso chamar alguém da equipe.',
+      { label: 'Pedir orientação', screen: 'Lost' }
+    );
+  }
+
   if (hasAny(text, CHANGE_AREA_TERMS)) {
     return reply(
       'change_area',

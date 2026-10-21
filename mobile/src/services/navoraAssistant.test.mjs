@@ -96,6 +96,64 @@ test('banheiro do Marco Capute é destino, não troca de unidade', () => {
   assert.equal(ask('onde fica o banheiro do marco capute', patientSus).actionParams.query, 'Banheiro SUS');
 });
 
+// Frases do jeito que paciente/visitante fala de verdade (informal, sem acento,
+// com erro). Formato: [frase, intent esperada, destino esperado (opcional)].
+// Quando alguém usar uma frase que o assistente não entende, é aqui que entra.
+const REAL_PHRASES_PATIENT_PRIVATE = [
+  ['onde tiro sangue', 'destination', 'Laboratorio Private'],
+  ['cade o banheiro', 'destination', 'Banheiro Private'],
+  ['preciso ir no banheiro urgente', 'destination', 'Banheiro Private'],
+  ['vim fazer ultrassom da barriga', 'destination', 'Ultrassonografia'],
+  ['onde faço o exame de raio x', 'destination', 'Raio-X'],
+  ['tenho tomografia marcada', 'destination', 'Tomografia'],
+  ['onde fica a mamografia', 'destination', 'Mamografia'],
+  ['quero fazer exame de imagem', 'destination', 'Setor de Imagem Private'],
+  ['onde é a recepção', 'destination', 'Recepcao Private'],
+  ['onde fica o balcão', 'destination', 'Recepcao Private'],
+  ['quero sair daqui', 'destination', 'Saida Private'],
+  ['acabou meu exame, como saio?', 'destination', 'Saida Private'],
+  ['onde posso esperar', 'destination', 'Sala de espera Private'],
+  ['tenho exame de urina', 'destination', 'Laboratorio Private'],
+  ['quero marcar uma consulta', 'no_scheduling'],
+  ['como faço pra agendar exame', 'no_scheduling'],
+  ['tem elevador?', 'accessibility'],
+  ['quero aumentar a letra', 'accessibility'],
+  ['sou deficiente visual', 'accessibility'],
+  ['como chego no hospital', 'external_route'],
+  ['qual o endereço', 'external_route'],
+  ['onde estaciono o carro', 'parking'],
+  ['to perdido', 'lost'],
+  ['nao acho a saida', 'destination', 'Saida Private'],
+  ['nao encontro nada aqui', 'lost'],
+  ['quero falar com alguém', 'help'],
+  ['minha mãe caiu', 'emergency'],
+  ['estou com falta de ar', 'emergency'],
+  ['onde fica o pronto socorro', 'emergency'],
+  ['to com muita dor de cabeça', 'medical_question'],
+  ['onde fica a UTI', 'restricted_area'],
+  ['qual o horário de visita', 'hours'],
+  ['que horas abre o laboratório', 'hours'],
+  ['cheguei na tomografia', 'arrived'],
+  ['trocar pra modo escuro', 'theme'],
+  ['obrigado', 'greeting'],
+  ['tem wifi?', 'out_of_scope'],
+];
+
+test('frases reais de paciente (Private)', () => {
+  for (const [phrase, intent, query] of REAL_PHRASES_PATIENT_PRIVATE) {
+    const answer = ask(phrase);
+    assert.equal(answer.intent, intent, `"${phrase}" -> esperado ${intent}, veio ${answer.intent}`);
+    if (query) assert.equal(answer.actionParams.query, query, `"${phrase}" -> destino errado`);
+  }
+});
+
+test('frases reais de paciente (SUS) e de visitante', () => {
+  assert.equal(ask('onde é a recepção', patientSus).actionParams.query, 'Recepcao Hospital Marco Capute');
+  assert.equal(ask('quero ser atendido', patientSus).actionParams.query, 'Atendimento SUS');
+  assert.equal(ask('vim visitar minha avó', visitorPending).intent, 'visitor_needs_authorization');
+  assert.equal(ask('onde fica o banheiro', visitorPending).actionParams.query, 'Banheiro Private');
+});
+
 test('todo atalho da tela tem resposta própria (nenhum cai em "fora do escopo")', () => {
   for (const { label } of assistantSuggestions) {
     assert.notEqual(ask(label).intent, 'out_of_scope', `atalho sem resposta: ${label}`);
