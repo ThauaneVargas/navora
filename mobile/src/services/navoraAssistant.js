@@ -1,17 +1,15 @@
-const normalize = (value = '') =>
-  value
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-
-const response = (text, actionLabel, actionScreen, actionParams = {}) => ({
-  text,
-  actionLabel,
-  actionScreen,
-  actionParams,
-});
-
-const hasAny = (text, terms) => terms.some((term) => text.includes(term));
+/**
+ * Assistente do Navora — local e determinístico: sem IA generativa, sem
+ * internet e sem custo por mensagem. Só responde sobre o app/hospital; o
+ * resto recebe uma resposta de "fora do escopo".
+ *
+ * A ORDEM das regras em getNavoraAssistantResponse é a prioridade. Emergência
+ * vem sempre primeiro: "estou passando mal no banheiro" tem que virar SOS, não
+ * rota pro banheiro.
+ *
+ * Função pura (sem imports de React Native) pra rodar em teste no Node —
+ * ver navoraAssistant.test.mjs (`npm test`).
+ */
 
 export const assistantProvider = {
   id: 'deterministic-local',
@@ -19,251 +17,362 @@ export const assistantProvider = {
   generative: false,
 };
 
-export function getNavoraAssistantResponse(message, userProfile = {}, visitorAccessRequest = null) {
+// Atalhos exibidos na tela do assistente. Ficam aqui (e não na tela) pra o
+// teste garantir que todo atalho tem resposta própria.
+export const assistantSuggestions = [
+  { label: 'Como chegar ao hospital', icon: 'map-marker-outline' },
+  { label: 'Estou em outra entrada', icon: 'door-open' },
+  { label: 'Quero visitar alguém', icon: 'account-heart-outline' },
+  { label: 'Estou perdido', icon: 'help-circle-outline' },
+  { label: 'Banheiro mais próximo', icon: 'human-male' },
+  { label: 'Rota acessível', icon: 'wheelchair-accessibility' },
+  { label: 'Ativar modo noturno', icon: 'weather-night' },
+  { label: 'Apoio clínico', icon: 'stethoscope' },
+  { label: 'SOS Emergência', icon: 'alarm-light-outline' },
+];
+
+// --- Texto -------------------------------------------------------------------
+
+const normalize = (value = '') =>
+  String(value)
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// Palavra/frase INTEIRA: "ala" não casa com "sala", "noite" não casa com
+// "noturno", "sos" não casa com "sossego". (O assistente antigo usava
+// includes() e errava nesses casos.)
+const hasTerm = (text, term) =>
+  new RegExp(`(^|[^a-z0-9])${escapeRegExp(term)}($|[^a-z0-9])`).test(text);
+
+const hasAny = (text, terms) => terms.some((term) => hasTerm(text, term));
+
+const reply = (intent, text, action = null) => ({
+  intent,
+  text,
+  actionLabel: action?.label || null,
+  actionScreen: action?.screen || null,
+  actionParams: action?.params || {},
+});
+
+// --- Vocabulário (sempre sem acento — o texto é normalizado antes) ----------
+
+const EMERGENCY_TERMS = [
+  'sos', 'socorro', 'emergencia', 'urgente', 'urgencia', 'passando mal',
+  'dor no peito', 'infarto', 'avc', 'derrame', 'falta de ar', 'sem ar',
+  'nao consigo respirar', 'desmaio', 'desmaiei', 'desmaiou', 'convulsao',
+  'sangrando', 'sangramento', 'hemorragia', 'perdendo sangue',
+  'cai', 'caiu', 'queda', 'acidente', 'incendio', 'fogo',
+];
+
+const CLINICAL_SUPPORT_TERMS = [
+  'medico', 'medica', 'doutor', 'doutora', 'enfermeiro', 'enfermeira',
+  'apoio clinico', 'equipe de saude',
+];
+
+// Pergunta de saúde: o app não orienta sobre remédio, sintoma ou diagnóstico.
+const MEDICAL_QUESTION_TERMS = [
+  'remedio', 'remedios', 'medicamento', 'medicamentos', 'medicacao', 'dose',
+  'dosagem', 'posso tomar', 'tomo', 'comprimido', 'antibiotico', 'dipirona',
+  'paracetamol', 'ibuprofeno', 'diagnostico', 'sintoma', 'sintomas',
+  'tratamento', 'receita', 'o que eu tenho', 'e grave', 'dor', 'febre',
+  'enjoo', 'vomito', 'tontura', 'pressao',
+];
+
+const VISIT_TERMS = [
+  'quarto', 'leito', 'internacao', 'internado', 'internada', 'ala',
+  'enfermaria', 'uti', 'visita', 'visitar',
+];
+
+const CHANGE_AREA_TERMS = [
+  'outra entrada', 'entrada errada', 'trocar unidade', 'mudar unidade',
+  'estou no sus', 'marco capute', 'entrada da frente', 'estou no private',
+  'hmc private', 'particular', 'convenio', 'entrada dos fundos', 'entrada de fundos',
+];
+
+const THEME_TERMS = [
+  'modo noturno', 'modo escuro', 'tema escuro', 'tela escura', 'dark mode',
+  'modo claro', 'tema claro', 'tela clara',
+];
+
+const END_ROUTE_TERMS = ['finalizar rota', 'encerrar rota', 'parar rota', 'cancelar rota', 'sair da rota'];
+const ARRIVED_TERMS = ['cheguei', 'ja cheguei', 'estou no destino', 'aguardando atendimento', 'esperando atendimento'];
+const LOST_TERMS = ['perdido', 'perdida', 'me perdi', 'nao sei onde estou', 'onde estou'];
+const RESTRICTED_TERMS = ['centro cirurgico', 'bloco cirurgico', 'cirurgia'];
+const EMERGENCY_EXIT_TERMS = ['saida de emergencia', 'rota de fuga', 'evacuacao', 'evacuar'];
+
+// Específico o bastante pra vir antes da busca de destino.
+const EXTERNAL_ROUTE_TERMS = [
+  'chegar ao hospital', 'chegar no hospital', 'ir para o hospital', 'ir pro hospital',
+  'endereco', 'rota externa', 'como chego ai',
+];
+
+const ACCESSIBILITY_TERMS = [
+  'cadeira de rodas', 'cadeirante', 'acessivel', 'acessibilidade', 'elevador',
+  'sem escada', 'evitar escada', 'escada', 'mobilidade', 'muleta', 'andador', 'maca',
+];
+
+const HELP_TERMS = ['ajuda', 'preciso de ajuda', 'chamar ajuda', 'falar com alguem', 'atendente', 'funcionario'];
+const GREETING_TERMS = ['oi', 'ola', 'bom dia', 'boa tarde', 'boa noite', 'obrigado', 'obrigada', 'valeu', 'tudo bem'];
+
+// --- Destinos (vêm dos dados do app, nunca de uma lista escrita à mão) ----
+
+// Os nomes no dado trazem a unidade no fim ("Laboratorio Private", "Banheiro SUS").
+const AREA_SUFFIXES = [' private', ' sus', ' hospital marco capute'];
+
+const coreName = (name = '') =>
+  AREA_SUFFIXES.reduce(
+    (current, suffix) => (current.endsWith(suffix) ? current.slice(0, -suffix.length) : current),
+    normalize(name)
+  );
+
+// Como as pessoas falam -> nome-base do destino. Vale a primeira base que
+// existir na unidade do usuário (ex.: no Private não há "exame de sangue", cai
+// no laboratório). Específicos antes de genéricos ("raio x" antes de "imagem").
+const DESTINATION_SYNONYMS = [
+  { terms: ['recepcao', 'balcao', 'guiche'], cores: ['recepcao', 'recepcao mais proxima'] },
+  { terms: ['banheiro', 'sanitario', 'toalete', 'wc'], cores: ['banheiro'] },
+  { terms: ['sala de espera'], cores: ['sala de espera'] },
+  { terms: ['saida', 'ir embora', 'sair do hospital'], cores: ['saida'] },
+  { terms: ['tomografia'], cores: ['tomografia'] },
+  { terms: ['raio-x', 'raio x', 'raiox', 'rx'], cores: ['raio-x'] },
+  { terms: ['mamografia'], cores: ['mamografia'] },
+  { terms: ['ultrassonografia', 'ultrassom', 'ultrasom', 'ultra som'], cores: ['ultrassonografia'] },
+  { terms: ['setor de imagem', 'exame de imagem', 'imagem'], cores: ['setor de imagem'] },
+  { terms: ['exame de sangue', 'coleta', 'sangue'], cores: ['exame de sangue', 'laboratorio'] },
+  { terms: ['laboratorio'], cores: ['laboratorio'] },
+  { terms: ['atendimento', 'consulta', 'consultorio', 'clinico geral'], cores: ['atendimento'] },
+  { terms: ['visita', 'visitar', 'internacao', 'internado', 'internada', 'quarto', 'leito'], cores: ['visita / internacao'] },
+];
+
+const isInArea = (destination, userArea) =>
+  destination.area === userArea || destination.area === 'shared';
+
+function findDestination(text, destinations, userArea) {
+  for (const { terms, cores } of DESTINATION_SYNONYMS) {
+    if (!hasAny(text, terms)) continue;
+    for (const core of cores) {
+      const inUserArea = destinations.find((item) => coreName(item.name) === core && isInArea(item, userArea));
+      if (inUserArea) return { destination: inUserArea, inUserArea: true };
+    }
+    for (const core of cores) {
+      const elsewhere = destinations.find((item) => coreName(item.name) === core);
+      if (elsewhere) return { destination: elsewhere, inUserArea: false };
+    }
+  }
+
+  // Sem sinônimo: o usuário pode ter digitado o nome de um destino novo vindo da API.
+  const direct = destinations.find(
+    (item) => item.area !== 'restricted' && coreName(item.name).length > 2 && hasTerm(text, coreName(item.name))
+  );
+  return direct ? { destination: direct, inUserArea: isInArea(direct, userArea) } : null;
+}
+
+const AREA_LABELS = { private: 'HMC Private', sus: 'Hospital Marco Capute (SUS)' };
+const areaLabel = (area) => AREA_LABELS[area] || 'outra unidade';
+
+const prettyFloor = (floor = '') =>
+  floor.replace('Terreo', 'Térreo').replace(/(\d+)o Andar/, '$1º andar');
+
+const receptionQuery = (destinations, userArea) =>
+  destinations.find((item) => coreName(item.name) === 'recepcao' && item.area === userArea)?.name || 'Recepção';
+
+const VISITOR_FREE_ACCESS = ['public', 'visitor_allowed'];
+
+// --- Resposta -----------------------------------------------------------------
+
+/**
+ * @param {string} message - texto digitado (ou atalho tocado).
+ * @param {object} context
+ * @param {object} context.userProfile - { type: 'patient'|'visitor', area: 'private'|'sus' }
+ * @param {object} context.visitorAccessRequest - pedido de acesso do visitante (status, destino liberado)
+ * @param {Array}  context.destinations - destinos do app (API ou fallback de data/routes.js)
+ * @param {object} context.hospitalDetection - estado de chegada (pra "estou perdido" não inventar posição)
+ * @returns {{ intent, text, actionLabel, actionScreen, actionParams }}
+ */
+export function getNavoraAssistantResponse(message, context = {}) {
+  const {
+    userProfile = {},
+    visitorAccessRequest = null,
+    destinations = [],
+    hospitalDetection = null,
+  } = context;
+
   const text = normalize(message);
   const userArea = userProfile.area || 'private';
   const isVisitor = userProfile.type === 'visitor';
   const visitorApproved = isVisitor && ['APPROVED', 'AUTHORIZED'].includes(visitorAccessRequest?.status);
-  const authorizedDestination = normalize(visitorAccessRequest?.requestedDestination || visitorAccessRequest?.destinationName || '');
+  const authorizedDestinationRaw = visitorAccessRequest?.requestedDestination;
+  const authorizedDestination =
+    typeof authorizedDestinationRaw === 'string' ? authorizedDestinationRaw : authorizedDestinationRaw?.name || '';
+  const goToReception = {
+    label: 'Ir para a recepção',
+    screen: 'Search',
+    params: { query: receptionQuery(destinations, userArea) },
+  };
 
-  if (isVisitor && hasAny(text, ['quarto', 'internacao', 'ala', 'leito'])) {
+  // 1. Emergência — sempre primeiro. O SOS ainda pede confirmação na tela de
+  //    ajuda, então um falso positivo aqui não dispara nada sozinho.
+  if (hasAny(text, EMERGENCY_TERMS)) {
+    return reply(
+      'emergency',
+      'Isso parece uma emergência. Toque em "Acionar SOS" para chamar a equipe agora. Se você não estiver no hospital, ligue 192 (SAMU).',
+      { label: 'Acionar SOS', screen: 'Help', params: { type: 'sos' } }
+    );
+  }
+
+  // 2. Pedido de profissional de saúde.
+  if (hasAny(text, CLINICAL_SUPPORT_TERMS)) {
+    return reply(
+      'clinical_support',
+      'Vou abrir o pedido de apoio clínico para a equipe receber seu chamado e sua localização.',
+      { label: 'Chamar a equipe', screen: 'Help', params: { type: 'doctor' } }
+    );
+  }
+
+  // 3. Pergunta de saúde — o app não dá orientação médica.
+  if (hasAny(text, MEDICAL_QUESTION_TERMS)) {
+    return reply(
+      'medical_question',
+      'Não posso dar orientação sobre saúde, remédios ou sintomas. A equipe do hospital pode te ajudar. Se for algo forte ou repentino, use o SOS.',
+      { label: 'Falar com a equipe', screen: 'Help', params: { type: 'doctor' } }
+    );
+  }
+
+  // 4. Visitante pedindo área de internação.
+  if (isVisitor && hasAny(text, VISIT_TERMS)) {
     if (!visitorApproved) {
-      return response(
-        'Antes da liberacao presencial, seu acesso permite apenas recepcao, banheiro e areas publicas.',
-        'Ir para recepcao',
-        'Search',
-        { query: 'Recepcao' }
+      return reply(
+        'visitor_needs_authorization',
+        'Para visitar um paciente internado, a recepção precisa liberar sua entrada. Até lá, você pode ir à recepção, ao banheiro, à sala de espera e à saída.',
+        goToReception
+      );
+    }
+    return reply(
+      'visitor_authorized',
+      authorizedDestination
+        ? `Sua visita está liberada só para: ${authorizedDestination}.`
+        : 'Sua visita está liberada. Veja os detalhes e a rota permitida.',
+      { label: 'Ver minha visita', screen: 'VisitorAccessStatus' }
+    );
+  }
+
+  // 5. Ações do app.
+  if (hasAny(text, THEME_TERMS)) {
+    return reply('theme', 'Posso trocar entre o modo claro e o noturno agora.', { label: 'Trocar tema', screen: 'ToggleTheme' });
+  }
+
+  if (hasAny(text, END_ROUTE_TERMS)) {
+    return reply('end_route', 'Posso encerrar a rota e voltar para a tela inicial.', { label: 'Encerrar rota', screen: 'Home' });
+  }
+
+  if (hasAny(text, ARRIVED_TERMS)) {
+    return reply(
+      'arrived',
+      'Que bom! Posso ativar o modo de espera para acompanhar seu atendimento.',
+      { label: 'Ativar modo espera', screen: 'WaitingMode' }
+    );
+  }
+
+  // 6. Perdido — nunca inventar posição: o app não tem localização interna sem o beacon.
+  if (hasAny(text, LOST_TERMS)) {
+    const entrance = hospitalDetection?.status === 'confirmed'
+      ? hospitalDetection?.detectedEntrance?.fullName || hospitalDetection?.detectedEntrance?.name
+      : null;
+    const knownPart = entrance ? `O último registro é que você entrou por: ${entrance}. ` : '';
+    return reply(
+      'lost',
+      `${knownPart}Não consigo ver sua posição exata dentro do hospital. Posso chamar alguém da equipe ou te levar até a recepção.`,
+      { label: 'Pedir orientação', screen: 'Lost' }
+    );
+  }
+
+  if (hasAny(text, RESTRICTED_TERMS)) {
+    return reply(
+      'restricted_area',
+      'O Centro Cirúrgico é uma área restrita: só a equipe do hospital entra. Se você tem cirurgia marcada, procure a recepção.',
+      goToReception
+    );
+  }
+
+  if (hasAny(text, EMERGENCY_EXIT_TERMS)) {
+    return reply('emergency_exit', 'Posso mostrar as saídas de emergência mais próximas.', { label: 'Ver saídas', screen: 'EmergencyRoutes' });
+  }
+
+  if (hasAny(text, EXTERNAL_ROUTE_TERMS)) {
+    return reply('external_route', 'Vou abrir o mapa com a rota até a entrada do hospital.', { label: 'Como chegar', screen: 'ExternalRoute' });
+  }
+
+  // 7. Destinos — buscados nos dados reais do app.
+  const match = findDestination(text, destinations, userArea);
+  if (match) {
+    const { destination, inUserArea } = match;
+
+    if (!inUserArea) {
+      return reply(
+        'destination_other_area',
+        `${destination.name} fica em outra unidade (${areaLabel(destination.area)}). Você está em ${areaLabel(userArea)}. Procure a recepção para ser orientado.`,
+        goToReception
       );
     }
 
-    if (authorizedDestination && !text.includes(authorizedDestination)) {
-      return response(
-        'Seu acesso esta autorizado apenas para o destino definido pela recepcao.',
-        'Ver visita ativa',
-        'VisitorAccessStatus'
-      );
-    }
-  }
-
-  if (hasAny(text, ['estou no sus', 'hospital marco capute', 'entrada da frente'])) {
-    return response(
-      'Voce esta em outro ambiente do hospital ativo. Vou mostrar apenas rotas permitidas para essa area.',
-      'Ver destinos desta area',
-      'Search',
-      { area: 'sus' }
-    );
-  }
-
-  if (hasAny(text, ['private', 'hmc private', 'entrada dos fundos', 'entrada de fundos'])) {
-    return response(
-      'Voce esta no ambiente confirmado do hospital ativo. Vou mostrar apenas rotas permitidas para essa area.',
-      'Ver destinos desta area',
-      'Search',
-      { area: 'private' }
-    );
-  }
-
-  if (hasAny(text, ['quero visitar alguem', 'visitar paciente', 'preciso de autorizacao', 'internacao', 'quero ir para internacao'])) {
-    if (isVisitor) {
-      return response(
-        visitorApproved
-          ? 'Vou respeitar apenas o destino liberado pela recepcao para sua visita.'
-          : 'Esse destino precisa de liberacao presencial. Vou te orientar ate a recepcao correta.',
-        visitorApproved ? 'Ver visita ativa' : 'Ir para recepcao',
-        visitorApproved ? 'VisitorAccessStatus' : 'Search',
-        visitorApproved ? {} : { query: 'Recepcao' }
+    if (isVisitor && !visitorApproved && !VISITOR_FREE_ACCESS.includes(destination.accessLevel)) {
+      return reply(
+        'visitor_needs_authorization',
+        `${destination.name} precisa de liberação da recepção para visitantes. Até lá, você pode ir à recepção, ao banheiro, à sala de espera e à saída.`,
+        goToReception
       );
     }
 
-    return response(
-      'Visitas e internacao podem exigir liberacao da recepcao. Vou abrir os destinos permitidos para sua area.',
-      'Ver visita',
-      'Search',
-      { category: 'Visita' }
+    const visitNote = destination.accessLevel === 'visitor_authorization' ? ' Visitas precisam de liberação da recepção.' : '';
+    return reply(
+      'destination',
+      `Encontrei ${destination.name} (${prettyFloor(destination.floor)}).${visitNote}`,
+      { label: 'Ver rota', screen: 'Search', params: { query: destination.name } }
     );
   }
 
-  if (hasAny(text, ['modo noturno', 'modo escuro', 'dark mode', 'tela escura', 'tema escuro', 'noite'])) {
-    return response(
-      'Posso alternar o tema do aplicativo agora para melhorar o conforto visual.',
-      'Alternar modo noturno',
-      'ToggleTheme'
+  // 8. Genéricos — depois dos destinos ("como chegar na tomografia" é destino,
+  //    "banheiro do Marco Capute" é destino, não troca de unidade).
+  if (hasAny(text, CHANGE_AREA_TERMS)) {
+    return reply(
+      'change_area',
+      'Você pode trocar a unidade (HMC Private ou Hospital Marco Capute) para ver os locais certos.',
+      { label: 'Escolher unidade', screen: 'CareAreaChoice' }
     );
   }
 
-  if (hasAny(text, ['medico', 'doutor', 'enfermeiro', 'solicitar medico', 'preciso de medico'])) {
-    return response(
-      'Vou abrir a solicitacao medica para a equipe receber seu motivo e sua localizacao.',
-      'Solicitar apoio clinico',
-      'Help',
-      { type: 'doctor' }
+  if (hasAny(text, ['como chegar', 'como chego'])) {
+    return reply('external_route', 'Vou abrir o mapa com a rota até a entrada do hospital.', { label: 'Como chegar', screen: 'ExternalRoute' });
+  }
+
+  if (hasAny(text, ACCESSIBILITY_TERMS)) {
+    return reply(
+      'accessibility',
+      'Posso ajustar suas preferências para priorizar rotas sem escada e com elevador.',
+      { label: 'Ajustar acessibilidade', screen: 'Accessibility' }
     );
   }
 
-  if (hasAny(text, ['cheguei', 'ja cheguei', 'cheguei ao destino', 'estou no destino', 'aguardando atendimento'])) {
-    return response(
-      'Perfeito. Vou ativar o modo de espera para acompanhar seu atendimento sem manter a rota aberta.',
-      'Ativar modo espera',
-      'WaitingMode',
-      { destination: 'Tomografia' }
+  if (hasAny(text, HELP_TERMS)) {
+    return reply('help', 'Posso enviar um pedido de ajuda para a equipe do hospital.', { label: 'Chamar ajuda', screen: 'Help', params: { type: 'help' } });
+  }
+
+  if (hasAny(text, GREETING_TERMS)) {
+    return reply(
+      'greeting',
+      'Olá! Sou o assistente do Navora. Posso te ajudar a encontrar um setor, chegar ao hospital, pedir ajuda ou acionar o SOS.'
     );
   }
 
-  if (hasAny(text, ['finalizar rota', 'encerrar rota', 'parar rota', 'cancelar rota'])) {
-    return response(
-      'Posso encerrar a rota e voltar para a tela inicial.',
-      'Encerrar rota',
-      'Home'
-    );
-  }
-
-  if (hasAny(text, ['tomografia', 'tomo'])) {
-    if (userArea === 'sus') {
-      return response(
-        'Tomografia pertence a outro ambiente do hospital ativo. Procure a recepcao para orientacao.',
-        'Ir para recepcao',
-        'Search',
-        { query: 'Recepcao' }
-      );
-    }
-
-    return response(
-      'Encontrei Tomografia. Exames com atendimento externo seguem o horario de 07h as 17h.',
-      'Ver tomografia',
-      'Search',
-      { query: 'Tomografia' }
-    );
-  }
-
-  if (hasAny(text, ['raio-x', 'raiox', 'rx'])) {
-    return response(
-      'Encontrei Raio-X no setor de exames de imagem. O acesso externo de pacientes fica liberado das 07h as 17h.',
-      'Ver Raio-X',
-      'Search',
-      { query: 'Raio-X' }
-    );
-  }
-
-  if (text.includes('mamografia')) {
-    return response(
-      'Encontrei Mamografia. O acesso externo de pacientes fica liberado das 07h as 17h.',
-      'Ver mamografia',
-      'Search',
-      { query: 'Mamografia' }
-    );
-  }
-
-  if (hasAny(text, ['colonoscopia', 'colono'])) {
-    return response(
-      'Encontrei Colonoscopia. Este destino fica na area de procedimentos.',
-      'Iniciar rota',
-      'Navigation',
-      { destination: 'Colonoscopia' }
-    );
-  }
-
-  if (hasAny(text, ['endoscopia', 'endoscop'])) {
-    return response(
-      'Encontrei Endoscopia. Posso iniciar a rota.',
-      'Iniciar rota',
-      'Navigation',
-      { destination: 'Endoscopia' }
-    );
-  }
-
-  if (hasAny(text, ['exame de sangue', 'sangue', 'laboratorio'])) {
-    return response(
-      userArea === 'sus'
-        ? 'Encontrei o laboratorio deste ambiente. O atendimento externo de exames funciona das 07h as 17h.'
-        : 'Encontrei o laboratorio deste ambiente. O atendimento externo de exames funciona das 07h as 17h.',
-      'Ver laboratorio',
-      'Search',
-      { query: 'Laboratorio' }
-    );
-  }
-
-  if (hasAny(text, ['atendimento clinico', 'clinico', 'consulta', 'consultorio'])) {
-    return response(
-      'Encontrei a area de consultas e atendimento clinico.',
-      'Ver consultas',
-      'Search',
-      { category: 'Consultas' }
-    );
-  }
-
-  if (text.includes('banheiro')) {
-    return response(
-      'O banheiro mais proximo fica proximo aos consultorios. Posso iniciar a rota.',
-      'Iniciar rota',
-      'Navigation',
-      { destination: 'Banheiro' }
-    );
-  }
-
-  if (hasAny(text, ['perdido', 'nao sei onde estou', 'onde estou'])) {
-    return response(
-      'Voce esta na Recepcao Principal, Corredor A, Piso Terreo. Posso recalcular sua rota.',
-      'Recalcular rota',
-      'Lost'
-    );
-  }
-
-  if (hasAny(text, ['sos', 'emergencia', 'urgente', 'passando mal'])) {
-    return response(
-      'SOS e uma solicitacao urgente. Posso abrir a tela de emergencia para acionar a equipe.',
-      'Abrir SOS',
-      'Help',
-      { type: 'sos' }
-    );
-  }
-
-  if (hasAny(text, ['ajuda', 'preciso de ajuda', 'apoio', 'chamar ajuda'])) {
-    return response(
-      'Posso enviar um pedido de ajuda para a equipe.',
-      'Chamar ajuda',
-      'Help',
-      { type: 'help' }
-    );
-  }
-
-  if (hasAny(text, ['como chegar', 'chegar ao hospital', 'rota externa', 'ir para hospital'])) {
-    return response(
-      'Vou abrir a opcao de rota externa ate a entrada principal do hospital.',
-      'Abrir rota externa',
-      'ExternalRoute'
-    );
-  }
-
-  if (hasAny(text, ['cadeira', 'cadeirante', 'acessivel', 'elevador', 'escada', 'sem escada'])) {
-    return response(
-      'Vou priorizar uma rota acessivel, evitando escadas e utilizando elevador.',
-      'Ajustar acessibilidade',
-      'Accessibility'
-    );
-  }
-
-  if (hasAny(text, ['saida', 'rota de emergencia', 'evacuacao'])) {
-    return response(
-      'Posso guiar voce ate a saida de emergencia mais proxima.',
-      'Ver rota segura',
-      'EmergencyRoutes'
-    );
-  }
-
-  if (hasAny(text, ['recepcao'])) {
-    return response(
-      userArea === 'sus'
-        ? 'Voce esta no ambiente confirmado do hospital ativo. Posso te orientar ate a recepcao adequada.'
-        : 'Voce esta no ambiente confirmado do hospital ativo. Posso te orientar ate a recepcao adequada.',
-      'Abrir mapa',
-      'Search',
-      { query: 'Recepcao' }
-    );
-  }
-
-  return response(
-    'Posso ajudar com rotas internas, como chegar ao hospital, acessibilidade, localizacao, ajuda ou SOS.',
-    'Ver destinos',
-    'Search'
+  // 9. Fora do escopo.
+  return reply(
+    'out_of_scope',
+    'Sou o assistente do Navora e só ajudo com o hospital: encontrar setores, como chegar, acessibilidade, visitas, ajuda e SOS. Tente, por exemplo: "onde fica o banheiro?"',
+    { label: 'Ver locais', screen: 'Search' }
   );
 }

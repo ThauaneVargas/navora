@@ -56,7 +56,8 @@ App de navegação indoor/outdoor para dois hospitais (HMC Private e HMC Marco C
 | RF-22 | "Estou perdido" → acesso rápido a suporte humano | Ambos | Implementado | `LostScreen.js` → `HelpScreen.js` |
 | RF-23 | Pedir correção de localização na recepção durante a chegada | Ambos | Implementado | `ArrivalPreparationScreen.js` → `useReception()` |
 | RF-24 | Todo chamado (SOS/ajuda) leva o contato de emergência do paciente, quando cadastrado | Paciente | Implementado | `emergencyContact` em `CreateCallDto`/`CallRequest` |
-| RF-25 | Assistente por palavra-chave (sem IA generativa), cobre SOS, setores, perdido, acessibilidade, banheiro, como chegar | Ambos | Implementado | `navoraAssistant.js` — 100% determinístico, declarado na UI |
+| RF-25 | Assistente por palavra-chave (sem IA generativa): emergência sempre com prioridade, destinos buscados nos dados reais do app, recusa de pergunta de saúde e de assunto fora do app | Ambos | Implementado (reescrito 20/10) | `navoraAssistant.js` + `navoraAssistant.test.mjs` |
+| RF-25a | Entrada por voz no assistente | Ambos | `PENDENTE` — o botão hoje avisa que não há reconhecimento de voz (antes simulava uma transcrição fixa) |
 
 ### 3.4 Acesso de visitante
 

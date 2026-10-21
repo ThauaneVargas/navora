@@ -11,31 +11,20 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import {
-  RecordingPresets,
-  requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-  useAudioRecorder,
-} from 'expo-audio';
 import * as Speech from 'expo-speech';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
 import { shadows } from '../theme/colors';
-import { assistantProvider, getNavoraAssistantResponse } from '../services/navoraAssistant';
+import { assistantProvider, assistantSuggestions, getNavoraAssistantResponse } from '../services/navoraAssistant';
+import { destinations as fallbackDestinations } from '../data/routes';
 import { useApp } from '../context/AppContext';
 
-const suggestions = [
-  { label: 'Como chegar ao hospital', icon: 'map-marker-outline' },
-  { label: 'Estou em outra entrada', icon: 'door-open' },
-  { label: 'Quero visitar alguem', icon: 'account-heart-outline' },
-  { label: 'Estou perdido', icon: 'help-circle-outline' },
-  { label: 'Banheiro mais proximo', icon: 'human-male' },
-  { label: 'Rota acessivel', icon: 'wheelchair-accessibility' },
-  { label: 'Ativar modo noturno', icon: 'weather-night' },
-  { label: 'Apoio clinico', icon: 'stethoscope' },
-  { label: 'SOS Emergencia', icon: 'alarm-light-outline' },
-];
+// O app ainda não tem reconhecimento de voz (expo-speech só FALA, não escuta).
+// Antes, o microfone gravava o áudio e respondia sempre "Me leve até Tomografia",
+// fosse o que fosse dito. Ler as respostas em voz alta ("Ouvir") continua funcionando.
+const VOICE_UNAVAILABLE_TEXT =
+  'O reconhecimento de voz ainda não está disponível. Digite sua mensagem ou toque em um dos atalhos. Você pode ouvir minhas respostas tocando em "Ouvir".';
 
 const initialMessages = [
   {
@@ -45,18 +34,29 @@ const initialMessages = [
   },
 ];
 
-export default function AssistantScreen({ navigate, goBack, routeParams = {}, userProfile, visitorAccessRequest }) {
+export default function AssistantScreen({
+  navigate,
+  goBack,
+  routeParams = {},
+  userProfile,
+  visitorAccessRequest,
+  navigationData,
+  navigationSource,
+  hospitalDetection,
+}) {
   const insets = useSafeAreaInsets();
   const { appColors, toggleTheme } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
   const [messages, setMessages] = useState(initialMessages);
   const [input, setInput] = useState('');
   const [status, setStatus] = useState('Pronta para ajudar');
-  const [isRecording, setIsRecording] = useState(false);
-  const [audioUri, setAudioUri] = useState(null);
   const scrollRef = useRef(null);
   const autoVoiceStarted = useRef(false);
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  // Mesma fonte da tela de busca: destinos da API quando ela respondeu, senão os locais.
+  const availableDestinations =
+    navigationSource === 'api' && navigationData?.destinations?.length
+      ? navigationData.destinations
+      : fallbackDestinations;
   const composerBottom = Math.max(insets.bottom, 12) + 78;
   const composerSpace = composerBottom + 88;
 
@@ -85,14 +85,19 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
     ]);
   };
 
-  const processMessage = (rawText, extraUserText) => {
+  const processMessage = (rawText) => {
     const text = rawText.trim();
     if (!text) return;
 
-    appendMessage({ role: 'user', text: extraUserText || text });
+    appendMessage({ role: 'user', text });
     setStatus('Processando...');
 
-    const assistantResponse = getNavoraAssistantResponse(text, userProfile, visitorAccessRequest);
+    const assistantResponse = getNavoraAssistantResponse(text, {
+      userProfile,
+      visitorAccessRequest,
+      destinations: availableDestinations,
+      hospitalDetection,
+    });
     setTimeout(() => {
       appendMessage({ role: 'assistant', ...assistantResponse });
       setStatus('Pronta para ajudar');
@@ -118,61 +123,8 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
     Speech.stop();
   };
 
-  const startRecording = async () => {
-    const permission = await requestRecordingPermissionsAsync();
-    if (!permission.granted) {
-      appendMessage({
-        role: 'assistant',
-        text: 'Não consegui acessar o microfone. Verifique a permissão do aplicativo.',
-      });
-      return;
-    }
-
-    await setAudioModeAsync({
-      allowsRecording: true,
-      playsInSilentMode: true,
-    });
-
-    await recorder.prepareToRecordAsync();
-    recorder.record();
-    setIsRecording(true);
-    setStatus('Gravando áudio...');
-  };
-
-  const stopRecording = async () => {
-    setStatus('Processando...');
-    await recorder.stop();
-    const uri = recorder.uri;
-    setAudioUri(uri);
-    setIsRecording(false);
-
-    // Futuro: enviar audioUri para backend/Whisper para transcrição real.
-    const simulatedTranscript = 'Me leve ate Tomografia';
-    appendMessage({
-      role: 'user',
-      text: `Audio gravado${uri ? ` (${uri.split('/').pop()})` : ''}`,
-    });
-    processMessage(
-      simulatedTranscript,
-      `Transcrição simulada: "${simulatedTranscript}"`
-    );
-  };
-
-  const handleMicrophonePress = async () => {
-    try {
-      if (isRecording) {
-        await stopRecording();
-      } else {
-        await startRecording();
-      }
-    } catch (error) {
-      setIsRecording(false);
-      setStatus('Pronta para ajudar');
-      appendMessage({
-        role: 'assistant',
-        text: 'Não consegui gravar agora. Tente novamente ou digite sua mensagem.',
-      });
-    }
+  const handleMicrophonePress = () => {
+    appendMessage({ role: 'assistant', text: VOICE_UNAVAILABLE_TEXT });
   };
 
   const runAction = (message) => {
@@ -193,7 +145,6 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
   const clearConversation = () => {
     Speech.stop();
     setMessages(initialMessages);
-    setAudioUri(null);
     setStatus('Pronta para ajudar');
   };
 
@@ -216,17 +167,9 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
             <View style={[styles.aiCard, shadows.card]}>
               <Pressable
                 onPress={handleMicrophonePress}
-                style={({ pressed }) => [
-                  styles.aiIcon,
-                  isRecording && styles.aiIconRecording,
-                  pressed && styles.pressed,
-                ]}
+                style={({ pressed }) => [styles.aiIcon, pressed && styles.pressed]}
               >
-                <MaterialCommunityIcons
-                  name={isRecording ? 'stop' : 'microphone'}
-                  size={25}
-                  color="#FFFFFF"
-                />
+                <MaterialCommunityIcons name="microphone" size={25} color="#FFFFFF" />
               </Pressable>
               <View style={styles.aiCopy}>
                 <Text style={styles.aiTitle}>Assistente Navora</Text>
@@ -240,7 +183,7 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
             </View>
 
             <View style={styles.suggestions}>
-              {suggestions.map((item) => (
+              {assistantSuggestions.map((item) => (
                 <Pressable
                   key={item.label}
                   onPress={() => processMessage(item.label)}
@@ -309,11 +252,8 @@ export default function AssistantScreen({ navigate, goBack, routeParams = {}, us
             <Pressable onPress={sendMessage} style={styles.sendButton}>
               <MaterialCommunityIcons name="send" size={18} color="#FFFFFF" />
             </Pressable>
-            <Pressable
-              onPress={handleMicrophonePress}
-              style={[styles.micButton, isRecording && styles.micButtonRecording]}
-            >
-              <MaterialCommunityIcons name={isRecording ? 'stop' : 'microphone'} size={19} color="#FFFFFF" />
+            <Pressable onPress={handleMicrophonePress} style={styles.micButton}>
+              <MaterialCommunityIcons name="microphone" size={19} color="#FFFFFF" />
             </Pressable>
           </View>
         </KeyboardAvoidingView>
@@ -362,9 +302,6 @@ const createStyles = (colors) => StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     shadowRadius: 16,
     elevation: 4,
-  },
-  aiIconRecording: {
-    backgroundColor: colors.primaryDark,
   },
   aiCopy: {
     flex: 1,
@@ -531,9 +468,6 @@ const createStyles = (colors) => StyleSheet.create({
     backgroundColor: colors.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  micButtonRecording: {
-    backgroundColor: colors.danger,
   },
   pressed: {
     opacity: 0.86,
