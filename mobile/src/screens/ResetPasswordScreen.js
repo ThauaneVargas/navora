@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -11,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import CenteredFormScreen from '../components/CenteredFormScreen';
 import { navoraApi, isNetworkError } from '../services/api';
 
 export default function ResetPasswordScreen({ navigate, goBack }) {
@@ -52,7 +51,7 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
 
   if (done) {
     return (
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+      <CenteredFormScreen>
         <View style={styles.card}>
           <View style={styles.iconRing}>
             <MaterialCommunityIcons name="check-circle-outline" size={44} color="#980027" />
@@ -63,12 +62,12 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
             <Text style={styles.btnText}>Ir para o login</Text>
           </Pressable>
         </View>
-      </KeyboardAvoidingView>
+      </CenteredFormScreen>
     );
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+    <CenteredFormScreen>
       <View style={styles.card}>
         <Pressable onPress={() => goBack?.()} style={styles.back}>
           <MaterialCommunityIcons name="arrow-left" size={22} color="#980027" />
@@ -141,12 +140,11 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
           }
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+    </CenteredFormScreen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', padding: 22 },
   card: { gap: 14 },
   back: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   backText: { color: '#980027', fontSize: 14, fontWeight: '800' },

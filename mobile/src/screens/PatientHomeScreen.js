@@ -403,19 +403,21 @@ export default function PatientHomeScreen({
               ),
           },
 
+          // Era "Lanchonete", que não existe nos dados do mapa (a busca abria vazia).
+          // Sala de espera existe nas duas unidades e é liberada para visitante.
           {
             icon:
-              'food-fork-drink',
+              'seat-outline',
 
             title:
-              'Lanchonete',
+              'Sala de espera',
 
             onPress: () =>
               navigate(
                 'Search',
                 {
                   query:
-                    'Lanchonete',
+                    'Sala de espera',
                 }
               ),
           },
