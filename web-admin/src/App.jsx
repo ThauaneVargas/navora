@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Activity,
@@ -290,13 +290,6 @@ function matchesSector(value, sector) {
   );
 }
 
-function matchesFloor(filter, floor) {
-  if (!filter || filter === 'Todos') return true;
-  const wanted = comparableLocation(filter);
-  const current = comparableLocation(floor);
-  return current === wanted || current.includes(wanted) || wanted.includes(current);
-}
-
 const heatmapFloorOptions = [
   { key: 'terreo', label: 'Terreo', title: 'Terreo', backend: 'Piso Terreo' },
   { key: 'andar1', label: '1o andar', title: '1o Andar', backend: '1o Andar' },
@@ -342,7 +335,7 @@ function getProfileOverrideKey(account) {
 function readProfileOverrides() {
   try {
     return JSON.parse(window.sessionStorage.getItem(profileOverrideKey) || '{}');
-  } catch (error) {
+  } catch {
     window.sessionStorage.removeItem(profileOverrideKey);
     return {};
   }
@@ -1080,8 +1073,6 @@ function PageRouter({ role, page, app }) {
 function AdminDashboard({ app }) {
   const summary = app.dashboardSummary;
   const people = summary ? summary.patientUsers : app.users.filter((user) => user.role === 'Paciente').length;
-  const sos = summary ? summary.activeSOS : app.calls.filter((call) => call.type === 'SOS Emergencia' && call.status !== 'Encerrado').length;
-  const routes = app.users.filter((user) => user.status === 'Em rota').length + app.checkins.filter((item) => item.status === 'Em rota').length;
   const online = summary ? summary.beaconsOnline : app.beacons.filter((beacon) => beacon.status === 'Online').length;
   const pendingVisitors = summary ? summary.pendingVisitorRequests : app.visitors.filter((visitor) => visitor.status === 'Aguardando autorizacao').length;
   const openCalls = summary ? summary.openCalls : app.calls.filter((call) => call.status !== 'Encerrado').length;
@@ -1853,17 +1844,6 @@ function MessagesPage({ app }) {
   );
 }
 
-function Stat({ title, value, detail = 'Ver detalhes', tone = 'info', icon: Icon = Activity, onClick }) {
-  return (
-    <button className={`stat-card ${tone}`} onClick={onClick}>
-      <span className="stat-icon" aria-hidden="true"><Icon size={20} /></span>
-      <span className="stat-label">{title}</span>
-      <strong>{value}</strong>
-      <small>{detail}</small>
-    </button>
-  );
-}
-
 function EmptyState({ title = 'Nenhum registro encontrado', text }) {
   return <div className="empty-state"><Search size={20} /><strong>{title}</strong>{text ? <span>{text}</span> : null}</div>;
 }
@@ -2147,37 +2127,6 @@ function CallCard({ call, app, reception = false, adminView = false }) {
       </div>
     </article>
   );
-}
-
-function Table({ rows, columns, actions, rowClass = () => '' }) {
-  return (
-    <div className="table" style={{ '--cols': columns.length }}>
-      <div className="table-head">{columns.map((col) => <b key={col}>{col}</b>)}<b>Acoes</b></div>
-      {rows.map((row) => <div className={`table-row ${rowClass(row)}`} key={row.id}>{columns.map((col) => <span key={col}>{renderCell(col, row[col])}</span>)}<div className="actions">{actions(row)}</div></div>)}
-    </div>
-  );
-}
-
-function renderCell(col, value) {
-  if (['status', 'priority', 'role', 'roleLabel'].includes(col)) {
-    return <StatusBadge value={value} />;
-  }
-  if (col === 'battery') return value === undefined || value === null ? 'Não informado' : `${value}%`;
-  return String(value ?? 'Não informado');
-}
-
-function StatusBadge({ value }) {
-  const label = String(value || 'Não informado');
-  const normalized = comparableLocation(label);
-  const tone =
-    normalized.includes('critica') || normalized.includes('sos') || normalized.includes('negado') || normalized.includes('offline') || normalized.includes('bloqueado')
-      ? 'danger'
-      : normalized.includes('pendente') || normalized.includes('aguardando') || normalized.includes('aten') || normalized.includes('alta')
-        ? 'warning'
-        : normalized.includes('ativo') || normalized.includes('online') || normalized.includes('autorizado') || normalized.includes('encerrado') || normalized.includes('finalizado')
-          ? 'success'
-          : 'neutral';
-  return <em className={`status-badge ${tone}`}>{label}</em>;
 }
 
 function openProfileEditor(app) {

@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import { PrimaryButton, SecondaryButton, StatusPill } from '../components/PremiumUI';
-import { colors, radii, shadows, spacing, typography } from '../theme/colors';
+import { radii, shadows, spacing, typography } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 
 export default function ArrivalPreparationScreen({
@@ -13,7 +13,7 @@ export default function ArrivalPreparationScreen({
   hospitalDetection,
   onAreaDetected,
 }) {
-  const { appColors, isDark } = useApp();
+  const { appColors } = useApp();
   const pulse = useRef(new Animated.Value(0)).current;
   const [status, setStatus] = useState('searching');
   const detectedEntrance = hospitalDetection?.detectedEntrance;

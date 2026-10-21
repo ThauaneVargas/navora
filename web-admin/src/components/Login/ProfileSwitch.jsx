@@ -1,5 +1,3 @@
-import React from 'react';
-
 const profiles = [
   { key: 'admin', label: 'Administrador' },
   { key: 'reception', label: 'Recepção' },

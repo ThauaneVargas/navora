@@ -3,7 +3,6 @@ import { Alert, BackHandler, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import SplashScreen from './src/screens/SplashScreen';
 import LoginScreen from './src/screens/LoginScreen';
-import HomeScreen from './src/screens/HomeScreen';
 import HomeStartScreen from './src/screens/HomeStartScreen';
 import HelpChoiceScreen from './src/screens/HelpChoiceScreen';
 import CareAreaChoiceScreen from './src/screens/CareAreaChoiceScreen';
@@ -19,7 +18,6 @@ import PatientHomeScreen from './src/screens/PatientHomeScreen';
 import AssistantScreen from './src/screens/AssistantScreen';
 import SearchScreen from './src/screens/SearchScreen';
 import MapScreen from './src/screens/MapScreen';
-import HowToGetScreen from './src/screens/HowToGetScreen';
 import Mode3DScreen from './src/screens/Mode3DScreen';
 import HelpScreen from './src/screens/HelpScreen';
 import LostScreen from './src/screens/LostScreen';
@@ -33,7 +31,6 @@ import WaitingModeScreen from './src/screens/WaitingModeScreen';
 import AreaEntryScreen from './src/screens/AreaEntryScreen';
 import VisitorEntryScreen from './src/screens/VisitorEntryScreen';
 import VisitorAccessStatusScreen from './src/screens/VisitorAccessStatusScreen';
-import PlaceholderScreen from './src/screens/PlaceholderScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import PrivacyScreen from './src/screens/PrivacyScreen';
 import RouteHistoryScreen from './src/screens/RouteHistoryScreen';
@@ -78,7 +75,6 @@ const screens = {
   Navigation: MapScreen,
   Search: SearchScreen,
   Map: MapScreen,
-  HowToGet: HowToGetScreen,
   Mode3D: Mode3DScreen,
   Help: HelpScreen,
   Lost: LostScreen,
@@ -125,8 +121,6 @@ export default function App() {
   const [hospitalDetection, setHospitalDetection] = useState(() =>
     hospitalDetectionService.getSnapshot()
   );
-
-  const [sessionRestored, setSessionRestored] = useState(false);
 
   const [helpRequests, setHelpRequests] = useState(() => [
     ...initialHelpRequests,
@@ -203,8 +197,6 @@ export default function App() {
           authSource: 'api',
           hasAccount: true,
         });
-
-        setSessionRestored(true);
       } catch (error) {
         if (isAuthError(error)) {
           await removeAuthToken();
@@ -876,8 +868,6 @@ export default function App() {
     }
 
     setUserProfile(null);
-
-    setSessionRestored(false);
 
     setActiveRoute(null);
 
@@ -2388,7 +2378,7 @@ export default function App() {
         });
 
         return syncedRequest;
-      } catch (error) {
+      } catch {
         return fallbackRequest;
       }
     };

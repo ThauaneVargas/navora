@@ -23,7 +23,7 @@ App de navegação indoor/outdoor para dois hospitais (HMC Private e HMC Marco C
 | ID | Requisito | Perfil | Status | Referência |
 |---|---|---|---|---|
 | RF-01 | Login com e-mail/senha | Paciente | Implementado | `LoginScreen.js` → `POST /auth/login` |
-| RF-02 | Login com Google | Paciente | Implementado | `POST /auth/google`, `googleId` em `User` |
+| RF-02 | Login com Google (e Apple) | Paciente | `PENDENTE` — backend pronto (`POST /auth/google`, `googleId` em `User`), mas o app só mostra "Em breve disponível" nos dois botões; falta configurar os Client IDs do Google e ligar o fluxo | `LoginScreen.js` (`handleSocialLogin`) |
 | RF-03 | Recuperação de senha por e-mail | Paciente | Implementado | `ForgotPasswordScreen.js`/`ResetPasswordScreen.js` → `POST /auth/forgot-password`, `POST /auth/reset-password` |
 | RF-04 | Cadastro completo (nome, nascimento, CPF, telefone, e-mail, senha, contato de emergência, 9 opções de acessibilidade, observações importantes) | Paciente | Implementado (observações e 3 opções de acessibilidade passaram a ser salvas em 21/10) | `PatientRegisterScreen.js` → `POST /patients/register` |
 | RF-05 | Entrada rápida sem criar conta (nome/telefone/nascimento, estado local) | Paciente | Implementado | `PatientQuickRegisterScreen.js` (`quick: true`) |

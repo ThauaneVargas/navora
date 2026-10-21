@@ -1,4 +1,3 @@
-import React from 'react';
 import { LogOut, ShieldCheck } from 'lucide-react';
 import NavoraBrand from '../branding/NavoraBrand.jsx';
 import OperatorAvatar from './OperatorAvatar.jsx';

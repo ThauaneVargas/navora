@@ -9,7 +9,7 @@ const canUseWebStorage = () =>
 async function secureStoreAvailable() {
   try {
     return await SecureStore.isAvailableAsync();
-  } catch (error) {
+  } catch {
     return false;
   }
 }

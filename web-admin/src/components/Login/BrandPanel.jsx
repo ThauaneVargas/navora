@@ -1,4 +1,3 @@
-import React from 'react';
 import { BarChart3, HeartPulse, MapPinned, Sparkles } from 'lucide-react';
 import NavoraBrand from '../branding/NavoraBrand.jsx';
 import FeatureItem from './FeatureItem.jsx';

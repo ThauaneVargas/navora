@@ -27,7 +27,7 @@ async function parseResponse(response) {
   if (!text) return null;
   try {
     return JSON.parse(text);
-  } catch (error) {
+  } catch {
     return text;
   }
 }

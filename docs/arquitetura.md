@@ -54,7 +54,7 @@ flowchart LR
 |---|---|---|
 | `mobile` | Expo SDK 57, React Native 0.86.3, sem React Navigation | Navegação por **state machine própria** em `App.js` (`screens` object + `screenStack`/`navigate`/`goBack`), não pilha de rotas do React Navigation. |
 | `backend-nest` | NestJS, Prisma Client, PostgreSQL, `class-validator`, `@nestjs/jwt`, `bcryptjs`, `helmet`, `@nestjs/throttler` (local) | Módulos por domínio (`auth`, `patients`, `navigation`, `beacons`, `calls`, `visitor-access`, `check-ins`, `notifications`, `reports`, `dashboard`, `operational-messages`). |
-| `web-admin` | React 19, Vite | Entry real é `src/App.jsx` (carregado direto por `index.html` via `<script src="/src/App.jsx">`, sem build intermediário em dev). `pages/ReceptionPage.jsx`/`AdminPage.jsx` são código morto, não usados. |
+| `web-admin` | React 19, Vite | Entry real é `src/App.jsx` (carregado direto por `index.html` via `<script src="/src/App.jsx">`, sem build intermediário em dev). As páginas mortas `pages/ReceptionPage.jsx`/`AdminPage.jsx` e os componentes que só elas usavam foram removidos em 21/10. |
 
 ## 4. Por que state machine em vez de React Navigation (mobile)
 

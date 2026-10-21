@@ -37,7 +37,6 @@ const initialMessages = [
 export default function AssistantScreen({
   navigate,
   goBack,
-  routeParams = {},
   userProfile,
   visitorAccessRequest,
   navigationData,
@@ -51,7 +50,6 @@ export default function AssistantScreen({
   const [input, setInput] = useState('');
   const [status, setStatus] = useState('Pronta para ajudar');
   const scrollRef = useRef(null);
-  const autoVoiceStarted = useRef(false);
   // Mesma fonte da tela de busca: destinos da API quando ela respondeu, senão os locais.
   const availableDestinations =
     navigationSource === 'api' && navigationData?.destinations?.length
@@ -59,17 +57,6 @@ export default function AssistantScreen({
       : fallbackDestinations;
   const composerBottom = Math.max(insets.bottom, 12) + 78;
   const composerSpace = composerBottom + 88;
-
-  useEffect(() => {
-    if (routeParams?.voice && !autoVoiceStarted.current) {
-      autoVoiceStarted.current = true;
-      handleMicrophonePress();
-    }
-    if (routeParams?.prompt && !autoVoiceStarted.current) {
-      autoVoiceStarted.current = true;
-      processMessage(routeParams.prompt);
-    }
-  }, [routeParams]);
 
   useEffect(() => {
     setTimeout(() => scrollRef.current?.scrollToEnd?.({ animated: true }), 80);

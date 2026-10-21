@@ -1,4 +1,3 @@
-import React from 'react';
 import { HeartPulse, HelpCircle, Search, UserCheck } from 'lucide-react';
 
 function AlertBadge({ value, tone }) {

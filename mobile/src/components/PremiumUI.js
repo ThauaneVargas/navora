@@ -1,7 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { buttons, colors, radii, shadows, spacing, states, typography } from '../theme/colors';
+import { buttons, radii, shadows, spacing, states, typography } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 
 export function PrimaryButton({ title, icon = 'arrow-right', onPress, disabled, loading, style }) {

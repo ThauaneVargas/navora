@@ -1,13 +1,12 @@
 # Navora — Contexto para Claude Code
 
-## Ordem de prioridade (siga nesta sequência)
-1. **Safe area (bug 2)** — afeta praticamente toda tela do app. Estrutural, antes de qualquer coisa.
-2. **Telas mortas / fluxos sem ação (bugs 9-12)** — ajuda, recepção, SOS, suporte humano.
-3. **Seletor de andar** — depende do grafo de navegação ter dados por andar.
-4. **Geolocalização real (bug 1)** — importante, mas só afeta navegação externa.
-5. **React child (bug 3) e sobreposição/zoom no mapa (bugs 7, 8)** — pontuais.
-6. **Estética da ArrivalDetectedScreen (bug 5)** — só depois de tudo funcional.
-7. **Máscaras e validação de formulários (bug 13)** — melhoria de UX nos cadastros.
+## Ordem de prioridade (atualizada 21/10 — os 7 bugs originais de setembro estão todos resolvidos)
+1. **Atualizar produção** — decisão do usuário. Produção roda `main` (commit `b93df9d`, 23/08); nada de setembro/outubro está lá (inclui coluna `notes` e as 3 opções de acessibilidade). Passos: push da branch → merge em `main` → o Render faz deploy e o `prisma migrate deploy` aplica as migrations sozinho → rodar o seed só se o banco estiver vazio.
+2. **Banco de produção free expira 19/11/2026** — repetir o procedimento de `docs/arquitetura.md` §7 ou plano pago.
+3. **Beacon Feasycom FSC-BP104D (chega 17–25/11) + voz** — mesma rodada de APK novo: `react-native-ble-plx` + reconhecimento de voz do aparelho. Ver `docs/BLE_HARDWARE_VALIDATION.md`.
+4. **Testes no celular físico** pendentes: "Primeiro acesso", editar perfil (com observações), SOS aparecendo sozinho no painel em ~15 s (CTM-05/06/10/11 em `docs/casos_de_teste.md`).
+5. **Login Google/Apple** — hoje só "Em breve" (decidir: implementar ou tirar os botões).
+6. Melhorias sem pressa: seletor de andar com dados reais, dividir telas gigantes (`VisitorEntryScreen`, `PatientHomeScreen`, `App.js`) quando precisar mexer nelas.
 
 ## Projeto
 App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo RN, sem React Navigation — state machine em `App.js`), `backend-nest/` (NestJS + Prisma + PostgreSQL), `web-admin/` (React + Vite).
@@ -22,8 +21,8 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 
 ## Bugs e features — status atual
 
-**1. Geolocalização real (HowToGetScreen) — RESOLVIDO**
-- `HowToGetScreen.js` usa `expo-location`, pede permissão foreground, pega posição real e passa como `origin` para Google Maps/Waze/Apple Maps com fallback claro.
+**1. Geolocalização real — RESOLVIDO**
+- A tela real de "Como chegar" é `ExternalRouteScreen.js` (mapa Google + localização real via `expo-location`). A antiga `HowToGetScreen.js` não era aberta por nenhuma tela e foi removida em 21/10.
 
 **2. Safe area no Android — RESOLVIDO (estrutural + gaps fechados)**
 - `Screen.js`: `SafeAreaView` da `react-native-safe-area-context` com edges dinâmicos (`withBottomTabs` remove `'bottom'` das edges pra evitar duplo inset — BottomTabs já gerencia o próprio inset).
@@ -118,6 +117,13 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 - Já preparado no código, sem nenhum risco e sem ligar nada na UI: `backend-nest/prisma/seed.ts` tem o beacon `FSC-04-01` vinculado ao nó de navegação da entrada Private; `mobile/src/data/routes.js` tem `'FSC-04-01'` na lista de `beaconCodes` da entrada `PRIVATE_BACK`. `POST /beacons/detect` já reconhece esse código assim que o seed rodar (rota já existente, nada novo).
 - **Não instalado ainda:** nenhuma biblioteca BLE nativa (`react-native-ble-plx`), nenhum scanner real. Isso é a fase 2, documentada no mesmo arquivo, e exige development build novo (mesmo processo já feito pro Poco X7 Pro) — não é "trabalho rápido", é sessão própria.
 - Pendente do usuário: abrir o app FeasyBeacon na unidade física, configurar Major/Minor/TX power/intervalo conforme o documento, e mandar a config final (print da tela) pra fase 2 começar com certeza do protocolo real.
+
+**18. Limpeza de código morto (21/10)**
+- Varredura de imports a partir da entrada de cada projeto + checagem por nome. Removidos 16 arquivos que nada usava: mobile `HomeScreen.js` (923 linhas — a rota "Home" abre `PatientHomeScreen`), `PlaceholderScreen.js`, `HowToGetScreen.js`, `components/ActionCard|InfoCard|NavoraButton|ProfileAvatar.js`, `data/rooms.js`, `services/arrivalLocationService.js`; web-admin `pages/AdminPage.jsx`, `pages/ReceptionPage.jsx`, `components/ReportModal|Sidebar|StatCard.jsx` (o painel real usa `components/dashboard/` e `components/layout/`); e dentro do `web-admin/src/App.jsx` os componentes mortos `Stat`, `Table`, `renderCell`, `StatusBadge`, `matchesFloor`.
+- Dependências sem uso removidas: `expo-audio` (microfone falso), `expo-auth-session` + `expo-web-browser` (login Google nunca ligado). Valem pro próximo APK; Expo Go não muda.
+- Lint: `web-admin` ganhou `eslint-plugin-react` (`react/jsx-uses-vars`) — antes o contorno `varsIgnorePattern` escondia import de componente sem uso. Zero `no-unused-vars` nos dois projetos. Avisos restantes são regras do React Compiler (projeto não usa) e `react-refresh`.
+- **Login com Google/Apple: os dois botões só mostram "Em breve"** — o backend tem `POST /auth/google`, mas o app nunca chama. Decisão do usuário: ligar de verdade (precisa Client IDs do Google) ou tirar os botões.
+- CSS possivelmente órfão em `web-admin/src/styles.css` (`.status-badge`, `.table*`, `.stat-card`) não foi mexido — conferir visualmente antes de apagar.
 
 ## Nota de versão
 - Projeto está no **Expo SDK 57**.

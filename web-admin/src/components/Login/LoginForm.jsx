@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { LockKeyhole, Mail } from 'lucide-react';
 import NavoraBrand from '../branding/NavoraBrand.jsx';
 

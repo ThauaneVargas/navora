@@ -3,6 +3,7 @@
 // regra de hooks quebrada). Rode com `npm run lint`.
 import js from '@eslint/js';
 import globals from 'globals';
+import react from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 import reactRefresh from 'eslint-plugin-react-refresh';
 
@@ -18,14 +19,15 @@ export default [
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
     plugins: {
+      react,
       'react-hooks': reactHooks,
       'react-refresh': reactRefresh,
     },
     rules: {
       ...reactHooks.configs.recommended.rules,
-      // Sem eslint-plugin-react, o ESLint não sabe que <Componente /> "usa" o
-      // import — sem este padrão, todo componente importado vira falso positivo.
-      'no-unused-vars': ['warn', { varsIgnorePattern: '^[A-Z_]' }],
+      // Faz o no-unused-vars enxergar uso em JSX (<Componente />, <Icon />).
+      'react/jsx-uses-vars': 'error',
+      'no-unused-vars': 'warn',
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
       // Regras do React Compiler (não usado neste projeto) — aviso, não erro.
       // Mesmo critério do mobile/eslint.config.js.

@@ -250,7 +250,7 @@ export default function HelpScreen({
             ? `Protocolo ${request.id}`
             : 'Solicitada agora',
       });
-    } catch (error) {
+    } catch {
       Alert.alert(
         'Não foi possível enviar',
         'Confira a conexão e tente novamente. Se for urgente, procure a recepção imediatamente.'

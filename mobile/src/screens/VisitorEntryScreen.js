@@ -919,7 +919,7 @@ export default function VisitorEntryScreen({
             },
           });
         }
-      } catch (error) {
+      } catch {
         /*
          * O App mantém a solicitação
          * local mesmo se a API estiver

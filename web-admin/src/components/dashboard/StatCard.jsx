@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function StatCard({ title, value, detail, tone = 'info', icon: Icon, onClick }) {
   return (
     <button className={`stat-card ${tone}`} onClick={onClick}>

@@ -84,7 +84,6 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
   const [rememberData, setRememberData] = useState(false);
   const [loading, setLoading] = useState(false);
   const [biometricLoading, setBiometricLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
   const profileAnim = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -417,14 +416,14 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
             <View style={styles.socialRow}>
               <SocialLoginButton
                 icon="google"
-                label={googleLoading ? 'Entrando...' : 'Google'}
-                disabled={loading || googleLoading || biometricLoading}
+                label="Google"
+                disabled={loading || biometricLoading}
                 onPress={() => handleSocialLogin('Google')}
               />
               <SocialLoginButton
                 icon="apple"
                 label="Apple"
-                disabled={loading || googleLoading}
+                disabled={loading}
                 onPress={() => handleSocialLogin('Apple')}
               />
             </View>

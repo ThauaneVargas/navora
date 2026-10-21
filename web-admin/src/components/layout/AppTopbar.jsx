@@ -1,4 +1,3 @@
-import React from 'react';
 import { Bell, CalendarDays } from 'lucide-react';
 import OperatorAvatar from './OperatorAvatar.jsx';
 

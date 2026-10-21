@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import BrandPanel from '../components/Login/BrandPanel.jsx';
 import LoginForm from '../components/Login/LoginForm.jsx';
 import ProfileSwitch from '../components/Login/ProfileSwitch.jsx';

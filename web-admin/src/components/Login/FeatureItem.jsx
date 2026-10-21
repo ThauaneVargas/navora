@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function FeatureItem({ icon, title, description }) {
   const Icon = icon;
   return (

@@ -32,7 +32,7 @@ export function getAdminUser() {
   try {
     const stored = window.sessionStorage.getItem(USER_KEY);
     return stored ? JSON.parse(stored) : null;
-  } catch (error) {
+  } catch {
     window.sessionStorage.removeItem(USER_KEY);
     return null;
   }

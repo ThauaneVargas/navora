@@ -1,5 +1,3 @@
-import React from 'react';
-
 function getInitials(name = 'Navora') {
   return name
     .split(' ')

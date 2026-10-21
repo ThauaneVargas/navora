@@ -1,5 +1,3 @@
-import React from 'react';
-
 function normalizeText(value) {
   return String(value || '')
     .normalize('NFD')

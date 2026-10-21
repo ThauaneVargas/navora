@@ -35,7 +35,6 @@
     "plugins": [
       "expo-asset",
       "expo-font",
-      "expo-audio",
       "expo-location",
       "expo-secure-store",
       "expo-status-bar",
@@ -46,8 +45,7 @@
           "resizeMode": "contain",
           "backgroundColor": "#FFFFFF"
         }
-      ],
-      "expo-web-browser"
+      ]
     ]
   }
 }

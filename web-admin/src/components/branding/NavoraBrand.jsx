@@ -1,4 +1,3 @@
-import React from 'react';
 import navoraSymbol from '../../assets/navora_symbol.png';
 
 const roleLabels = {

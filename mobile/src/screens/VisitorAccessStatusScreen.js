@@ -252,7 +252,7 @@ export default function VisitorAccessStatusScreen({
             normalized
           );
         }
-      } catch (error) {
+      } catch {
         /*
          * Mantemos o último status
          * conhecido.
