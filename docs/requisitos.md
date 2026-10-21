@@ -25,7 +25,7 @@ App de navegação indoor/outdoor para dois hospitais (HMC Private e HMC Marco C
 | RF-01 | Login com e-mail/senha | Paciente | Implementado | `LoginScreen.js` → `POST /auth/login` |
 | RF-02 | Login com Google | Paciente | Implementado | `POST /auth/google`, `googleId` em `User` |
 | RF-03 | Recuperação de senha por e-mail | Paciente | Implementado | `ForgotPasswordScreen.js`/`ResetPasswordScreen.js` → `POST /auth/forgot-password`, `POST /auth/reset-password` |
-| RF-04 | Cadastro completo (nome, nascimento, CPF, telefone, e-mail, senha, contato de emergência, acessibilidade) | Paciente | Implementado | `PatientRegisterScreen.js` → `POST /patients/register` |
+| RF-04 | Cadastro completo (nome, nascimento, CPF, telefone, e-mail, senha, contato de emergência, 9 opções de acessibilidade, observações importantes) | Paciente | Implementado (observações e 3 opções de acessibilidade passaram a ser salvas em 21/10) | `PatientRegisterScreen.js` → `POST /patients/register` |
 | RF-05 | Entrada rápida sem criar conta (nome/telefone/nascimento, estado local) | Paciente | Implementado | `PatientQuickRegisterScreen.js` (`quick: true`) |
 | RF-06 | "Primeiro acesso" cria conta real (prefill de nome/telefone/nascimento → cadastro completo) | Paciente | Implementado (16/10) | `PatientQuickRegisterScreen.js` (`quick: false`) → `PatientRegisterScreen.js` com `routeParams.initialValues` |
 | RF-07 | Editar dados pessoais e contato de emergência sem recriar a conta | Paciente | Implementado (16/10) | `ProfileScreen.js` → `PatientRegisterScreen.js` (`mode: 'edit'`) → `PUT /patients/me` |

@@ -17,6 +17,10 @@ const allowedAccessibilityKeys = [
   'highContrast',
   'needsStretcher',
   'mobilityDifficulty',
+  // As 3 abaixo não mudam a rota; existem para a equipe saber como ajudar.
+  'needsCompanion',
+  'visualImpairment',
+  'hearingImpairment',
 ] as const;
 
 type PatientWithUser = Prisma.PatientProfileGetPayload<{ include: { user: true } }>;
@@ -61,6 +65,7 @@ export class PatientsService {
           birthDate: payload.birthDate ? new Date(payload.birthDate) : undefined,
           accessibility: this.cleanAccessibility(payload.accessibility),
           emergencyContact: payload.emergencyContact,
+          notes: payload.notes?.trim() || null,
         },
         include: { user: true },
       });
@@ -106,6 +111,7 @@ export class PatientsService {
           ...(payload.emergencyContact !== undefined
             ? { emergencyContact: payload.emergencyContact || null }
             : {}),
+          ...(payload.notes !== undefined ? { notes: payload.notes.trim() || null } : {}),
         },
         include: { user: true },
       });
@@ -173,6 +179,7 @@ export class PatientsService {
       birthDate: patient.birthDate?.toISOString() ?? null,
       accessibility: patient.accessibility,
       emergencyContact: patient.emergencyContact,
+      notes: patient.notes,
       user: this.authService.toSafeUser(patient.user),
       createdAt: patient.createdAt,
       updatedAt: patient.updatedAt,

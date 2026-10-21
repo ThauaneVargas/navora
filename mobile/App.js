@@ -740,6 +740,9 @@ export default function App() {
       emergencyContact:
         patient?.emergencyContact,
 
+      notes:
+        patient?.notes,
+
       cpf:
         patient?.cpf ||
         patient?.document ||

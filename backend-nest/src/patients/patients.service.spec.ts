@@ -115,8 +115,10 @@ async function run() {
       wheelchair: true,
       avoidStairs: true,
       highContrast: true,
+      visualImpairment: true,
       diagnosis: true,
     } as any,
+    notes: '  Alergia a dipirona  ',
   });
 
   assert.ok(registered.access_token, 'cadastro retorna token');
@@ -127,7 +129,12 @@ async function run() {
   assert.equal(patientProfiles.length, 1, 'cadastro cria PatientProfile');
   assert.equal(await bcrypt.compare('senha123', users[0].passwordHash), true, 'senha fica hasheada');
   assert.equal(users[0].passwordHash === 'senha123', false, 'senha original nao e persistida');
-  assert.deepEqual(registered.patient.accessibility, { wheelchair: true, avoidStairs: true, highContrast: true }, 'accessibility ignora campos nao permitidos');
+  assert.deepEqual(
+    registered.patient.accessibility,
+    { wheelchair: true, avoidStairs: true, highContrast: true, visualImpairment: true },
+    'accessibility ignora campos nao permitidos (e guarda deficiencia visual)',
+  );
+  assert.equal(registered.patient.notes, 'Alergia a dipirona', 'cadastro guarda observacoes (sem espacos nas pontas)');
 
   await expectError('email duplicado', Error, () =>
     patientsService.register({
@@ -154,17 +161,25 @@ async function run() {
   assert.equal(updated.user.name, 'Paciente Atualizado', 'PUT /patients/me atualiza User');
   assert.equal(updated.birthDate, null, 'PUT /patients/me permite limpar birthDate');
   assert.deepEqual(updated.accessibility, { preferElevator: true, needsStretcher: false }, 'PUT /patients/me atualiza accessibility');
+  assert.equal(updated.notes, 'Alergia a dipirona', 'PUT /patients/me sem notes mantem as observacoes');
+
+  const notesCleared = await patientsService.updateMe(tokenUser, { notes: '   ' });
+  assert.equal(notesCleared.notes, null, 'PUT /patients/me com notes vazio limpa as observacoes');
 
   const accessibility = await patientsService.updateAccessibility(tokenUser, {
     wheelchair: true,
     largerText: true,
+    needsCompanion: true,
+    hearingImpairment: true,
   });
   assert.deepEqual(accessibility.accessibility, {
     preferElevator: true,
     needsStretcher: false,
     wheelchair: true,
     largerText: true,
-  }, 'PUT /patients/me/accessibility mescla preferencias');
+    needsCompanion: true,
+    hearingImpairment: true,
+  }, 'PUT /patients/me/accessibility mescla preferencias (incluindo acompanhante e deficiencia auditiva)');
 
   const guard = new JwtAuthGuard(authService);
   await expectError('acesso sem JWT', UnauthorizedException, () => guard.canActivate(makeContext().context));

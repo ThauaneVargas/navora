@@ -109,6 +109,7 @@ function buildEditInitialValues(userProfile = {}) {
     birthDateIso: userProfile?.birthDate || null,
     emergencyContact: userProfile?.emergencyContact || '',
     accessibility: userProfile?.accessibility || {},
+    notes: userProfile?.notes || '',
   };
 }
 

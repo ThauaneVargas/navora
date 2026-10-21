@@ -32,4 +32,16 @@ export class UpdateAccessibilityDto {
   @IsOptional()
   @IsBoolean()
   mobilityDifficulty?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  needsCompanion?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  visualImpairment?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  hearingImpairment?: boolean;
 }

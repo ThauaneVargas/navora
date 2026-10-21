@@ -1,4 +1,4 @@
-import { IsDateString, IsObject, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsDateString, IsObject, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class UpdatePatientDto {
   @IsOptional()
@@ -25,4 +25,9 @@ export class UpdatePatientDto {
   @IsOptional()
   @IsString()
   emergencyContact?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  notes?: string;
 }

@@ -154,6 +154,9 @@ model PatientProfile {
   birthDate        DateTime? @map("birth_date")
   accessibility    Json     @default("{}")
   emergencyContact String?  @map("emergency_contact")
+  // "Observações importantes" do cadastro (alergias, restrições...). Antes era
+  // digitado no app e descartado — não havia onde guardar.
+  notes            String?
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 

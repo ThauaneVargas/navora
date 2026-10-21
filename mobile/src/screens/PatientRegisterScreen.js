@@ -41,12 +41,17 @@ const accessibilityOptions = [
   'Precisa de orientacao por voz',
 ];
 
+// Toda opção da tela precisa estar aqui — o que não estiver é descartado ao salvar
+// (antes "acompanhante", "deficiência visual" e "auditiva" eram marcadas e sumiam).
 const accessibilityMap = {
   'Dificuldade de locomocao': 'mobilityDifficulty',
   'Usa cadeira de rodas': 'wheelchair',
   'Precisa de elevador': 'preferElevator',
   'Precisa evitar escadas': 'avoidStairs',
   'Precisa de auxilio de maqueiro': 'needsStretcher',
+  'Precisa de acompanhante': 'needsCompanion',
+  'Deficiencia visual': 'visualImpairment',
+  'Deficiencia auditiva': 'hearingImpairment',
   'Precisa de orientacao por voz': 'voiceGuidance',
 };
 
@@ -100,7 +105,7 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, routeP
     emergencyContact: initialValues.emergencyContact ? maskPhone(initialValues.emergencyContact) : '',
   }));
   const [selected, setSelected] = useState(() => buildSelectedFromAccessibility(initialValues.accessibility));
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(() => initialValues.notes || '');
   const [loading, setLoading] = useState(false);
   const [visiblePasswords, setVisiblePasswords] = useState({});
 
@@ -150,6 +155,8 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, routeP
         birthDate: parseBirthDate(form.birth),
         accessibility: buildAccessibility(selected),
         emergencyContact: form.emergencyContact?.trim() || undefined,
+        // String vazia (e não undefined) pra a pessoa conseguir apagar as observações.
+        notes: notes.trim(),
       };
 
       try {
@@ -194,6 +201,7 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, routeP
       birthDate: parseBirthDate(form.birth),
       accessibility: buildAccessibility(selected),
       emergencyContact: form.emergencyContact?.trim() || undefined,
+      notes: notes.trim() || undefined,
     };
 
     try {
@@ -206,6 +214,7 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, routeP
           phone: payload.phone,
           patientCode: payload.patientCode,
           accessibility: payload.accessibility,
+          notes: payload.notes,
           hasAccount: true,
           authSource: 'fallback',
         });
