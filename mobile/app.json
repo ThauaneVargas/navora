@@ -45,6 +45,14 @@
           "resizeMode": "contain",
           "backgroundColor": "#FFFFFF"
         }
+      ],
+      [
+        "react-native-ble-manager",
+        {
+          "isBleRequired": false,
+          "neverForLocation": false,
+          "bluetoothAlwaysPermission": "O Navora usa o Bluetooth para reconhecer os pontos de referência do hospital e mostrar onde você está. Só funciona com o app aberto."
+        }
       ]
     ]
   }

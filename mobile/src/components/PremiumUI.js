@@ -10,6 +10,8 @@ export function PrimaryButton({ title, icon = 'arrow-right', onPress, disabled, 
     <Pressable
       onPress={onPress}
       disabled={disabled || loading}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled || loading), busy: Boolean(loading) }}
       style={({ pressed }) => [
         styles.primaryButton,
         { backgroundColor: appColors.primary },
@@ -38,6 +40,8 @@ export function SecondaryButton({ title, icon, onPress, disabled, style, danger 
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: Boolean(disabled) }}
       style={({ pressed }) => [
         styles.secondaryButton,
         { backgroundColor: appColors.surface, borderColor: danger ? appColors.danger : appColors.borderStrong },

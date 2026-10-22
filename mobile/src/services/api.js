@@ -9,6 +9,7 @@ import {
   normalizeRoutePreview,
 } from './navigationAdapter';
 import { getAuthToken } from './authToken';
+import { findNavoraBeacon } from './ibeacon';
 
 const configuredApiUrl = process.env.EXPO_PUBLIC_NAVORA_API_URL;
 const API_BASE_URL = (configuredApiUrl || 'http://localhost:8000').replace(/\/$/, '');
@@ -45,6 +46,38 @@ const fallbackVisitorAccess = (payload = {}) => ({
   updated_at: new Date().toISOString(),
   demoMode: true,
 });
+
+function beaconDetectionPayload(beacon) {
+  if (typeof beacon === 'string') return { beaconCode: beacon };
+  if (beacon?.uuid && Number.isInteger(beacon.major) && Number.isInteger(beacon.minor)) {
+    return {
+      uuid: beacon.uuid,
+      major: beacon.major,
+      minor: beacon.minor,
+      // A mediana pode vir quebrada (ex.: -64.5) e o backend só aceita inteiro.
+      ...(Number.isFinite(beacon.rssi) ? { rssi: Math.round(beacon.rssi) } : {}),
+    };
+  }
+  return { beaconCode: beacon?.identifier || beacon?.beaconCode || null };
+}
+
+// API fora do ar: resolve pela tabela local dos beacons do Navora (ibeacon.js),
+// pra a localização automática não depender do backend estar acordado.
+function offlineBeaconDetection(payload) {
+  const known = Number.isInteger(payload.major) ? findNavoraBeacon(payload.major, payload.minor) : null;
+  if (!known) {
+    return { detected: false, api_offline: true, demoMode: true };
+  }
+  return {
+    detected: true,
+    api_offline: true,
+    beacon_code: known.code,
+    area: known.area,
+    entrance: known.area === 'private' ? 'Entrada pelos fundos' : 'Entrada pela frente',
+    navigation_node: null,
+    origin_node_code: known.originNodeCode,
+  };
+}
 
 export class NavoraApiError extends Error {
   constructor(message, { status, network = false, payload } = {}) {
@@ -157,16 +190,15 @@ export const navoraApi = {
   getVisitorAccessRequest: (id) =>
     request(`/visitor-access/${id}`, {}, () => fallbackVisitorAccess({ id })),
   getVisitorAccessRequests: () => request('/visitor-access', {}, []),
-  detectBeacon: (beaconCode) =>
-    request(
+  // Aceita o código interno ("MBM04-01") ou o evento do scanner BLE (uuid/major/minor).
+  detectBeacon: (beacon) => {
+    const payload = beaconDetectionPayload(beacon);
+    return request(
       '/beacons/detect',
-      { method: 'POST', body: JSON.stringify({ beaconCode }) },
-      {
-        detected: false,
-        api_offline: true,
-        demoMode: true,
-      }
-    ),
+      { method: 'POST', body: JSON.stringify(payload) },
+      () => offlineBeaconDetection(payload)
+    );
+  },
   getNotifications: () => request('/notifications/me', { authenticated: true }, []),
   markNotificationRead: (id) => request(`/notifications/${id}/read`, { method: 'PUT', authenticated: true }),
   markAllNotificationsRead: () => request('/notifications/me/read-all', { method: 'PUT', authenticated: true }),

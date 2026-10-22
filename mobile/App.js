@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, BackHandler, Platform } from 'react-native';
+import { Alert, AppState, BackHandler, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import SplashScreen from './src/screens/SplashScreen';
 import LoginScreen from './src/screens/LoginScreen';
@@ -1783,9 +1783,10 @@ export default function App() {
       let detected;
 
       try {
+        // Evento inteiro: o BLE real manda uuid/major/minor; o simulado, só o código.
         detected =
           await navoraApi.detectBeacon(
-            beaconIdentifier
+            indoorEvent
           );
       } catch (error) {
         indoorLog(
@@ -1837,7 +1838,10 @@ export default function App() {
       const beaconDetection = {
         ...detected,
 
+        // Pelo iBeacon, o identificador é "ibeacon:1:10"; o código interno
+        // (ex.: MBM04-01) vem do backend (ou da tabela local, se offline).
         beacon_code:
+          detected.beacon_code ||
           beaconIdentifier,
 
         indoor_event:
@@ -1973,33 +1977,56 @@ export default function App() {
       };
     };
 
+  // Localização automática por beacon: só com EXPO_PUBLIC_BLE_ENABLED=true (ver
+  // indoorLocationService.js). Sem ela, nada muda: entrada escolhida na tela.
   const indoorTrackingEnabled =
-    false;
+    indoorLocationService.isRealBleEnabled();
+
+  // O scanner é ligado uma vez; o handler mais recente fica num ref, pra não
+  // reiniciar a leitura (e perder as médias de sinal) a cada mudança de rota.
+  const indoorHandlerRef = useRef(
+    handleIndoorLocationDetection
+  );
+
+  useEffect(() => {
+    indoorHandlerRef.current =
+      handleIndoorLocationDetection;
+  });
 
   useEffect(() => {
     if (!indoorTrackingEnabled) {
       return undefined;
     }
 
-    indoorLocationService.start();
-
+    // A leitura em si começa na tela "Localização inicial" (é lá que o
+    // pedido de permissão faz sentido pra pessoa). Aqui só se escuta.
     const unsubscribe =
       indoorLocationService.subscribe(
-        handleIndoorLocationDetection
+        (event) =>
+          indoorHandlerRef.current(event)
+      );
+
+    // Leitura só com o app aberto.
+    const appStateSubscription =
+      AppState.addEventListener(
+        'change',
+        (nextState) => {
+          if (nextState === 'active') {
+            indoorLocationService.resume();
+          } else {
+            indoorLocationService.pause();
+          }
+        }
       );
 
     return () => {
+      appStateSubscription.remove();
+
       unsubscribe();
 
       indoorLocationService.stop();
     };
-  }, [
-    activeRoute,
-    indoorTrackingEnabled,
-    userProfile,
-    visitorAccessRequest,
-    navigationSource,
-  ]);
+  }, [indoorTrackingEnabled]);
 
   const handleStartRoute = (
     destination

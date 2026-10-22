@@ -63,13 +63,15 @@ export const hospitalDetectionService = {
       detection.detectedEntrance ||
       getEntranceByBeaconCode(detection.beacon_code || detection.beaconCode) ||
       getEntranceByAreaId(area.id);
+    const hasBeacon = Boolean(detection.beacon_code || detection.beaconCode);
+    const fromRealBle = detection.indoor_event?.source === 'ble';
     currentState = {
       arrivalStatus: 'INDOOR',
       status: 'confirmed',
       activeHospital: getHospitalEnvironment(area.id, { ...detection, detectedEntrance }),
       detectedEntrance,
-      source: detection.beacon_code || detection.beaconCode ? 'simulated_beacon' : 'manual_fallback',
-      confidence: detection.beacon_code || detection.beaconCode ? 'simulated_high' : 'fallback',
+      source: fromRealBle ? 'ble_beacon' : hasBeacon ? 'simulated_beacon' : 'manual_fallback',
+      confidence: fromRealBle ? 'high' : hasBeacon ? 'simulated_high' : 'fallback',
     };
     emit();
     return currentState;
