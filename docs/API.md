@@ -88,17 +88,32 @@ Resposta contem `route_found`, `decision`, `redirected`, `reason`, `accessible_r
 
 `GET /beacons`
 
-Protegido para `ADMIN`/`RECEPTION`.
+Protegido para `ADMIN`/`RECEPTION`. Cada beacon inclui também `hardware_model`, `ibeacon_uuid`, `ibeacon_major`, `ibeacon_minor` e `measured_power` (nulos nos beacons só simulados; `measured_power` nulo até a calibração no local).
 
 `POST /beacons/detect`
 
-Request:
+Público (sem JWT). Duas formas de identificar o beacon:
+
+Pelo código interno:
 
 ```json
 { "beaconCode": "MBM04-01" }
 ```
 
-Tambem aceita `beacon_code`. Beacon conhecido retorna `detected: true`, dados de area, `navigation_node` e `origin_node_code`. Beacon desconhecido retorna `{ "detected": false }`.
+Também aceita `beacon_code`.
+
+Pelo pacote iBeacon lido no celular (configuração real em `docs/beacons-configuracao.md`):
+
+```json
+{ "uuid": "7f3c2a91-5b4e-4d8a-9c61-2e8b0d5f4a17", "major": 1, "minor": 10, "rssi": -64 }
+```
+
+- `uuid` é comparado sem diferenciar maiúsculas/minúsculas e com ou sem hífens.
+- `major` e `minor`: inteiros de 0 a 65535 (fora disso, ou como texto → `400`).
+- `rssi` (opcional, -127 a 20): só registrado em log, não é gravado.
+- Se vierem o código e o trio, o **código tem prioridade**.
+
+Beacon conhecido retorna `detected: true`, `beacon_code` (código interno), dados de área, `navigation_node` e `origin_node_code`. Beacon desconhecido, trio incompleto ou UUID inválido retornam `{ "detected": false }` (não é erro).
 
 ## Calls
 

@@ -75,5 +75,10 @@ export function mapBeaconToApi(beacon: Beacon & { navigationNode?: { id: number;
       : null,
     origin_node_code: beacon.navigationNode?.code ?? null,
     last_signal_at: beacon.lastSignalAt.toISOString(),
+    hardware_model: beacon.hardwareModel ?? null,
+    ibeacon_uuid: beacon.ibeaconUuid ?? null,
+    ibeacon_major: beacon.ibeaconMajor ?? null,
+    ibeacon_minor: beacon.ibeaconMinor ?? null,
+    measured_power: beacon.measuredPower ?? null,
   };
 }

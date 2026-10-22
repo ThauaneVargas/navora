@@ -42,20 +42,17 @@ async function run() {
 
   const httpServer = app.getHttpServer();
   const prisma = app.get(PrismaService);
-  let originalLastSignalAt: Date | undefined;
+  // A detecção grava lastSignalAt: guarda o valor original dos beacons tocados
+  // pelo teste e restaura no finally.
+  const touchedCodes = ['MBM04-01', 'MBM04-02', 'MBM04-10'];
+  const originalLastSignalAt = new Map<string, Date>();
 
   try {
-    const originalBeacon = await prisma.beacon.findUnique({
-      where: { code: 'MBM04-01' },
-      select: { lastSignalAt: true },
-    });
-
-    assert.ok(
-      originalBeacon,
-      'MBM04-01 deve existir no seed',
-    );
-
-    originalLastSignalAt = originalBeacon.lastSignalAt;
+    for (const code of touchedCodes) {
+      const original = await prisma.beacon.findUnique({ where: { code }, select: { lastSignalAt: true } });
+      assert.ok(original, `${code} deve existir no seed`);
+      originalLastSignalAt.set(code, original.lastSignalAt);
+    }
 
     //
     // TOKENS DOS PERFIS
@@ -299,16 +296,73 @@ async function run() {
       true,
     );
 
+    //
+    // 14. DETECÇÃO POR iBeacon (uuid + major + minor), como o celular lê
+    //     — configuração real em docs/beacons-configuracao.md
+    //
+    const NAVORA_UUID = '7f3c2a91-5b4e-4d8a-9c61-2e8b0d5f4a17';
+
+    const ibeaconSus = await request(httpServer)
+      .post('/beacons/detect')
+      .send({ uuid: NAVORA_UUID, major: 2, minor: 10, rssi: -71 });
+
+    assert.equal(ibeaconSus.status, 201);
+    assert.equal(ibeaconSus.body.detected, true);
+    assert.equal(ibeaconSus.body.beacon_code, 'MBM04-10');
+    assert.equal(ibeaconSus.body.area, 'sus');
+    assert.equal(ibeaconSus.body.origin_node_code, 'sus-entry');
+
+    //
+    // 15. UUID EM MAIÚSCULAS E SEM HÍFENS TAMBÉM IDENTIFICA
+    //
+    const ibeaconUpper = await request(httpServer)
+      .post('/beacons/detect')
+      .send({ uuid: NAVORA_UUID.replace(/-/g, '').toUpperCase(), major: 1, minor: 20 });
+
+    assert.equal(ibeaconUpper.status, 201);
+    assert.equal(ibeaconUpper.body.beacon_code, 'MBM04-02');
+
+    //
+    // 16. TRIO DESCONHECIDO NÃO É ERRO
+    //
+    const ibeaconUnknown = await request(httpServer)
+      .post('/beacons/detect')
+      .send({ uuid: NAVORA_UUID, major: 9, minor: 99 });
+
+    assert.equal(ibeaconUnknown.status, 201);
+    assert.deepEqual(ibeaconUnknown.body, { detected: false });
+
+    //
+    // 17. VALORES FORA DO PADRÃO iBeacon SÃO RECUSADOS
+    //
+    const majorOutOfRange = await request(httpServer)
+      .post('/beacons/detect')
+      .send({ uuid: NAVORA_UUID, major: 70000, minor: 10 });
+
+    assert.equal(majorOutOfRange.status, 400);
+
+    const minorAsText = await request(httpServer)
+      .post('/beacons/detect')
+      .send({ uuid: NAVORA_UUID, major: 1, minor: 'dez' });
+
+    assert.equal(minorAsText.status, 400);
+
+    //
+    // 18. LISTAGEM EXPÕE A IDENTIDADE iBeacon (measured_power nulo até calibrar)
+    //
+    const listedPhysical = adminList.body.find((beacon: any) => beacon.code === 'MBM04-01');
+    assert.equal(listedPhysical.hardware_model, 'Feasycom FSC-BP104D');
+    assert.equal(listedPhysical.ibeacon_major, 1);
+    assert.equal(listedPhysical.ibeacon_minor, 10);
+    assert.equal(listedPhysical.measured_power, null);
+
     console.log(
       'beacons + indoor detection E2E tests passed',
     );
   } finally {
     try {
-      if (originalLastSignalAt !== undefined) {
-        await prisma.beacon.update({
-          where: { code: 'MBM04-01' },
-          data: { lastSignalAt: originalLastSignalAt },
-        });
+      for (const [code, lastSignalAt] of originalLastSignalAt) {
+        await prisma.beacon.update({ where: { code }, data: { lastSignalAt } });
       }
     } finally {
       await app.close();

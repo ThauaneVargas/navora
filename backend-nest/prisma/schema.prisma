@@ -263,6 +263,9 @@ model Beacon {
 
   navigationNode NavigationNode? @relation(fields: [navigationNodeId], references: [id])
 
+  // Dois aparelhos com o mesmo UUID+major+minor seriam indistinguíveis pro app.
+  // (No Postgres, linhas com esses campos nulos — beacons simulados — não conflitam.)
+  @@unique([ibeaconUuid, ibeaconMajor, ibeaconMinor])
   @@map("beacons")
 }
 
