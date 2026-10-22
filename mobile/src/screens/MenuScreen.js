@@ -15,6 +15,8 @@ const menuItems = [
   { title: 'Notificações', subtitle: 'Avisos do Navora', icon: 'bell-outline', screen: 'Notifications' },
   { title: 'Configurações', subtitle: 'Preferências do app', icon: 'cog-outline', screen: 'Settings' },
   { title: 'Privacidade', subtitle: 'Dados e permissões', icon: 'shield-lock-outline', screen: 'Privacy' },
+  // Só na versão de desenvolvimento (calibração dos beacons físicos).
+  ...(__DEV__ ? [{ title: 'Diagnóstico de beacons', subtitle: 'Só em desenvolvimento', icon: 'access-point', screen: 'BeaconDiagnostics' }] : []),
   { title: 'Sair', subtitle: 'Encerrar sessão', icon: 'logout', screen: 'HomeStart', danger: true },
 ];
 

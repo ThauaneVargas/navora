@@ -36,6 +36,7 @@ import PrivacyScreen from './src/screens/PrivacyScreen';
 import RouteHistoryScreen from './src/screens/RouteHistoryScreen';
 import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
+import BeaconDiagnosticsScreen from './src/screens/BeaconDiagnosticsScreen';
 import { initialHelpRequests } from './src/data/helpRequests';
 import { AppProvider } from './src/context/AppContext';
 import {
@@ -93,6 +94,8 @@ const screens = {
   Privacy: PrivacyScreen,
   ForgotPassword: ForgotPasswordScreen,
   ResetPassword: ResetPasswordScreen,
+  // Só em desenvolvimento: calibração dos beacons físicos (fora do app final).
+  ...(__DEV__ ? { BeaconDiagnostics: BeaconDiagnosticsScreen } : {}),
 };
 
 const mobileScreens = new Set(Object.keys(screens));

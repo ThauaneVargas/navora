@@ -230,6 +230,7 @@ export class BleIndoorLocationProvider {
         major: reading.major,
         minor: reading.minor,
         txPower: reading.txPower,
+        deviceId: reading.deviceId,
         ...summarizeRssiWindow(reading.samples),
         lastSeenAt: reading.lastSeenAt,
         secondsAgo: Math.round((now - reading.lastSeenAt) / 1000),
@@ -325,6 +326,7 @@ export class BleIndoorLocationProvider {
     const key = beaconKey(ibeacon.major, ibeacon.minor);
     const reading = this.readings.get(key) || { ...ibeacon, samples: [] };
     reading.txPower = ibeacon.txPower;
+    reading.deviceId = peripheral.id; // no Android é o MAC — confere o aparelho físico
     reading.samples = appendRssiSample(reading.samples, { beaconIdentifier: key, rssi: peripheral.rssi, txPower: ibeacon.txPower });
     reading.lastSeenAt = Date.now();
     this.readings.set(key, reading);
