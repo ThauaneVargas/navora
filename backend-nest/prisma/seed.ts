@@ -538,69 +538,48 @@ async function main() {
     });
   }
 
-  await prisma.beacon.upsert({
-    where: { code: 'MBM04-01' },
-    update: { navigationNodeId: nodes.get('private-entry')?.id },
-    create: {
-      code: 'MBM04-01',
-      name: 'Entrada Private',
-      area: 'private',
-      areaName: 'HMC Private',
-      location: 'Entrada pelos fundos',
-      sector: 'Entrada Private',
-      battery: 92,
-      status: 'Online',
-      navigationNodeId: nodes.get('private-entry')?.id,
+  // Beacons físicos: Feasycom FSC-BP104D, configurados em 21/10 (ver
+  // docs/beacons-configuracao.md). Os códigos MBM04-xx são mantidos porque
+  // aparecem no app, no painel e nos testes. measuredPower fica nulo até a
+  // calibração no hospital.
+  const NAVORA_IBEACON_UUID = '7f3c2a91-5b4e-4d8a-9c61-2e8b0d5f4a17';
+  const physicalBeacons = [
+    {
+      code: 'MBM04-01', major: 1, minor: 10, node: 'private-entry',
+      name: 'Entrada Private', area: 'private', areaName: 'HMC Private',
+      location: 'Entrada pelos fundos', sector: 'Entrada Private', battery: 92,
     },
-  });
+    {
+      code: 'MBM04-02', major: 1, minor: 20, node: 'private-reception',
+      name: 'Recepcao Private', area: 'private', areaName: 'HMC Private',
+      location: 'Recepcao Private', sector: 'Recepcao Private', battery: 88,
+    },
+    {
+      code: 'MBM04-10', major: 2, minor: 10, node: 'sus-entry',
+      name: 'Entrada Hospital Marco Capute', area: 'sus', areaName: 'Hospital Marco Capute',
+      location: 'Entrada pela frente', sector: 'Entrada Hospital Marco Capute', battery: 90,
+    },
+    {
+      code: 'MBM04-11', major: 2, minor: 20, node: 'sus-reception',
+      name: 'Recepcao Hospital Marco Capute', area: 'sus', areaName: 'Hospital Marco Capute',
+      location: 'Recepcao Hospital Marco Capute', sector: 'Recepcao Hospital Marco Capute', battery: 84,
+    },
+  ];
 
-  await prisma.beacon.upsert({
-    where: { code: 'MBM04-02' },
-    update: { navigationNodeId: nodes.get('private-reception')?.id },
-    create: {
-      code: 'MBM04-02',
-      name: 'Recepcao Private',
-      area: 'private',
-      areaName: 'HMC Private',
-      location: 'Recepcao Private',
-      sector: 'Recepcao Private',
-      battery: 88,
-      status: 'Online',
-      navigationNodeId: nodes.get('private-reception')?.id,
-    },
-  });
-
-  await prisma.beacon.upsert({
-    where: { code: 'MBM04-10' },
-    update: { navigationNodeId: nodes.get('sus-entry')?.id },
-    create: {
-      code: 'MBM04-10',
-      name: 'Entrada Hospital Marco Capute',
-      area: 'sus',
-      areaName: 'Hospital Marco Capute',
-      location: 'Entrada pela frente',
-      sector: 'Entrada Hospital Marco Capute',
-      battery: 90,
-      status: 'Online',
-      navigationNodeId: nodes.get('sus-entry')?.id,
-    },
-  });
-
-  await prisma.beacon.upsert({
-    where: { code: 'MBM04-11' },
-    update: { navigationNodeId: nodes.get('sus-reception')?.id },
-    create: {
-      code: 'MBM04-11',
-      name: 'Recepcao Hospital Marco Capute',
-      area: 'sus',
-      areaName: 'Hospital Marco Capute',
-      location: 'Recepcao Hospital Marco Capute',
-      sector: 'Recepcao Hospital Marco Capute',
-      battery: 84,
-      status: 'Online',
-      navigationNodeId: nodes.get('sus-reception')?.id,
-    },
-  });
+  for (const { code, major, minor, node, ...details } of physicalBeacons) {
+    const bleIdentity = {
+      hardwareModel: 'Feasycom FSC-BP104D',
+      ibeaconUuid: NAVORA_IBEACON_UUID,
+      ibeaconMajor: major,
+      ibeaconMinor: minor,
+      navigationNodeId: nodes.get(node)?.id,
+    };
+    await prisma.beacon.upsert({
+      where: { code },
+      update: bleIdentity,
+      create: { code, status: 'Online', ...details, ...bleIdentity },
+    });
+  }
 
   await prisma.beacon.upsert({
     where: { code: 'MBM04-20' },
@@ -618,26 +597,9 @@ async function main() {
     },
   });
 
-  // Unidade física real (Feasycom FSC-BP104D, comprada em 16/10). Code segue a
-  // convenção combinada em docs/BLE_HARDWARE_VALIDATION.md: FSC-<major>-<minor>.
-  // Ainda não há scanner BLE real no app — este registro so deixa o backend
-  // pronto para reconhecer o beacon no momento em que a fase 2 (dev build +
-  // react-native-ble-plx) existir. Nao afeta o funcionamento atual do app.
-  await prisma.beacon.upsert({
-    where: { code: 'FSC-04-01' },
-    update: { navigationNodeId: nodes.get('private-entry')?.id },
-    create: {
-      code: 'FSC-04-01',
-      name: 'Entrada Private (Feasycom FSC-BP104D #1)',
-      area: 'private',
-      areaName: 'HMC Private',
-      location: 'Entrada pelos fundos',
-      sector: 'Entrada Private',
-      battery: 100,
-      status: 'Online',
-      navigationNodeId: nodes.get('private-entry')?.id,
-    },
-  });
+  // "FSC-04-01" foi um registro provisório (16/10) com outra convenção de
+  // major/minor; a configuração real dos aparelhos (acima) o substituiu.
+  await prisma.beacon.deleteMany({ where: { code: 'FSC-04-01' } });
 
   const calls = await prisma.callRequest.count();
   if (calls === 0) {

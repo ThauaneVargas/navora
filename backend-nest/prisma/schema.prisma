@@ -250,6 +250,17 @@ model Beacon {
   navigationNodeId Int? @map("navigation_node_id")
   lastSignalAt DateTime @default(now()) @map("last_signal_at")
 
+  // Identidade iBeacon do aparelho físico (Feasycom FSC-BP104D). Fica nula nos
+  // beacons só simulados. UUID guardado em minúsculas, com hífens.
+  // Configuração real: docs/beacons-configuracao.md.
+  hardwareModel String? @map("hardware_model")
+  ibeaconUuid   String? @map("ibeacon_uuid")
+  ibeaconMajor  Int?    @map("ibeacon_major")
+  ibeaconMinor  Int?    @map("ibeacon_minor")
+  // RSSI a 1 m medido NO LOCAL. Nulo até a calibração no hospital —
+  // não usar o "RSSI at 1m" de fábrica.
+  measuredPower Int?    @map("measured_power")
+
   navigationNode NavigationNode? @relation(fields: [navigationNodeId], references: [id])
 
   @@map("beacons")

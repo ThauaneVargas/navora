@@ -57,10 +57,7 @@ export const entranceMetadata = {
     fullName: 'Entrada Private - Fundos',
     hospitalArea: 'PRIVATE',
     areaId: 'private',
-    // 'FSC-04-01' e a unidade fisica real (Feasycom FSC-BP104D), somada ao
-    // codigo simulado — ver docs/BLE_HARDWARE_VALIDATION.md. Inerte hoje:
-    // nenhum scanner BLE real chama getEntranceByBeaconCode ainda.
-    beaconCodes: ['MBM04-01', 'FSC-04-01'],
+    beaconCodes: ['MBM04-01'],
   },
   SUS_FRONT: {
     id: 'sus-front',
