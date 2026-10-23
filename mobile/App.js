@@ -53,6 +53,8 @@ import { getAuthToken, removeAuthToken } from './src/services/authToken';
 import { indoorLocationService, indoorLog, isBeaconDiagnosticsEnabled } from './src/services/indoorLocationService';
 import { deriveNavigationProgress } from './src/services/navigationAdapter';
 import { hospitalDetectionService } from './src/services/hospitalDetectionService';
+import { startVisitorAccessMonitor, stopVisitorAccessMonitor } from './src/services/visitorAccessMonitor';
+import { clearActiveVisit, loadActiveVisit, saveActiveVisit } from './src/services/visitorStorage';
 
 const screens = {
   Splash: SplashScreen,
@@ -130,6 +132,10 @@ export default function App() {
   ]);
 
   const lastIndoorResolutionRef = useRef(null);
+  // Visita em andamento recuperada do celular ao abrir o app (visitorStorage):
+  // o fim do splash leva direto pra Home do visitante em vez do Login.
+  const restoredVisitRef = useRef(false);
+  const splashDoneRef = useRef(false);
 
   const screen = screenStack[screenStack.length - 1];
 
@@ -173,10 +179,29 @@ export default function App() {
   useEffect(() => {
     let active = true;
 
+    const restoreVisit = async () => {
+      const saved = await loadActiveVisit();
+      if (!active || !saved) return;
+
+      restoredVisitRef.current = true;
+      setUserProfile(saved.visitor);
+      setVisitorAccessRequest(saved.request);
+      startVisitorAccessMonitor({
+        request: saved.request,
+        onUpdate: setVisitorAccessRequest,
+      });
+
+      // Se o splash já acabou, vai direto pra visita.
+      if (splashDoneRef.current) {
+        setScreenStack(['Home']);
+      }
+    };
+
     const restoreSession = async () => {
       const token = await getAuthToken();
 
       if (!token) {
+        await restoreVisit();
         return;
       }
 
@@ -213,6 +238,13 @@ export default function App() {
       active = false;
     };
   }, []);
+
+  // Guarda a visita em andamento no celular a cada mudança; some quando ela
+  // termina (saveActiveVisit apaga se o status for final ou se expirou).
+  useEffect(() => {
+    if (userProfile?.type !== 'visitor') return;
+    saveActiveVisit(userProfile, visitorAccessRequest);
+  }, [userProfile, visitorAccessRequest]);
 
   const navigate = (
     nextScreen,
@@ -877,6 +909,12 @@ export default function App() {
     setVisitorAccessRequest(
       null
     );
+
+    // Sair encerra a visita guardada no celular (os dados de "lembrar"
+    // continuam — esses a pessoa apaga no próprio formulário).
+    stopVisitorAccessMonitor();
+    clearActiveVisit();
+    restoredVisitRef.current = false;
 
     setIdentificationDrafts({
       patient: {},
@@ -2439,11 +2477,14 @@ export default function App() {
       <AppProvider>
         <SafeAreaProvider>
           <SplashScreen
-            onSplashFinish={() =>
+            onSplashFinish={() => {
+              splashDoneRef.current = true;
               setScreenStack([
-                'Login',
-              ])
-            }
+                restoredVisitRef.current
+                  ? 'Home'
+                  : 'Login',
+              ]);
+            }}
           />
         </SafeAreaProvider>
       </AppProvider>

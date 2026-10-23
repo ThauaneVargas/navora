@@ -1,4 +1,5 @@
 import React, {
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -30,6 +31,12 @@ import {
 import {
   startVisitorAccessMonitor,
 } from '../services/visitorAccessMonitor';
+
+import {
+  forgetRememberedVisitor,
+  loadRememberedVisitor,
+  saveRememberedVisitor,
+} from '../services/visitorStorage';
 
 import {
   maskBirthDate,
@@ -196,6 +203,55 @@ export default function VisitorEntryScreen({
     visitorIdentificationDraft.birthDate ||
       ''
   );
+
+
+  /*
+   * "Lembrar meus dados neste celular" — opcional, fica só no aparelho.
+   */
+
+  const [
+    rememberMe,
+    setRememberMe,
+  ] = useState(false);
+
+  const [
+    hasRemembered,
+    setHasRemembered,
+  ] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+
+    loadRememberedVisitor().then((saved) => {
+      if (!active || !saved?.fullName) return;
+
+      setHasRemembered(true);
+      setRememberMe(true);
+
+      // Não sobrescreve o que a pessoa já começou a digitar.
+      setFullName((current) => current || saved.fullName);
+      setPhone((current) => current || saved.phone || '');
+      setBirthDate((current) => current || saved.birthDate || '');
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const forgetMe = async () => {
+    await forgetRememberedVisitor();
+    setHasRemembered(false);
+    setRememberMe(false);
+    setFullName('');
+    setPhone('');
+    setBirthDate('');
+    onVisitorIdentificationDraftChange?.({
+      fullName: '',
+      phone: '',
+      birthDate: '',
+    });
+  };
 
 
   /*
@@ -695,6 +751,16 @@ export default function VisitorEntryScreen({
       const cleanName =
         fullName.trim();
 
+      if (rememberMe) {
+        saveRememberedVisitor({
+          fullName: cleanName,
+          phone: phone.trim(),
+          birthDate: birthDate.trim(),
+        });
+      } else if (hasRemembered) {
+        forgetRememberedVisitor();
+      }
+
 
       const visitorProfile = {
         type: 'visitor',
@@ -1058,6 +1124,76 @@ export default function VisitorEntryScreen({
               appColors
             }
           />
+
+          <Pressable
+            onPress={() =>
+              setRememberMe(
+                (value) => !value
+              )
+            }
+            accessibilityRole="checkbox"
+            accessibilityState={{
+              checked: rememberMe,
+            }}
+            style={styles.rememberRow}
+          >
+            <MaterialCommunityIcons
+              name={
+                rememberMe
+                  ? 'checkbox-marked'
+                  : 'checkbox-blank-outline'
+              }
+              size={28}
+              color={
+                rememberMe
+                  ? appColors.primary
+                  : appColors.muted
+              }
+            />
+
+            <View style={styles.rememberCopy}>
+              <Text
+                style={[
+                  styles.rememberTitle,
+                  { color: appColors.text },
+                ]}
+              >
+                Lembrar meus dados neste celular
+              </Text>
+
+              <Text
+                style={[
+                  styles.rememberText,
+                  { color: appColors.muted },
+                ]}
+              >
+                Na próxima visita, nome, telefone e nascimento já vêm preenchidos. Fica guardado só neste aparelho.
+              </Text>
+            </View>
+          </Pressable>
+
+          {hasRemembered ? (
+            <Pressable
+              onPress={forgetMe}
+              accessibilityRole="button"
+              style={styles.forgetButton}
+            >
+              <MaterialCommunityIcons
+                name="delete-outline"
+                size={18}
+                color={appColors.danger}
+              />
+
+              <Text
+                style={[
+                  styles.forgetText,
+                  { color: appColors.danger },
+                ]}
+              >
+                Esquecer meus dados
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       )}
 
@@ -2496,6 +2632,43 @@ function ReviewLine({
 
 const styles =
   StyleSheet.create({
+    rememberRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 12,
+      marginTop: 16,
+      minHeight: 44,
+    },
+
+    rememberCopy: {
+      flex: 1,
+      gap: 2,
+    },
+
+    rememberTitle: {
+      fontSize: 15,
+      fontWeight: '900',
+    },
+
+    rememberText: {
+      fontSize: 13,
+      lineHeight: 18,
+      fontWeight: '600',
+    },
+
+    forgetButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      minHeight: 44,
+      marginTop: 4,
+    },
+
+    forgetText: {
+      fontSize: 14,
+      fontWeight: '800',
+    },
+
     privacyNotice: {
       fontSize: 13,
       lineHeight: 19,
