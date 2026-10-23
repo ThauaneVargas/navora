@@ -48,7 +48,7 @@ Hospedagem: Render (backend e Postgres), região **Oregon, EUA** (confirmado no 
 **Produção (precisa do merge desta branch)**
 1. ~~Fazer o merge~~ **Feito em 23/10** — migrations aplicadas no deploy.
 2. ~~Trocar a senha das contas demo em produção~~ **Feito em 23/10** (senhas novas, só direto no banco — não estão no repositório; a usuária guarda). A `navora-demo-123` continua valendo só no banco local.
-3. No painel do Render: tirar a regra de acesso `0.0.0.0/0` do banco `navora-db-2` e apagar o `navora-db` antigo.
+3. ~~Tirar a regra `0.0.0.0/0` do banco~~ **Feito em 23/10** — testado: conexão de fora é recusada, o backend continua acessando pela rede interna. (O `navora-db` antigo já não existia.) Para rodar script contra produção de novo, liberar temporariamente só o IP da máquina.
 4. Trocar o `JWT_SECRET` de produção e a senha do banco (já circularam em conversas/prints).
 
 **Decisões (com o hospital / jurídico)**
