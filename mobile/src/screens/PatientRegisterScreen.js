@@ -7,6 +7,7 @@ import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import { isAuthError, navoraApi } from '../services/api';
 import { saveAuthToken } from '../services/authToken';
+import { CONSENT_TEXT, PRIVACY_POLICY_VERSION, PRIVACY_SECTIONS } from '../data/privacyPolicy';
 import {
   isValidBirthDate,
   isValidCPF,
@@ -107,6 +108,9 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, routeP
   const [selected, setSelected] = useState(() => buildSelectedFromAccessibility(initialValues.accessibility));
   const [notes, setNotes] = useState(() => initialValues.notes || '');
   const [loading, setLoading] = useState(false);
+  // LGPD: cadastro novo só segue com o aceite explícito (dados de saúde).
+  const [consent, setConsent] = useState(false);
+  const [showPolicy, setShowPolicy] = useState(false);
   const [visiblePasswords, setVisiblePasswords] = useState({});
 
   const updateField = (key, value) => {
@@ -191,8 +195,15 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, routeP
       return;
     }
 
+    if (!consent) {
+      Alert.alert('Falta o seu aceite', 'Para criar a conta, leia e marque o aceite da política de privacidade no fim da tela.');
+      return;
+    }
+
     setLoading(true);
     const payload = {
+      acceptedPrivacyPolicy: true,
+      privacyPolicyVersion: PRIVACY_POLICY_VERSION,
       name: form.name.trim(),
       email: form.email.trim().toLowerCase(),
       password: form.password,
@@ -345,6 +356,42 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, routeP
         />
       </View>
 
+      {!isEditMode ? (
+        <View style={[styles.consentBox, shadows.card]}>
+          <Pressable
+            onPress={() => setShowPolicy((value) => !value)}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: showPolicy }}
+            style={styles.policyToggle}
+          >
+            <MaterialCommunityIcons name="shield-lock-outline" size={20} color={appColors.primary} />
+            <Text style={styles.policyToggleText}>{showPolicy ? 'Esconder a política de privacidade' : 'Ler a política de privacidade'}</Text>
+            <MaterialCommunityIcons name={showPolicy ? 'chevron-up' : 'chevron-down'} size={22} color={appColors.primary} />
+          </Pressable>
+          {showPolicy
+            ? PRIVACY_SECTIONS.map((section) => (
+                <View key={section.title} style={styles.policyItem}>
+                  <Text style={styles.policyTitle}>{section.title}</Text>
+                  <Text style={styles.policyBody}>{section.body}</Text>
+                </View>
+              ))
+            : null}
+          <Pressable
+            onPress={() => setConsent((value) => !value)}
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: consent }}
+            style={styles.consentRow}
+          >
+            <MaterialCommunityIcons
+              name={consent ? 'checkbox-marked' : 'checkbox-blank-outline'}
+              size={28}
+              color={consent ? appColors.primary : appColors.muted}
+            />
+            <Text style={styles.consentText}>{CONSENT_TEXT}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       <Pressable
         onPress={handleSubmit}
         disabled={loading}
@@ -444,6 +491,54 @@ const createStyles = (colors) => StyleSheet.create({
   },
   optionTextActive: {
     color: colors.primaryDark,
+  },
+  consentBox: {
+    marginTop: 16,
+    borderRadius: 20,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+    gap: 12,
+  },
+  policyToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minHeight: 44,
+  },
+  policyToggleText: {
+    flex: 1,
+    color: colors.primary,
+    fontSize: 15,
+    fontWeight: '900',
+  },
+  policyItem: {
+    gap: 4,
+  },
+  policyTitle: {
+    color: colors.text,
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  policyBody: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '700',
+  },
+  consentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    minHeight: 44,
+  },
+  consentText: {
+    flex: 1,
+    color: colors.text,
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '700',
   },
   notesBox: {
     marginTop: 16,

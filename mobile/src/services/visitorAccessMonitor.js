@@ -27,6 +27,8 @@ function normalizeRequest(updated, fallback = {}) {
   return {
     id: updated?.id || fallback?.id,
 
+    accessToken: updated?.access_token || fallback?.accessToken,
+
     visitorName:
       updated?.visitor_name ||
       fallback?.visitorName,
@@ -276,7 +278,8 @@ export async function refreshVisitorAccessMonitor() {
   try {
     const updated =
       await navoraApi.getVisitorAccessRequest(
-        currentRequest.id
+        currentRequest.id,
+        currentRequest.accessToken
       );
 
     if (

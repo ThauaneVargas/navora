@@ -9,7 +9,7 @@ export const routePoints = [
 export const currentLocation = {
   nome: 'Recepcao',
   setor: 'Entrada principal',
-  beacon: 'MBM04-ENTRADA',
+  beacon: 'FSC-01',
   precisao: '2,8 m',
 };
 
@@ -57,7 +57,7 @@ export const entranceMetadata = {
     fullName: 'Entrada Private - Fundos',
     hospitalArea: 'PRIVATE',
     areaId: 'private',
-    beaconCodes: ['MBM04-01'],
+    beaconCodes: ['FSC-01'],
   },
   SUS_FRONT: {
     id: 'sus-front',
@@ -66,7 +66,7 @@ export const entranceMetadata = {
     fullName: 'Entrada SUS - Frente',
     hospitalArea: 'SUS',
     areaId: 'sus',
-    beaconCodes: ['MBM04-10'],
+    beaconCodes: ['FSC-10'],
   },
 };
 

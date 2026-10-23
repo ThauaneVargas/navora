@@ -1,7 +1,7 @@
 import { IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 
 // Duas formas de identificar o beacon (se vierem as duas, o código vence):
-// - beaconCode / beacon_code: código interno (ex.: "MBM04-01");
+// - beaconCode / beacon_code: código interno (ex.: "FSC-01");
 // - uuid + major + minor: o que o celular lê no pacote iBeacon.
 export class DetectBeaconDto {
   @IsOptional()

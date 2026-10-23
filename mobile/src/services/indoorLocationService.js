@@ -147,6 +147,11 @@ export function summarizeRssiWindow(window = []) {
 
 export const isBleFeatureEnabled = () => process.env.EXPO_PUBLIC_BLE_ENABLED === 'true';
 
+// Tela de diagnóstico: sempre na versão de desenvolvimento; num APK de teste
+// (calibração no hospital, sem PC) só com EXPO_PUBLIC_BEACON_DIAGNOSTICS="true".
+export const isBeaconDiagnosticsEnabled = () =>
+  isDevelopment() || process.env.EXPO_PUBLIC_BEACON_DIAGNOSTICS === 'true';
+
 const BLE_EVALUATE_EVERY_MS = 1000;
 const BLE_FORGET_AFTER_MS = 30000; // tira da lista beacon não ouvido há 30 s
 const BLE_SCAN_MODE_BALANCED = 1; // BleScanMode.Balanced do react-native-ble-manager

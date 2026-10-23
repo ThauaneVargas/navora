@@ -1,47 +1,56 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
+import { FormField, SecondaryButton } from '../components/PremiumUI';
 import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import { PRIVACY_POLICY_UPDATED_LABEL, PRIVACY_SECTIONS } from '../data/privacyPolicy';
+import { isAuthError, isNetworkError, navoraApi } from '../services/api';
 
-const sections = [
-  {
-    icon: 'map-marker-outline',
-    title: 'Localização indoor',
-    body: 'O Navora usa beacons Wi-Fi para estimar sua posição dentro do hospital. Esses dados são usados apenas durante a navegação e não são armazenados permanentemente.',
-  },
-  {
-    icon: 'routes',
-    title: 'Histórico de rotas',
-    body: 'As rotas percorridas são salvas localmente no dispositivo para exibir o histórico. Nenhuma rota é enviada a terceiros.',
-  },
-  {
-    icon: 'account-outline',
-    title: 'Dados do perfil',
-    body: 'Nome, CPF e dados de saúde cadastrados são armazenados de forma criptografada no servidor Navora e não são compartilhados sem consentimento.',
-  },
-  {
-    icon: 'bell-outline',
-    title: 'Notificações',
-    body: 'Alertas de rota e SOS são enviados apenas enquanto o app está em uso. Nenhuma notificação de marketing é enviada.',
-  },
-  {
-    icon: 'shield-check-outline',
-    title: 'Segurança dos dados',
-    body: 'Toda comunicação com o servidor usa HTTPS com token JWT. Seus dados nunca trafegam em texto simples.',
-  },
-  {
-    icon: 'delete-outline',
-    title: 'Exclusão de dados',
-    body: 'Você pode solicitar a exclusão completa dos seus dados a qualquer momento na recepção do hospital ou pelo e-mail privacidade@navora.com.br.',
-  },
-];
-
-export default function PrivacyScreen({ navigate, goBack }) {
+export default function PrivacyScreen({ navigate, goBack, userProfile, onLogout }) {
   const { appColors } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
+  const [password, setPassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const hasAccount = Boolean(userProfile?.hasAccount);
+
+  const deleteAccount = async () => {
+    setDeleting(true);
+    try {
+      await navoraApi.deleteMyAccount(password);
+      setPassword('');
+      Alert.alert('Conta excluída', 'Seu cadastro e seus dados de saúde foram apagados.', [
+        { text: 'OK', onPress: () => onLogout?.() },
+      ]);
+    } catch (error) {
+      if (isAuthError(error)) {
+        Alert.alert('Senha incorreta', 'Confira a senha e tente de novo.');
+      } else if (isNetworkError(error)) {
+        Alert.alert('Sem conexão', 'Não foi possível falar com o servidor. Nada foi apagado. Tente de novo.');
+      } else {
+        Alert.alert('Não foi possível excluir', 'Nada foi apagado. Tente de novo em instantes.');
+      }
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const confirmDelete = () => {
+    if (!password) {
+      Alert.alert('Digite sua senha', 'Para sua segurança, confirme com a senha da conta.');
+      return;
+    }
+    Alert.alert(
+      'Excluir sua conta?',
+      'Isso apaga seu cadastro, acessibilidade, observações e contato de emergência. Não dá para desfazer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Excluir', style: 'destructive', onPress: deleteAccount },
+      ]
+    );
+  };
 
   return (
     <Screen>
@@ -54,12 +63,12 @@ export default function PrivacyScreen({ navigate, goBack }) {
         <View style={styles.headerCopy}>
           <Text style={styles.headerTitle}>Seus dados, sua privacidade</Text>
           <Text style={styles.headerSub}>
-            O Navora coleta apenas o necessário para funcionar e nunca vende seus dados.
+            O que o Navora guarda, para quê, e como você controla isso.
           </Text>
         </View>
       </View>
 
-      {sections.map((section, index) => (
+      {PRIVACY_SECTIONS.map((section) => (
         <View key={section.title} style={[styles.card, shadows.card]}>
           <View style={styles.cardHeader}>
             <View style={styles.cardIcon}>
@@ -71,11 +80,42 @@ export default function PrivacyScreen({ navigate, goBack }) {
         </View>
       ))}
 
+      {hasAccount ? (
+        <View style={[styles.card, styles.dangerCard, shadows.card]}>
+          <View style={styles.cardHeader}>
+            <View style={[styles.cardIcon, styles.dangerIcon]}>
+              <MaterialCommunityIcons name="delete-outline" size={20} color={appColors.danger} />
+            </View>
+            <Text style={styles.cardTitle}>Excluir minha conta</Text>
+          </View>
+          <Text style={styles.cardBody}>
+            Apaga seu cadastro e seus dados de saúde e retira o seu consentimento. Confirme com a sua senha.
+          </Text>
+          <FormField
+            label="Senha"
+            icon="lock-outline"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            placeholder="Sua senha"
+            accessibilityLabel="Senha para excluir a conta"
+            style={styles.passwordField}
+          />
+          <SecondaryButton
+            title={deleting ? 'Excluindo…' : 'Excluir minha conta'}
+            icon="delete-outline"
+            danger
+            disabled={deleting}
+            onPress={confirmDelete}
+          />
+        </View>
+      ) : null}
+
       <View style={[styles.footerCard, shadows.card]}>
         <MaterialCommunityIcons name="information-outline" size={18} color={appColors.muted} />
         <Text style={styles.footerText}>
-          Última atualização da política de privacidade: Janeiro de 2025.
-          Para dúvidas, acesse o balcão de informações do hospital.
+          Política atualizada em {PRIVACY_POLICY_UPDATED_LABEL}. Dúvidas sobre seus dados: fale com a recepção do hospital.
         </Text>
       </View>
     </Screen>
@@ -151,6 +191,16 @@ const createStyles = (colors) => StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     fontWeight: '700',
+  },
+  dangerCard: {
+    borderColor: colors.danger,
+  },
+  dangerIcon: {
+    backgroundColor: colors.surfaceSoft,
+  },
+  passwordField: {
+    marginTop: 12,
+    marginBottom: 12,
   },
   footerCard: {
     marginTop: 16,

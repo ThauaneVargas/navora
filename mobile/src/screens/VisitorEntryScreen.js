@@ -1882,6 +1882,16 @@ export default function VisitorEntryScreen({
           />
         </Pressable>
       ) : (
+        <>
+        {/* LGPD: aviso de transparência pro visitante (sem conta). */}
+        <Text
+          style={[
+            styles.privacyNotice,
+            { color: appColors.muted },
+          ]}
+        >
+          Ao enviar, seu nome e o motivo da visita vão para a recepção do hospital, só para autorizar e acompanhar esta visita. Mais detalhes em Menu → Privacidade.
+        </Text>
         <Pressable
           onPress={
             submitVisit
@@ -1920,6 +1930,7 @@ export default function VisitorEntryScreen({
               : 'Enviar solicitação de visita'}
           </Text>
         </Pressable>
+        </>
       )}
     </Screen>
   );
@@ -2485,6 +2496,14 @@ function ReviewLine({
 
 const styles =
   StyleSheet.create({
+    privacyNotice: {
+      fontSize: 13,
+      lineHeight: 19,
+      fontWeight: '700',
+      marginTop: 16,
+      marginBottom: 4,
+    },
+
     progress: {
       flexDirection:
         'row',

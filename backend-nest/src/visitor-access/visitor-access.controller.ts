@@ -1,6 +1,9 @@
-import { Body, Controller, Get, Param, ParseEnumPipe, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, ParseEnumPipe, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { UserRole, VisitorAccessStatus } from '@prisma/client';
+import { AuthenticatedUser } from '../auth/auth.types';
+import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { AuthorizeVisitorAccessDto } from './dto/authorize-visitor-access.dto';
@@ -20,9 +23,16 @@ export class VisitorAccessController {
     return this.visitorAccessService.list(status);
   }
 
+  // O visitante não tem conta: lê o próprio pedido com o código secreto que
+  // recebeu ao criá-lo (header X-Visitor-Token). Recepção/admin leem com o JWT.
   @Get(':requestId')
-  get(@Param('requestId', ParseIntPipe) requestId: number) {
-    return this.visitorAccessService.get(requestId);
+  @UseGuards(OptionalJwtAuthGuard)
+  get(
+    @Param('requestId', ParseIntPipe) requestId: number,
+    @Headers('x-visitor-token') visitorToken?: string,
+    @CurrentUser() user?: AuthenticatedUser,
+  ) {
+    return this.visitorAccessService.get(requestId, { visitorToken, user });
   }
 
   @Post()

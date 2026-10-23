@@ -1,5 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { VisitorAccessRequest, VisitorAccessStatus } from '@prisma/client';
+import { UserRole, VisitorAccessRequest, VisitorAccessStatus } from '@prisma/client';
+import { Buffer } from 'buffer';
+import { createHash, randomBytes, timingSafeEqual } from 'crypto';
+import { AuthenticatedUser } from '../auth/auth.types';
 import { mapVisitorAccessToApi } from '../common/api-mappers';
 import { PrismaService } from '../database/prisma.service';
 import { AuthorizeVisitorAccessDto } from './dto/authorize-visitor-access.dto';
@@ -19,8 +22,14 @@ export class VisitorAccessService {
     return requests.map(mapVisitorAccessToApi);
   }
 
-  async get(requestId: number) {
-    return mapVisitorAccessToApi(await this.find(requestId));
+  async get(requestId: number, access: { visitorToken?: string; user?: AuthenticatedUser } = {}) {
+    const request = await this.find(requestId);
+    const isStaff = access.user?.role === UserRole.ADMIN || access.user?.role === UserRole.RECEPTION;
+    if (!isStaff && !this.tokenMatches(request.accessTokenHash, access.visitorToken)) {
+      // Mesmo erro de "não existe", pra não confirmar quais ids existem.
+      throw new NotFoundException('Solicitacao de visitante nao encontrada');
+    }
+    return mapVisitorAccessToApi(request);
   }
 
   async create(payload: CreateVisitorAccessDto) {
@@ -28,8 +37,10 @@ export class VisitorAccessService {
     const entrance = payload.entrance || payload.entry || this.defaultEntrance(area.areaId);
     const entry = payload.entry || entrance;
     const destination = await this.findDestination(payload.requested_destination);
+    const accessToken = randomBytes(24).toString('hex');
     const request = await this.prisma.visitorAccessRequest.create({
       data: {
+        accessTokenHash: hashToken(accessToken),
         visitorName: payload.visitor_name ?? 'Visitante Navora',
         areaId: area.areaId,
         area: area.areaName,
@@ -46,7 +57,8 @@ export class VisitorAccessService {
         destinationId: destination?.id,
       },
     });
-    return mapVisitorAccessToApi(request);
+    // O código só sai aqui, uma vez; o banco guarda apenas o hash.
+    return { ...mapVisitorAccessToApi(request), access_token: accessToken };
   }
 
   async approve(requestId: number, payload: AuthorizeVisitorAccessDto) {
@@ -163,6 +175,13 @@ export class VisitorAccessService {
     }
   }
 
+  private tokenMatches(storedHash: string | null, token?: string) {
+    if (!storedHash || !token) return false;
+    const given = Buffer.from(hashToken(token), 'hex');
+    const stored = Buffer.from(storedHash, 'hex');
+    return given.length === stored.length && timingSafeEqual(given, stored);
+  }
+
   private async find(requestId: number) {
     const request = await this.prisma.visitorAccessRequest.findUnique({ where: { id: requestId } });
     if (!request) {
@@ -228,4 +247,8 @@ export class VisitorAccessService {
     if (minutes === 60 && releaseTime?.toLowerCase().includes('hora')) return releaseTime;
     return `${minutes} minutos`;
   }
+}
+
+function hashToken(token: string) {
+  return createHash('sha256').update(token).digest('hex');
 }

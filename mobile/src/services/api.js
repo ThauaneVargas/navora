@@ -40,7 +40,7 @@ const fallbackVisitorAccess = (payload = {}) => ({
   reason: payload.reason || 'Visita',
   accessibility: payload.accessibility || 'Nao',
   current_location: payload.current_location || 'Entrada',
-  current_beacon: payload.current_beacon || 'MBM04-01',
+  current_beacon: payload.current_beacon || 'FSC-01',
   status: 'PENDING',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
@@ -176,6 +176,9 @@ export const navoraApi = {
   registerPatient: (payload) => request('/patients/register', { method: 'POST', body: JSON.stringify(payload) }),
   getMyPatientProfile: () => request('/patients/me', { authenticated: true }),
   updateMyPatientProfile: (payload) => request('/patients/me', { method: 'PUT', authenticated: true, body: JSON.stringify(payload) }),
+  // LGPD: exclui a conta do paciente (pede a senha de novo).
+  deleteMyAccount: (password) =>
+    request('/patients/me', { method: 'DELETE', authenticated: true, body: JSON.stringify({ password }) }),
   updateAccessibility: (payload) =>
     request('/patients/me/accessibility', { method: 'PUT', authenticated: true, body: JSON.stringify(payload) }, { accessibility: payload, demoMode: true }),
   createCall: (payload) =>
@@ -187,17 +190,30 @@ export const navoraApi = {
   getCalls: () => request('/calls', {}, []),
   createVisitorAccessRequest: (payload) =>
     request('/visitor-access', { method: 'POST', body: JSON.stringify(payload) }, () => fallbackVisitorAccess(payload)),
-  getVisitorAccessRequest: (id) =>
-    request(`/visitor-access/${id}`, {}, () => fallbackVisitorAccess({ id })),
+  // accessToken: código secreto que o backend devolve ao criar o pedido; sem
+  // ele o backend não mostra o pedido (os ids são sequenciais).
+  getVisitorAccessRequest: (id, accessToken) =>
+    request(
+      `/visitor-access/${id}`,
+      { headers: accessToken ? { 'X-Visitor-Token': accessToken } : {} },
+      () => fallbackVisitorAccess({ id })
+    ),
   getVisitorAccessRequests: () => request('/visitor-access', {}, []),
-  // Aceita o código interno ("MBM04-01") ou o evento do scanner BLE (uuid/major/minor).
-  detectBeacon: (beacon) => {
+  // Aceita o código interno ("FSC-01") ou o evento do scanner BLE (uuid/major/minor).
+  detectBeacon: async (beacon) => {
     const payload = beaconDetectionPayload(beacon);
-    return request(
+    const detection = await request(
       '/beacons/detect',
       { method: 'POST', body: JSON.stringify(payload) },
       () => offlineBeaconDetection(payload)
     );
+    // Backend sem a busca por uuid/major/minor (ex.: produção antes do merge)
+    // responde detected:false — se o beacon é do Navora, vale a tabela local.
+    if (!detection?.detected) {
+      const local = offlineBeaconDetection(payload);
+      if (local.detected) return local;
+    }
+    return detection;
   },
   getNotifications: () => request('/notifications/me', { authenticated: true }, []),
   markNotificationRead: (id) => request(`/notifications/${id}/read`, { method: 'PUT', authenticated: true }),

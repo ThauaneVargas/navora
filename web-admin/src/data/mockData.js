@@ -15,7 +15,7 @@ export const initialVisitors = [
     areaId: 'private',
     entry: 'Fundos',
     currentLocation: 'Entrada Private',
-    beacon: 'MBM04-PR-ENT',
+    beacon: 'FSC-PR-ENT',
     requestedDestination: 'Visita / Internacao Private',
     reason: 'Visitar paciente internado',
     accessibility: 'Nao',
@@ -32,7 +32,7 @@ export const initialVisitors = [
     areaId: 'sus',
     entry: 'Frente',
     currentLocation: 'Recepcao Hospital Marco Capute',
-    beacon: 'MBM04-SUS-REC',
+    beacon: 'FSC-SUS-REC',
     requestedDestination: 'Visita / Internacao Hospital Marco Capute',
     reason: 'Acompanhar paciente',
     accessibility: 'Sim',
@@ -49,7 +49,7 @@ export const initialVisitors = [
     areaId: 'private',
     entry: 'Fundos',
     currentLocation: 'Corredor Private',
-    beacon: 'MBM04-PR-COR',
+    beacon: 'FSC-PR-COR',
     requestedDestination: 'Setor de Imagem Private',
     reason: 'Fazer exame',
     accessibility: 'Nao',
@@ -66,7 +66,7 @@ export const initialVisitors = [
     areaId: 'sus',
     entry: 'Frente',
     currentLocation: 'Corredor SUS',
-    beacon: 'MBM04-SUS-COR',
+    beacon: 'FSC-SUS-COR',
     requestedDestination: 'Laboratorio SUS',
     reason: 'Ir ao laboratorio',
     accessibility: 'Nao',
@@ -83,7 +83,7 @@ export const initialVisitors = [
     areaId: 'private',
     entry: 'Fundos',
     currentLocation: 'Corredor SUS',
-    beacon: 'MBM04-SUS-COR',
+    beacon: 'FSC-SUS-COR',
     requestedDestination: 'Visita / Internacao Private',
     reason: 'Visitar paciente internado',
     accessibility: 'Nao',
@@ -131,19 +131,19 @@ export const initialStaffAccounts = [
 ];
 
 export const initialBeacons = [
-  { id: 'MBM04-01', name: 'Recepcao', sector: 'Recepcao', floor: 'Terreo', battery: 92, status: 'Online', lastSignal: 'Agora', distance: '18 m' },
-  { id: 'MBM04-02', name: 'Corredor A', sector: 'Corredor A', floor: 'Terreo', battery: 88, status: 'Online', lastSignal: '1 min', distance: '22 m' },
-  { id: 'MBM04-03', name: 'Setor de Imagem', sector: 'Setor de Imagem', floor: 'Terreo', battery: 22, status: 'Atencao', lastSignal: '3 min', distance: '20 m' },
-  { id: 'MBM04-04', name: 'Laboratorio', sector: 'Laboratorio', floor: 'Terreo', battery: 71, status: 'Online', lastSignal: 'Agora', distance: '16 m' },
-  { id: 'MBM04-05', name: 'Elevador', sector: 'Elevador', floor: '1o Andar', battery: 0, status: 'Offline', lastSignal: '18 min', distance: '12 m' },
+  { id: 'FSC-01', name: 'Recepcao', sector: 'Recepcao', floor: 'Terreo', battery: 92, status: 'Online', lastSignal: 'Agora', distance: '18 m' },
+  { id: 'FSC-02', name: 'Corredor A', sector: 'Corredor A', floor: 'Terreo', battery: 88, status: 'Online', lastSignal: '1 min', distance: '22 m' },
+  { id: 'FSC-03', name: 'Setor de Imagem', sector: 'Setor de Imagem', floor: 'Terreo', battery: 22, status: 'Atencao', lastSignal: '3 min', distance: '20 m' },
+  { id: 'FSC-04', name: 'Laboratorio', sector: 'Laboratorio', floor: 'Terreo', battery: 71, status: 'Online', lastSignal: 'Agora', distance: '16 m' },
+  { id: 'FSC-05', name: 'Elevador', sector: 'Elevador', floor: '1o Andar', battery: 0, status: 'Offline', lastSignal: '18 min', distance: '12 m' },
 ];
 
 export const initialCalls = [
-  { id: 'CH-1001', patient: 'Maria Oliveira', type: 'SOS Emergencia', reason: 'Paciente relata tontura intensa', location: 'Setor de Imagem', beacon: 'MBM04-03', priority: 'Critica', status: 'Pendente', createdAt: '14:32', assignedTo: 'Nao atribuido', history: ['Chamado criado as 14:32'] },
-  { id: 'CH-1002', patient: 'Joao Santos', type: 'Pedido de Ajuda', reason: 'Nao encontrou o setor de tomografia', location: 'Recepcao', beacon: 'MBM04-01', priority: 'Media', status: 'Pendente', createdAt: '14:20', assignedTo: 'Recepcao', history: ['Pedido recebido pela recepcao'] },
-  { id: 'CH-1003', patient: 'Ana Costa', type: 'Ajuda de Locomocao', reason: 'Precisa de acompanhante ate ultrassonografia', location: 'Corredor A', beacon: 'MBM04-02', priority: 'Alta', status: 'Aceito', createdAt: '13:58', assignedTo: 'Equipe apoio', history: ['Aceito pela equipe'] },
-  { id: 'CH-1004', patient: 'Pedro Martins', type: 'Solicitar Medico', reason: 'Mal-estar durante espera', location: 'Laboratorio', beacon: 'MBM04-04', priority: 'Alta', status: 'Equipe acionada', createdAt: '13:44', assignedTo: 'Dra. Helena', history: ['Equipe medica acionada'] },
-  { id: 'CH-1005', patient: 'Lucia Ramos', type: 'Estou Perdido', reason: 'Paciente saiu da rota acessivel', location: 'Elevador', beacon: 'MBM04-05', priority: 'Baixa', status: 'Encerrado', createdAt: '12:51', assignedTo: 'Recepcao', history: ['Orientacao enviada', 'Chamado encerrado'] },
+  { id: 'CH-1001', patient: 'Maria Oliveira', type: 'SOS Emergencia', reason: 'Paciente relata tontura intensa', location: 'Setor de Imagem', beacon: 'FSC-03', priority: 'Critica', status: 'Pendente', createdAt: '14:32', assignedTo: 'Nao atribuido', history: ['Chamado criado as 14:32'] },
+  { id: 'CH-1002', patient: 'Joao Santos', type: 'Pedido de Ajuda', reason: 'Nao encontrou o setor de tomografia', location: 'Recepcao', beacon: 'FSC-01', priority: 'Media', status: 'Pendente', createdAt: '14:20', assignedTo: 'Recepcao', history: ['Pedido recebido pela recepcao'] },
+  { id: 'CH-1003', patient: 'Ana Costa', type: 'Ajuda de Locomocao', reason: 'Precisa de acompanhante ate ultrassonografia', location: 'Corredor A', beacon: 'FSC-02', priority: 'Alta', status: 'Aceito', createdAt: '13:58', assignedTo: 'Equipe apoio', history: ['Aceito pela equipe'] },
+  { id: 'CH-1004', patient: 'Pedro Martins', type: 'Solicitar Medico', reason: 'Mal-estar durante espera', location: 'Laboratorio', beacon: 'FSC-04', priority: 'Alta', status: 'Equipe acionada', createdAt: '13:44', assignedTo: 'Dra. Helena', history: ['Equipe medica acionada'] },
+  { id: 'CH-1005', patient: 'Lucia Ramos', type: 'Estou Perdido', reason: 'Paciente saiu da rota acessivel', location: 'Elevador', beacon: 'FSC-05', priority: 'Baixa', status: 'Encerrado', createdAt: '12:51', assignedTo: 'Recepcao', history: ['Orientacao enviada', 'Chamado encerrado'] },
 ];
 
 export const initialCheckins = [

@@ -1,4 +1,4 @@
-import { IsDateString, IsEmail, IsObject, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { Equals, IsDateString, IsEmail, IsObject, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class RegisterPatientDto {
   @IsEmail()
@@ -36,4 +36,12 @@ export class RegisterPatientDto {
   @IsString()
   @MaxLength(1000)
   notes?: string;
+
+  // LGPD: sem o aceite explícito da política (inclui dados de saúde), não cria conta.
+  @Equals(true, { message: 'E preciso aceitar a politica de privacidade' })
+  acceptedPrivacyPolicy!: boolean;
+
+  @IsString()
+  @MaxLength(20)
+  privacyPolicyVersion!: string;
 }

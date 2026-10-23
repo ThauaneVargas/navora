@@ -2,7 +2,7 @@
 
 Hardware: **Feasycom FSC-BP104D** (BLE 5.1). Configurados em 21/10/2026 pelo app FeasyBeacon.
 
-Os códigos `MBM04-xx` são **identificadores internos do Navora** (usados no backend, no app, no painel e nos testes) — não indicam o modelo do aparelho. O modelo fica no campo `hardwareModel` da tabela `beacons`.
+Códigos internos do Navora: `FSC-01`, `FSC-02`, `FSC-10` e `FSC-11` (até 22/10/2026 eram `MBM04-01/02/10/11`; a migration `20261022233000_rename_beacon_codes_fsc` troca nos bancos que já existiam). O corredor só simulado, sem aparelho, virou `SIM-20`. O modelo do aparelho fica no campo `hardwareModel` da tabela `beacons`.
 
 ## Configuração comum aos 4 aparelhos
 
@@ -18,14 +18,14 @@ Os códigos `MBM04-xx` são **identificadores internos do Navora** (usados no ba
 
 | Código no Navora | Local | Major | Minor | MAC | Nó de navegação ligado no seed |
 |---|---|---|---|---|---|
-| `MBM04-01` | Entrada principal – HMC Private | 1 | 10 | `DC:0D:30:80:C7:4C` | `private-entry` |
-| `MBM04-02` | Ponto interno – HMC Private | 1 | 20 | final `C7:4E` | `private-reception` |
-| `MBM04-10` | Entrada principal – SUS | 2 | 10 | final `C7:D6` | `sus-entry` |
-| `MBM04-11` | Ponto interno – SUS | 2 | 20 | final `C7:3A` | `sus-reception` |
+| `FSC-01` | Entrada principal – HMC Private | 1 | 10 | `DC:0D:30:80:C7:4C` | `private-entry` |
+| `FSC-02` | Ponto interno – HMC Private | 1 | 20 | final `C7:4E` | `private-reception` |
+| `FSC-10` | Entrada principal – SUS | 2 | 10 | final `C7:D6` | `sus-entry` |
+| `FSC-11` | Ponto interno – SUS | 2 | 20 | final `C7:3A` | `sus-reception` |
 
 Convenção: **major = unidade** (1 = HMC Private, 2 = SUS) e **minor = posição** (10 = entrada, 20 = ponto interno). Um próximo aparelho na mesma unidade segue a sequência (ex.: major 1, minor 30).
 
-O `MBM04-20` (corredor compartilhado) continua só simulado — não há aparelho físico para ele.
+O `SIM-20` (corredor compartilhado) continua só simulado — não há aparelho físico para ele.
 
 > **Conferir no local:** o "ponto interno" de cada unidade está ligado, no seed, ao nó de navegação da **recepção**. Se o aparelho for instalado em outro ponto, o nó (`navigationNodeId`) precisa ser trocado no seed.
 

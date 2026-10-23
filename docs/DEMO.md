@@ -64,7 +64,7 @@ O MVP nao usa BLE real. Use simulacao de deteccao de beacon:
 - Na tela `ArrivalDetectedScreen`, usar os botoes `Simular entrada Private` ou `Simular entrada Hospital Marco Capute`.
 - Em desenvolvimento, o botao `Dev: simular beacon desconhecido` testa evento desconhecido.
 - O servico usado e `indoorLocationService.emitSimulatedDetection`.
-- O backend recebe `/beacons/detect` com `{ "beaconCode": "MBM04-01" }` ou equivalente.
+- O backend recebe `/beacons/detect` com `{ "beaconCode": "FSC-01" }` ou equivalente.
 
 Nao chamar esse fluxo de BLE real.
 

@@ -28,6 +28,10 @@ function makeHarness() {
       users.push(user);
       return user;
     },
+    delete: async ({ where }: any) => {
+      const index = users.findIndex((item) => item.id === where.id);
+      return users.splice(index, 1)[0];
+    },
     update: async ({ where, data }: any) => {
       const user = users.find((item) => item.id === where.id);
       Object.assign(user, data, { updatedAt: new Date('2026-01-01T01:00:00.000Z') });
@@ -62,10 +66,26 @@ function makeHarness() {
     },
   };
 
+  const deletedNotificationsFor: number[] = [];
+  const profileDeleteMany = async ({ where }: any) => {
+    const before = patientProfiles.length;
+    for (let i = patientProfiles.length - 1; i >= 0; i -= 1) {
+      if (patientProfiles[i].userId === where.userId) patientProfiles.splice(i, 1);
+    }
+    return { count: before - patientProfiles.length };
+  };
   const prisma = {
     user: userApi,
-    patientProfile: profileApi,
-    $transaction: (callback: any) => callback({ user: userApi, patientProfile: profileApi }),
+    patientProfile: { ...profileApi, deleteMany: profileDeleteMany },
+    notification: {
+      deleteMany: async ({ where }: any) => {
+        deletedNotificationsFor.push(where.userId);
+        return { count: 0 };
+      },
+    },
+    checkIn: { updateMany: async () => ({ count: 0 }) },
+    $transaction: (arg: any) =>
+      Array.isArray(arg) ? Promise.all(arg) : arg({ user: userApi, patientProfile: profileApi }),
   };
   const config = {
     get: (key: string) => {
@@ -77,7 +97,7 @@ function makeHarness() {
   const authService = new AuthService(prisma as any, new JwtService(), config as ConfigService);
   const patientsService = new PatientsService(prisma as any, authService);
 
-  return { users, patientProfiles, authService, patientsService };
+  return { users, patientProfiles, deletedNotificationsFor, authService, patientsService };
 }
 
 function makeContext(authorization?: string) {
@@ -102,7 +122,7 @@ async function expectError(label: string, expected: any, action: () => Promise<u
 }
 
 async function run() {
-  const { users, patientProfiles, authService, patientsService } = makeHarness();
+  const { users, patientProfiles, deletedNotificationsFor, authService, patientsService } = makeHarness();
 
   const registered = await patientsService.register({
     email: 'Paciente@Navora.com',
@@ -119,6 +139,8 @@ async function run() {
       diagnosis: true,
     } as any,
     notes: '  Alergia a dipirona  ',
+    acceptedPrivacyPolicy: true,
+    privacyPolicyVersion: '2026-10-22',
   });
 
   assert.ok(registered.access_token, 'cadastro retorna token');
@@ -135,12 +157,16 @@ async function run() {
     'accessibility ignora campos nao permitidos (e guarda deficiencia visual)',
   );
   assert.equal(registered.patient.notes, 'Alergia a dipirona', 'cadastro guarda observacoes (sem espacos nas pontas)');
+  assert.ok(registered.patient.privacyConsentAt, 'cadastro registra quando o consentimento LGPD foi dado');
+  assert.equal(registered.patient.privacyPolicyVersion, '2026-10-22', 'cadastro registra a versao da politica aceita');
 
   await expectError('email duplicado', Error, () =>
     patientsService.register({
       email: 'paciente@navora.com',
       password: 'outrasenha',
       name: 'Outro Paciente',
+      acceptedPrivacyPolicy: true,
+      privacyPolicyVersion: '2026-10-22',
     }),
   );
 
@@ -186,6 +212,20 @@ async function run() {
 
   await expectError('role incorreta', ForbiddenException, () =>
     patientsService.me({ ...tokenUser, role: UserRole.ADMIN }),
+  );
+
+  await expectError('excluir conta com senha errada', UnauthorizedException, () =>
+    patientsService.deleteMe(tokenUser, 'senha-errada'),
+  );
+  assert.equal(users.length, 1, 'senha errada nao apaga nada');
+
+  const deleted = await patientsService.deleteMe(tokenUser, 'senha123');
+  assert.equal(deleted.deleted, true, 'DELETE /patients/me confirma exclusao');
+  assert.equal(users.length, 0, 'exclusao apaga o User');
+  assert.equal(patientProfiles.length, 0, 'exclusao apaga o PatientProfile (saude, observacoes, contato)');
+  assert.deepEqual(deletedNotificationsFor, [tokenUser.id], 'exclusao apaga as notificacoes do paciente');
+  await expectError('login depois de excluir', UnauthorizedException, () =>
+    authService.login({ email: 'paciente@navora.com', password: 'senha123' }),
   );
 
   console.log('patient tests passed');

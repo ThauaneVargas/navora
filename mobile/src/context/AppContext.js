@@ -18,7 +18,7 @@ const defaultCurrentLocation = {
   name: 'Recepcao Principal',
   floor: 'Piso Terreo',
   corridor: 'Corredor A',
-  beacon: 'MBM04-01',
+  beacon: 'FSC-01',
   indoorStatus: 'Indoor pronto',
 };
 

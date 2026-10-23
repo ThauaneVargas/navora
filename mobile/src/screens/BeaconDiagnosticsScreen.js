@@ -8,7 +8,7 @@ import { useApp } from '../context/AppContext';
 import { NAVORA_IBEACON_UUID } from '../services/ibeacon';
 import { indoorLocationService } from '../services/indoorLocationService';
 
-// Tela SÓ DE DESENVOLVIMENTO (registrada em App.js e no menu apenas com __DEV__):
+// Tela SÓ DE TESTE (registrada em App.js e no menu só com isBeaconDiagnosticsEnabled):
 // lista os beacons do Navora que o celular está ouvindo, pra testar em casa e
 // calibrar no hospital. Ver docs/beacons-configuracao.md, "Calibração".
 const ble = indoorLocationService.realBleProvider;
@@ -34,7 +34,7 @@ export default function BeaconDiagnosticsScreen({ goBack, navigate }) {
 
   return (
     <Screen>
-      <Header title="Diagnóstico de beacons" subtitle="Só na versão de desenvolvimento" onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title="Diagnóstico de beacons" subtitle="Versão de teste" onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.card, shadows.card]}>
         <Text style={styles.label}>Situação</Text>

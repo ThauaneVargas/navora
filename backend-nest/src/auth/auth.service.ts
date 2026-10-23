@@ -102,11 +102,15 @@ export class AuthService {
 
     await this.prisma.user.update({
       where: { id: user.id },
-      data: { passwordResetToken: token, passwordResetExpires: expires },
+      // Guarda só o hash: quem ler o banco não consegue trocar a senha de ninguém.
+      data: { passwordResetToken: hashResetToken(token), passwordResetExpires: expires },
     });
 
-    // Log token until SMTP is configured
-    console.log(`[ForgotPassword] Token para ${user.email}: ${token} (expira em ${expires.toISOString()})`);
+    // Ainda não há envio de e-mail: o código só aparece no log FORA de
+    // produção (em produção, log do servidor não pode carregar credencial).
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`[ForgotPassword] Token para ${user.email}: ${token} (expira em ${expires.toISOString()})`);
+    }
 
     return { ok: true };
   }
@@ -114,7 +118,7 @@ export class AuthService {
   async resetPassword(dto: ResetPasswordDto): Promise<{ ok: boolean }> {
     const user = await this.prisma.user.findFirst({
       where: {
-        passwordResetToken: dto.token,
+        passwordResetToken: hashResetToken(dto.token),
         passwordResetExpires: { gt: new Date() },
         active: true,
       },
@@ -135,9 +139,21 @@ export class AuthService {
   }
 
   async loginWithGoogle(dto: GoogleLoginDto) {
-    const GOOGLE_TOKEN_INFO_URL = `https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${dto.idToken}`;
+    // Só aceita token emitido PARA o Navora (campo aud). Sem essa checagem,
+    // qualquer outro app em que a pessoa entrou com Google poderia reaproveitar
+    // o token dela aqui. Sem GOOGLE_CLIENT_IDS configurado, o login Google fica
+    // desligado (o app ainda não usa).
+    const allowedClientIds = (this.configService.get<string>('GOOGLE_CLIENT_IDS') ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (allowedClientIds.length === 0) {
+      throw new UnauthorizedException('Login com Google nao esta habilitado');
+    }
 
-    let googlePayload: { sub: string; email: string; name: string; email_verified: string };
+    const GOOGLE_TOKEN_INFO_URL = `https://www.googleapis.com/oauth2/v3/tokeninfo?id_token=${encodeURIComponent(dto.idToken)}`;
+
+    let googlePayload: { sub: string; email: string; name: string; email_verified: string; aud: string };
 
     try {
       const res = await fetch(GOOGLE_TOKEN_INFO_URL);
@@ -145,6 +161,10 @@ export class AuthService {
       googlePayload = await res.json() as any;
     } catch {
       throw new UnauthorizedException('Não foi possível verificar o token Google');
+    }
+
+    if (!allowedClientIds.includes(googlePayload.aud)) {
+      throw new UnauthorizedException('Token Google nao foi emitido para o Navora');
     }
 
     if (googlePayload.email_verified !== 'true') {
@@ -226,3 +246,7 @@ export class AuthService {
 }
 
 export const authRoles = UserRole;
+
+function hashResetToken(token: string) {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}

@@ -56,7 +56,9 @@ async function run() {
   assertAdminEndpoint(VisitorAccessController.prototype.deny);
   assertAdminEndpoint(VisitorAccessController.prototype.updateStatus);
   assertPublicEndpoint(VisitorAccessController.prototype.create);
-  assertPublicEndpoint(VisitorAccessController.prototype.get);
+  // Sem conta, mas não aberto: exige o código do visitante ou JWT de equipe
+  // (checado no service). O guard aqui só lê o JWT se ele vier.
+  assert.deepEqual(guardNames(VisitorAccessController.prototype.get), ['OptionalJwtAuthGuard'], 'GET visitante usa guard opcional');
 
   assertAdminEndpoint(DashboardController.prototype.summary);
   assertAdminEndpoint(BeaconsController.prototype.list);

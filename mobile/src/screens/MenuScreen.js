@@ -5,8 +5,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import { colors } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import { isBeaconDiagnosticsEnabled } from '../services/indoorLocationService';
 
 const menuItems = [
+  // Só na versão de desenvolvimento ou no APK de teste (calibração dos beacons físicos).
+  ...(isBeaconDiagnosticsEnabled() ? [{ title: 'Diagnóstico de beacons', subtitle: 'Versão de teste — calibração', icon: 'access-point', screen: 'BeaconDiagnostics' }] : []),
   { title: 'Meu perfil', subtitle: 'Dados pessoais e acessos', icon: 'account-outline', screen: 'Profile' },
   { title: 'Como chegar ao hospital', subtitle: 'Rota ate a entrada principal', icon: 'map-marker-distance', screen: 'ExternalRoute' },
   { title: 'Acessibilidade', subtitle: 'Rotas adaptadas', icon: 'wheelchair-accessibility', screen: 'Accessibility' },
@@ -15,8 +18,6 @@ const menuItems = [
   { title: 'Notificações', subtitle: 'Avisos do Navora', icon: 'bell-outline', screen: 'Notifications' },
   { title: 'Configurações', subtitle: 'Preferências do app', icon: 'cog-outline', screen: 'Settings' },
   { title: 'Privacidade', subtitle: 'Dados e permissões', icon: 'shield-lock-outline', screen: 'Privacy' },
-  // Só na versão de desenvolvimento (calibração dos beacons físicos).
-  ...(__DEV__ ? [{ title: 'Diagnóstico de beacons', subtitle: 'Só em desenvolvimento', icon: 'access-point', screen: 'BeaconDiagnostics' }] : []),
   { title: 'Sair', subtitle: 'Encerrar sessão', icon: 'logout', screen: 'HomeStart', danger: true },
 ];
 

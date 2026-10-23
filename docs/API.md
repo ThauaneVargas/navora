@@ -20,15 +20,20 @@ Resposta inclui `access_token` e dados do usuario.
 
 Protegido por JWT. Retorna dados do usuario autenticado.
 
+`POST /auth/google` — `{ "idToken": "..." }`. Só aceita token cujo `aud` esteja em `GOOGLE_CLIENT_IDS` (vírgula separa vários). Sem essa variável, responde `401` (login Google desligado).
+
 ## Patients
 
 `POST /patients/register`
 
-Campos principais: `email`, `password`, `name`, `phone`, `patient_code`, `birth_date`, `accessibility`.
+Campos principais: `email`, `password`, `name`, `phone`, `patientCode`, `birthDate`, `accessibility`, `emergencyContact`, `notes`.
+Obrigatórios (LGPD): `acceptedPrivacyPolicy: true` e `privacyPolicyVersion` (ex.: `"2026-10-22"`). Sem o aceite → `400`. A resposta traz `privacyConsentAt` e `privacyPolicyVersion`.
 
 `GET /patients/me`, `PUT /patients/me`, `PUT /patients/me/accessibility`
 
 Protegidos por JWT e role `PATIENT`.
+
+`DELETE /patients/me` — corpo `{ "password": "..." }`. Exclui a conta do paciente (cadastro, dados de saúde, notificações). Senha errada → `401`. Ver `docs/lgpd.md`.
 
 ## Navigation
 
@@ -53,7 +58,7 @@ Request real:
   "destination_code": "private-tomografia",
   "subject": "PATIENT",
   "current_area_code": "private",
-  "current_beacon_code": "MBM04-01",
+  "current_beacon_code": "FSC-01",
   "visitor_access_request_id": 1
 }
 ```
@@ -72,7 +77,7 @@ Request real:
   "destination_code": "private-tomografia",
   "subject": "PATIENT",
   "current_area_code": "private",
-  "current_beacon_code": "MBM04-01",
+  "current_beacon_code": "FSC-01",
   "accessibility": {
     "wheelchair": false,
     "needsStretcher": false,
@@ -97,7 +102,7 @@ Público (sem JWT). Duas formas de identificar o beacon:
 Pelo código interno:
 
 ```json
-{ "beaconCode": "MBM04-01" }
+{ "beaconCode": "FSC-01" }
 ```
 
 Também aceita `beacon_code`.
@@ -131,9 +136,11 @@ Protegidos para `ADMIN`/`RECEPTION`.
 
 Campos principais: `visitor_name`, `area`, `area_name`, `entrance`, `area_id`, `entry`, `current_location`, `current_beacon`, `requested_destination`, `reason`, `accessibility`, `status`, `beacon`.
 
+A resposta do `POST` traz `access_token` (código secreto, mostrado só uma vez; o banco guarda o hash).
+
 `GET /visitor-access/:requestId`
 
-Consulta publica do pedido.
+O visitante lê o próprio pedido mandando o header `X-Visitor-Token: <access_token>`; recepção/admin leem com o JWT. Sem um dos dois (ou com código errado) → `404`.
 
 `GET /visitor-access`, `PATCH /visitor-access/:requestId/approve`, `PATCH /visitor-access/:requestId/authorize`, `PATCH /visitor-access/:requestId/deny`, `PATCH /visitor-access/:requestId/status`
 

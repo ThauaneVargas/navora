@@ -12,10 +12,10 @@ export const NAVORA_IBEACON_UUID = '7f3c2a91-5b4e-4d8a-9c61-2e8b0d5f4a17';
 // Usada no app para: nome do local na tela de diagnóstico e detecção quando a
 // API está fora do ar (o backend continua sendo a fonte principal).
 export const NAVORA_BEACONS = [
-  { code: 'MBM04-01', major: 1, minor: 10, label: 'Entrada principal – HMC Private', area: 'private', originNodeCode: 'private-entry' },
-  { code: 'MBM04-02', major: 1, minor: 20, label: 'Ponto interno – HMC Private', area: 'private', originNodeCode: 'private-reception' },
-  { code: 'MBM04-10', major: 2, minor: 10, label: 'Entrada principal – SUS', area: 'sus', originNodeCode: 'sus-entry' },
-  { code: 'MBM04-11', major: 2, minor: 20, label: 'Ponto interno – SUS', area: 'sus', originNodeCode: 'sus-reception' },
+  { code: 'FSC-01', major: 1, minor: 10, label: 'Entrada principal – HMC Private', area: 'private', originNodeCode: 'private-entry' },
+  { code: 'FSC-02', major: 1, minor: 20, label: 'Ponto interno – HMC Private', area: 'private', originNodeCode: 'private-reception' },
+  { code: 'FSC-10', major: 2, minor: 10, label: 'Entrada principal – SUS', area: 'sus', originNodeCode: 'sus-entry' },
+  { code: 'FSC-11', major: 2, minor: 20, label: 'Ponto interno – SUS', area: 'sus', originNodeCode: 'sus-reception' },
 ];
 
 export const findNavoraBeacon = (major, minor) =>

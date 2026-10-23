@@ -80,9 +80,19 @@ async function run() {
     assert.equal(visitor.body.status, 'PENDING');
     assert.equal(visitor.body.denied_reason, null);
     createdVisitorIds.push(visitor.body.id);
-    const visitorDetail = await request(httpServer).get(`/visitor-access/${visitor.body.id}`);
+    assert.match(visitor.body.access_token, /^[0-9a-f]{48}$/, 'criar pedido devolve o codigo secreto do visitante');
+    const visitorWithoutCode = await request(httpServer).get(`/visitor-access/${visitor.body.id}`);
+    assert.equal(visitorWithoutCode.status, 404, 'sem o codigo, ninguem le o pedido pelo id sequencial');
+    const visitorWrongCode = await request(httpServer).get(`/visitor-access/${visitor.body.id}`).set('X-Visitor-Token', 'a'.repeat(48));
+    assert.equal(visitorWrongCode.status, 404, 'codigo errado nao le o pedido');
+    const visitorDetail = await request(httpServer).get(`/visitor-access/${visitor.body.id}`).set('X-Visitor-Token', visitor.body.access_token);
     assert.equal(visitorDetail.status, 200);
     assert.equal(visitorDetail.body.id, visitor.body.id);
+    assert.equal(visitorDetail.body.access_token, undefined, 'leitura nao devolve o codigo de novo');
+    const visitorForReception = await request(httpServer).get(`/visitor-access/${visitor.body.id}`).set('Authorization', `Bearer ${receptionToken}`);
+    assert.equal(visitorForReception.status, 200, 'recepcao le o pedido com o JWT');
+    const visitorForPatient = await request(httpServer).get(`/visitor-access/${visitor.body.id}`).set('Authorization', `Bearer ${patientToken}`);
+    assert.equal(visitorForPatient.status, 404, 'paciente logado nao le pedido de outra pessoa');
     const approvedVisitor = await request(httpServer).patch(`/visitor-access/${visitor.body.id}/authorize`).set('Authorization', `Bearer ${receptionToken}`).send({ permissionMinutes: 15 });
     assert.equal(approvedVisitor.status, 200);
     assert.equal(approvedVisitor.body.status, 'APPROVED');
@@ -164,10 +174,21 @@ async function run() {
     const invalidRegistration = await request(httpServer).post('/patients/register').send({ email: 'invalid' });
     assert.equal(invalidRegistration.status, 400);
     registeredPatientEmail = `e2e.patient.${Date.now()}@example.com`;
-    const registration = await request(httpServer).post('/patients/register').send({ email: registeredPatientEmail, password: 'e2e-password-123', name: 'E2E Patient', patientCode: `E2E-${Date.now()}` });
+    const newPatient = { email: registeredPatientEmail, password: 'e2e-password-123', name: 'E2E Patient', patientCode: `E2E-${Date.now()}` };
+    const withoutConsent = await request(httpServer).post('/patients/register').send(newPatient);
+    assert.equal(withoutConsent.status, 400, 'LGPD: sem aceitar a politica nao cria conta');
+    const registration = await request(httpServer).post('/patients/register').send({ ...newPatient, acceptedPrivacyPolicy: true, privacyPolicyVersion: '2026-10-22' });
     assert.equal(registration.status, 201);
     assert.ok(registration.body.access_token);
     assert.equal(registration.body.patient.user.passwordHash, undefined);
+    assert.ok(registration.body.patient.privacyConsentAt, 'consentimento fica registrado');
+    const registeredToken = registration.body.access_token;
+    const deleteWrongPassword = await request(httpServer).delete('/patients/me').set('Authorization', `Bearer ${registeredToken}`).send({ password: 'errada' });
+    assert.equal(deleteWrongPassword.status, 401, 'excluir conta exige a senha certa');
+    const deleteAccount = await request(httpServer).delete('/patients/me').set('Authorization', `Bearer ${registeredToken}`).send({ password: 'e2e-password-123' });
+    assert.equal(deleteAccount.status, 200, 'LGPD: paciente exclui a propria conta');
+    const loginAfterDelete = await request(httpServer).post('/auth/login').send({ email: registeredPatientEmail, password: 'e2e-password-123' });
+    assert.equal(loginAfterDelete.status, 401, 'conta excluida nao entra mais');
     const demoPatientProfile = await prisma.patientProfile.findFirst({
       where: { user: { email: 'paciente@navora.com' } },
       select: { id: true, accessibility: true, updatedAt: true },

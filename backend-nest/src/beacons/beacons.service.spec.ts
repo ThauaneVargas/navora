@@ -11,13 +11,13 @@ const navigationNode = {
 const NAVORA_UUID = '7f3c2a91-5b4e-4d8a-9c61-2e8b0d5f4a17';
 
 const beacons = [
-  beacon('MBM04-01', navigationNode, { ibeaconUuid: NAVORA_UUID, ibeaconMajor: 1, ibeaconMinor: 10 }),
-  beacon('MBM04-99', null),
+  beacon('FSC-01', navigationNode, { ibeaconUuid: NAVORA_UUID, ibeaconMajor: 1, ibeaconMinor: 10 }),
+  beacon('FSC-99', null),
 ];
 
 function beacon(code: string, node: any, ble: any = {}) {
   return {
-    id: code === 'MBM04-01' ? 1 : 99,
+    id: code === 'FSC-01' ? 1 : 99,
     code,
     hardwareModel: ble.ibeaconUuid ? 'Feasycom FSC-BP104D' : null,
     ibeaconUuid: ble.ibeaconUuid ?? null,
@@ -63,14 +63,14 @@ function makeService() {
 
 async function run() {
   const service = makeService();
-  const known = await service.detect({ beaconCode: 'MBM04-01' });
+  const known = await service.detect({ beaconCode: 'FSC-01' });
   assert.equal(known.detected, true, 'beacon conhecido detecta');
   assert.equal(known.area, 'private', 'campo antigo area preservado');
   assert.equal(known.entrance, 'Entrada pelos fundos', 'campo antigo entrance preservado');
   assert.equal(known.origin_node_code, 'private-entry', 'beacon com node retorna origin_node_code');
   assert.equal(known.navigation_node?.code, 'private-entry', 'beacon com node retorna navigation_node');
 
-  const withoutNode = await service.detect({ beacon_code: 'MBM04-99' });
+  const withoutNode = await service.detect({ beacon_code: 'FSC-99' });
   assert.equal(withoutNode.detected, true, 'beacon conhecido sem node detecta');
   assert.equal(withoutNode.origin_node_code, null, 'beacon conhecido sem node retorna origin null');
   assert.equal(withoutNode.navigation_node, null, 'beacon conhecido sem node preserva compatibilidade');
@@ -81,18 +81,18 @@ async function run() {
   // Identificação pelo pacote iBeacon (uuid + major + minor).
   const byIbeacon = await service.detect({ uuid: NAVORA_UUID, major: 1, minor: 10, rssi: -62 });
   assert.equal(byIbeacon.detected, true, 'uuid+major+minor detecta');
-  assert.equal(byIbeacon.beacon_code, 'MBM04-01', 'deteccao por iBeacon devolve o codigo interno');
+  assert.equal(byIbeacon.beacon_code, 'FSC-01', 'deteccao por iBeacon devolve o codigo interno');
   assert.equal(byIbeacon.origin_node_code, 'private-entry', 'deteccao por iBeacon devolve origin_node_code');
 
   const upperNoHyphens = await service.detect({ uuid: NAVORA_UUID.replace(/-/g, '').toUpperCase(), major: 1, minor: 10 });
-  assert.equal(upperNoHyphens.beacon_code, 'MBM04-01', 'uuid em maiusculas e sem hifens tambem detecta');
+  assert.equal(upperNoHyphens.beacon_code, 'FSC-01', 'uuid em maiusculas e sem hifens tambem detecta');
 
   assert.deepEqual(await service.detect({ uuid: NAVORA_UUID, major: 1, minor: 99 }), { detected: false }, 'minor desconhecido');
   assert.deepEqual(await service.detect({ uuid: 'nao-e-uuid', major: 1, minor: 10 }), { detected: false }, 'uuid invalido');
   assert.deepEqual(await service.detect({ uuid: NAVORA_UUID, major: 1 }), { detected: false }, 'trio incompleto (sem minor)');
 
-  const codeWins = await service.detect({ beaconCode: 'MBM04-99', uuid: NAVORA_UUID, major: 1, minor: 10 });
-  assert.equal(codeWins.beacon_code, 'MBM04-99', 'se vierem os dois, o codigo interno tem prioridade');
+  const codeWins = await service.detect({ beaconCode: 'FSC-99', uuid: NAVORA_UUID, major: 1, minor: 10 });
+  assert.equal(codeWins.beacon_code, 'FSC-99', 'se vierem os dois, o codigo interno tem prioridade');
 
   const listed = await service.list();
   assert.equal(listed[0].origin_node_code, 'private-entry', 'listagem inclui origin_node_code');

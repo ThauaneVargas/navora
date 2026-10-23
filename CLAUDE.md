@@ -2,7 +2,7 @@
 
 ## Ordem de prioridade (atualizada 21/10 — os 7 bugs originais de setembro estão todos resolvidos)
 1. **Atualizar produção** — decisão do usuário. Produção roda `main` (commit `b93df9d`, 23/08); nada de setembro/outubro está lá (inclui coluna `notes` e as 3 opções de acessibilidade). Passos: push da branch → merge em `main` → o Render faz deploy e o `prisma migrate deploy` aplica as migrations sozinho → rodar o seed só se o banco estiver vazio.
-2. **Banco de produção free expira 19/11/2026** — repetir o procedimento de `docs/arquitetura.md` §7 ou plano pago.
+2. **Banco de produção free expira 19/11/2026** — repetir o procedimento de `docs/arquitetura.md` §7 (plano pago adiado por decisão do usuário até pesquisar custos). Segurança/LGPD feitas no código em 22/10 (item 19), pendências de produção em `docs/lgpd.md` §3.
 3. **Beacons: testar o APK de desenvolvimento no celular e calibrar no hospital** — código pronto na branch `feat/beacons-ble` (item 17). Voz (reconhecimento do aparelho) ainda não foi feita — pode entrar no mesmo APK numa próxima rodada.
 4. **Testes no celular físico** pendentes: "Primeiro acesso", editar perfil (com observações), SOS aparecendo sozinho no painel em ~15 s (CTM-05/06/10/11 em `docs/casos_de_teste.md`).
 5. **Login Google/Apple** — hoje só "Em breve" (decidir: implementar ou tirar os botões).
@@ -14,7 +14,7 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 ## Regras de escopo (não violar)
 - Só 2 perfis no mobile: Paciente e Visitante. Sem funcionário/médico.
 - Sem QR Code, sem agendamento, sem chamada de paciente.
-- BLE (beacons MBM04) deve continuar OPCIONAL — app tem que funcionar 100% sem beacon físico.
+- BLE (beacons Feasycom FSC-BP104D, códigos FSC-xx) deve continuar OPCIONAL — app tem que funcionar 100% sem beacon físico.
 - Não remover fallback offline (`navigationAdapter.js`) — ele simula rota quando API está fora.
 - Private e SUS têm estruturas separadas, não assumir que uma funciona igual na outra.
 - Antes de mudar algo, entender a estrutura atual e reutilizar o que já existe (não duplicar arquivos/componentes).
@@ -112,13 +112,14 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 - Directions API e Chave 2 seguem fora de uso (decisão do usuário).
 
 **17. Beacons físicos (Feasycom FSC-BP104D) — IMPLEMENTADO na branch `feat/beacons-ble` (21/10), falta testar no aparelho**
-- 4 aparelhos configurados pelo usuário (UUID `7f3c2a91-5b4e-4d8a-9c61-2e8b0d5f4a17`, major 1=Private/2=SUS, minor 10=entrada/20=ponto interno, 500 ms, 0 dBm). Tudo em `docs/beacons-configuracao.md`. Códigos `MBM04-01/02/10/11` mantidos (aparecem em 15 arquivos); o modelo fica em `hardwareModel`. O provisório `FSC-04-01` foi removido.
+- 4 aparelhos configurados pelo usuário (UUID `7f3c2a91-5b4e-4d8a-9c61-2e8b0d5f4a17`, major 1=Private/2=SUS, minor 10=entrada/20=ponto interno, 500 ms, 0 dBm). Tudo em `docs/beacons-configuracao.md`. **Códigos renomeados em 22/10 (pedido do usuário): `FSC-01/02/10/11`** (eram `MBM04-01/02/10/11`); o corredor simulado virou `SIM-20`. Migration `20261022233000_rename_beacon_codes_fsc` renomeia nos bancos existentes e grava a identidade iBeacon dos 4 (produção funciona após o merge sem rodar seed). O código legado `backend/` (Python, não usado) não foi mexido.
 - Backend: colunas `hardware_model`/`ibeacon_uuid`/`ibeacon_major`/`ibeacon_minor`/`measured_power` (nulo até calibrar) + índice único do trio; `POST /beacons/detect` aceita `uuid`+`major`+`minor` (UUID sem caixa, com/sem hífen) além do `beaconCode`, e devolve `beacon_code`.
 - Mobile: `react-native-ble-manager` 12.6.0 (TurboModule; o `ble-plx` não tem suporte declarado pra Nova Arquitetura/RN 0.86). `src/services/ibeacon.js` (parser + regra de troca estável, testado), `BleIndoorLocationProvider` em `indoorLocationService.js`, atrás de `EXPO_PUBLIC_BLE_ENABLED`. **Só Android** — o iOS não entrega iBeacon pelo Bluetooth comum (precisaria de CoreLocation). Com a API fora do ar, resolve o beacon pela tabela local.
 - `ArrivalPreparationScreen` ganhou **escolha manual da entrada** (antes só havia "rota até a recepção") — é o caminho sempre disponível quando o BLE não funciona.
 - Tela `BeaconDiagnostics` só com `__DEV__` (menu → "Diagnóstico de beacons"): major, minor, MAC, RSSI médio/mediana, local, beacon atual.
 - Build: `expo-dev-client` + `eas.json` (perfil `development`, APK). No APK de desenvolvimento o JS vem do Metro do PC — a flag BLE vale pelo `.env` local, não pelo `eas.json`.
-- **Pendente:** testar no celular; calibrar no hospital (`measuredPower` + limites de troca em `BEACON_STABILITY`); conferir se o "ponto interno" está mesmo ligado ao nó da recepção no seed; decidir push/merge da branch.
+- **Teste em casa (22/10): OK** — APK release com o JS embutido (`./gradlew assembleRelease`, sem depender do Metro; a tela de diagnóstico aparece com `EXPO_PUBLIC_BEACON_DIAGNOSTICS="true"`). Ouviu os 4, escolheu o mais próximo e trocou ao andar. API do APK = produção; enquanto produção não reconhecer uuid, `detectBeacon` usa a tabela local.
+- **Pendente:** testar a tela "Localização inicial" (CTM-13/14); calibrar no hospital (`measuredPower` + limites de troca em `BEACON_STABILITY`); conferir se o "ponto interno" está mesmo ligado ao nó da recepção no seed; decidir push/merge da branch.
 
 **18. Limpeza de código morto (21/10)**
 - Varredura de imports a partir da entrada de cada projeto + checagem por nome. Removidos 16 arquivos que nada usava: mobile `HomeScreen.js` (923 linhas — a rota "Home" abre `PatientHomeScreen`), `PlaceholderScreen.js`, `HowToGetScreen.js`, `components/ActionCard|InfoCard|NavoraButton|ProfileAvatar.js`, `data/rooms.js`, `services/arrivalLocationService.js`; web-admin `pages/AdminPage.jsx`, `pages/ReceptionPage.jsx`, `components/ReportModal|Sidebar|StatCard.jsx` (o painel real usa `components/dashboard/` e `components/layout/`); e dentro do `web-admin/src/App.jsx` os componentes mortos `Stat`, `Table`, `renderCell`, `StatusBadge`, `matchesFloor`.
@@ -126,6 +127,12 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 - Lint: `web-admin` ganhou `eslint-plugin-react` (`react/jsx-uses-vars`) — antes o contorno `varsIgnorePattern` escondia import de componente sem uso. Zero `no-unused-vars` nos dois projetos. Avisos restantes são regras do React Compiler (projeto não usa) e `react-refresh`.
 - **Login com Google/Apple: os dois botões só mostram "Em breve"** — o backend tem `POST /auth/google`, mas o app nunca chama. Decisão do usuário: ligar de verdade (precisa Client IDs do Google) ou tirar os botões.
 - CSS possivelmente órfão em `web-admin/src/styles.css` (`.status-badge`, `.table*`, `.stat-card`) não foi mexido — conferir visualmente antes de apagar.
+
+**19. Segurança e LGPD (22/10) — FEITO no código, falta produção.** Tudo em `docs/lgpd.md` (inventário de dados, o que foi feito, pendências e decisões).
+- Corrigido: login Google sem checar `aud` (agora exige `GOOGLE_CLIENT_IDS`, senão desligado); `GET /visitor-access/:id` público com id sequencial (agora exige `X-Visitor-Token` devolvido no criar, ou JWT de equipe; app guarda em `accessToken`); código de troca de senha em texto e no log de produção (agora hash, log só fora de produção); seed recusa banco não local sem `SEED_DEMO_PASSWORD`.
+- LGPD: aceite obrigatório no cadastro (backend `400` sem `acceptedPrivacyPolicy`; grava data/versão), política única em `mobile/src/data/privacyPolicy.js` (a tela Privacidade antiga afirmava coisas falsas), "Excluir minha conta" (`DELETE /patients/me` com senha), aviso pro visitante.
+- **Decisão do usuário (22/10): planos pagos/hospedagem ficam pra depois** — antes, pesquisar custo (beacons, servidor, banco) e modelo de cobrança. Servidor hoje nos EUA (Render Ohio) = transferência internacional, já informada na política.
+- Pendente em produção (após merge): trocar senhas das contas demo, tirar `0.0.0.0/0` do banco, trocar `JWT_SECRET`.
 
 ## Nota de versão
 - Projeto está no **Expo SDK 57**.

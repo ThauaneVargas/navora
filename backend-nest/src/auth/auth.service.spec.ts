@@ -119,6 +119,43 @@ async function run() {
     assert.equal(tokenUser.role, role, `role ${role} preservada no token`);
   }
 
+  // Login Google: sem GOOGLE_CLIENT_IDS fica desligado; com ele, token emitido
+  // pra outro app (aud diferente) é recusado mesmo com e-mail verificado.
+  const googleUsers: any[] = [];
+  const googlePrisma = {
+    user: {
+      findUnique: async () => null,
+      create: async ({ data }: any) => {
+        const user = { id: 99, createdAt: new Date(), updatedAt: new Date(), ...data };
+        googleUsers.push(user);
+        return user;
+      },
+    },
+    patientProfile: { create: async () => ({}) },
+  };
+  const googleConfig = (clientIds?: string) => ({
+    get: (key: string) => {
+      if (key === 'JWT_SECRET') return jwtSecret;
+      if (key === 'JWT_EXPIRES_IN') return '1h';
+      if (key === 'GOOGLE_CLIENT_IDS') return clientIds;
+      return undefined;
+    },
+  });
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = (async () => ({
+    ok: true,
+    json: async () => ({ sub: 'g-1', email: 'vitima@gmail.com', name: 'Vitima', email_verified: 'true', aud: 'outro-app.apps.googleusercontent.com' }),
+  })) as any;
+  try {
+    const googleDisabled = new AuthService(googlePrisma as any, new JwtService(), googleConfig() as unknown as ConfigService);
+    await expectUnauthorized('login Google desligado sem GOOGLE_CLIENT_IDS', () => googleDisabled.loginWithGoogle({ idToken: 'x' } as any));
+    const googleEnabled = new AuthService(googlePrisma as any, new JwtService(), googleConfig('navora.apps.googleusercontent.com') as unknown as ConfigService);
+    await expectUnauthorized('token Google de outro app (aud) e recusado', () => googleEnabled.loginWithGoogle({ idToken: 'x' } as any));
+    assert.equal(googleUsers.length, 0, 'token de outro app nao cria conta');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
   console.log('auth tests passed');
 }
 

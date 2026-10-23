@@ -50,10 +50,10 @@ test('UUID comparado sem caixa e com ou sem hífens', () => {
 });
 
 test('tabela local bate com a configuração dos 4 aparelhos', () => {
-  assert.equal(findNavoraBeacon(1, 10).code, 'MBM04-01');
-  assert.equal(findNavoraBeacon(1, 20).code, 'MBM04-02');
-  assert.equal(findNavoraBeacon(2, 10).code, 'MBM04-10');
-  assert.equal(findNavoraBeacon(2, 20).code, 'MBM04-11');
+  assert.equal(findNavoraBeacon(1, 10).code, 'FSC-01');
+  assert.equal(findNavoraBeacon(1, 20).code, 'FSC-02');
+  assert.equal(findNavoraBeacon(2, 10).code, 'FSC-10');
+  assert.equal(findNavoraBeacon(2, 20).code, 'FSC-11');
   assert.equal(findNavoraBeacon(9, 9), null);
 });
 

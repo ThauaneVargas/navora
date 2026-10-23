@@ -76,7 +76,10 @@ async function run() {
   assert.equal(approved.status, VisitorAccessStatus.APPROVED);
   assert.equal(approved.permission_minutes, 30);
 
-  const tracked = await service.get(created.id);
+  assert.match(created.access_token, /^[0-9a-f]{48}$/, 'criar devolve o codigo secreto do visitante');
+  await assert.rejects(() => service.get(created.id), NotFoundException, 'sem o codigo nao le o pedido');
+  await assert.rejects(() => service.get(created.id, { visitorToken: 'b'.repeat(48) }), NotFoundException, 'codigo errado nao le o pedido');
+  const tracked = await service.get(created.id, { visitorToken: created.access_token });
   assert.equal(tracked.status, VisitorAccessStatus.APPROVED);
 
   const inRoute = await service.updateStatus(created.id, VisitorAccessStatus.IN_ROUTE);

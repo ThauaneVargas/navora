@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { Prisma, UserRole } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 import { AuthService } from '../auth/auth.service';
@@ -66,6 +66,8 @@ export class PatientsService {
           accessibility: this.cleanAccessibility(payload.accessibility),
           emergencyContact: payload.emergencyContact,
           notes: payload.notes?.trim() || null,
+          privacyConsentAt: new Date(),
+          privacyPolicyVersion: payload.privacyPolicyVersion,
         },
         include: { user: true },
       });
@@ -137,6 +139,27 @@ export class PatientsService {
     return this.toPatientResponse(patient);
   }
 
+  // LGPD (art. 18, VI): o paciente apaga a própria conta. Some o cadastro
+  // (nome, e-mail, telefone, nascimento, acessibilidade, observações, contato
+  // de emergência) e as notificações. Chamados de SOS/ajuda já atendidos ficam
+  // no histórico do hospital (registro de atendimento), sem ligação com a conta.
+  async deleteMe(user: AuthenticatedUser, password: string) {
+    this.ensurePatient(user);
+    const account = await this.prisma.user.findUnique({ where: { id: user.id } });
+    if (!account || !(await bcrypt.compare(password, account.passwordHash))) {
+      throw new UnauthorizedException('Senha incorreta');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.notification.deleteMany({ where: { userId: user.id } }),
+      this.prisma.checkIn.updateMany({ where: { userId: user.id }, data: { userId: null } }),
+      this.prisma.patientProfile.deleteMany({ where: { userId: user.id } }),
+      this.prisma.user.delete({ where: { id: user.id } }),
+    ]);
+
+    return { deleted: true };
+  }
+
   private async findPatientProfile(userId: number) {
     const patient = await this.prisma.patientProfile.findUnique({
       where: { userId },
@@ -180,6 +203,8 @@ export class PatientsService {
       accessibility: patient.accessibility,
       emergencyContact: patient.emergencyContact,
       notes: patient.notes,
+      privacyConsentAt: patient.privacyConsentAt?.toISOString() ?? null,
+      privacyPolicyVersion: patient.privacyPolicyVersion,
       user: this.authService.toSafeUser(patient.user),
       createdAt: patient.createdAt,
       updatedAt: patient.updatedAt,

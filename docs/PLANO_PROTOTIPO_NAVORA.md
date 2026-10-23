@@ -55,6 +55,6 @@ Visitante escolhe area
 - Conectar backend NestJS ao PostgreSQL via Prisma.
 - Testar fluxo ponta a ponta com backend NestJS ativo.
 - Substituir repositorio em memoria por persistencia real.
-- Integrar beacon MBM04 real.
+- Integrar beacon físico real (Feasycom FSC-BP104D).
 - Adicionar IA real por voz.
 - Evoluir 3D/AR real depois da venda inicial.

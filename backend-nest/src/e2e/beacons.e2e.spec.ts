@@ -44,7 +44,7 @@ async function run() {
   const prisma = app.get(PrismaService);
   // A detecção grava lastSignalAt: guarda o valor original dos beacons tocados
   // pelo teste e restaura no finally.
-  const touchedCodes = ['MBM04-01', 'MBM04-02', 'MBM04-10'];
+  const touchedCodes = ['FSC-01', 'FSC-02', 'FSC-10'];
   const originalLastSignalAt = new Map<string, Date>();
 
   try {
@@ -121,16 +121,16 @@ async function run() {
     assert.ok(adminList.body.length > 0);
 
     //
-    // 5. BEACON MBM04-01 DEVE EXISTIR
+    // 5. BEACON FSC-01 DEVE EXISTIR
     //
     const knownBeacon = adminList.body.find(
       (beacon: any) =>
-        beacon.code === 'MBM04-01',
+        beacon.code === 'FSC-01',
     );
 
     assert.ok(
       knownBeacon,
-      'MBM04-01 deve existir no seed',
+      'FSC-01 deve existir no seed',
     );
 
     assert.equal(
@@ -145,7 +145,7 @@ async function run() {
     const detectCamelCase = await request(httpServer)
       .post('/beacons/detect')
       .send({
-        beaconCode: 'MBM04-01',
+        beaconCode: 'FSC-01',
       });
 
     assert.equal(detectCamelCase.status, 201);
@@ -184,7 +184,7 @@ async function run() {
     const detectSnakeCase = await request(httpServer)
       .post('/beacons/detect')
       .send({
-        beacon_code: 'MBM04-01',
+        beacon_code: 'FSC-01',
       });
 
     assert.equal(detectSnakeCase.status, 201);
@@ -287,7 +287,7 @@ async function run() {
     const publicDetection = await request(httpServer)
       .post('/beacons/detect')
       .send({
-        beaconCode: 'MBM04-01',
+        beaconCode: 'FSC-01',
       });
 
     assert.equal(publicDetection.status, 201);
@@ -308,7 +308,7 @@ async function run() {
 
     assert.equal(ibeaconSus.status, 201);
     assert.equal(ibeaconSus.body.detected, true);
-    assert.equal(ibeaconSus.body.beacon_code, 'MBM04-10');
+    assert.equal(ibeaconSus.body.beacon_code, 'FSC-10');
     assert.equal(ibeaconSus.body.area, 'sus');
     assert.equal(ibeaconSus.body.origin_node_code, 'sus-entry');
 
@@ -320,7 +320,7 @@ async function run() {
       .send({ uuid: NAVORA_UUID.replace(/-/g, '').toUpperCase(), major: 1, minor: 20 });
 
     assert.equal(ibeaconUpper.status, 201);
-    assert.equal(ibeaconUpper.body.beacon_code, 'MBM04-02');
+    assert.equal(ibeaconUpper.body.beacon_code, 'FSC-02');
 
     //
     // 16. TRIO DESCONHECIDO NÃO É ERRO
@@ -350,7 +350,7 @@ async function run() {
     //
     // 18. LISTAGEM EXPÕE A IDENTIDADE iBeacon (measured_power nulo até calibrar)
     //
-    const listedPhysical = adminList.body.find((beacon: any) => beacon.code === 'MBM04-01');
+    const listedPhysical = adminList.body.find((beacon: any) => beacon.code === 'FSC-01');
     assert.equal(listedPhysical.hardware_model, 'Feasycom FSC-BP104D');
     assert.equal(listedPhysical.ibeacon_major, 1);
     assert.equal(listedPhysical.ibeacon_minor, 10);

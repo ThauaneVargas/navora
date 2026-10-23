@@ -50,7 +50,7 @@ import {
 } from './src/data/routes';
 import { isAuthError, navoraApi } from './src/services/api';
 import { getAuthToken, removeAuthToken } from './src/services/authToken';
-import { indoorLocationService, indoorLog } from './src/services/indoorLocationService';
+import { indoorLocationService, indoorLog, isBeaconDiagnosticsEnabled } from './src/services/indoorLocationService';
 import { deriveNavigationProgress } from './src/services/navigationAdapter';
 import { hospitalDetectionService } from './src/services/hospitalDetectionService';
 
@@ -95,7 +95,7 @@ const screens = {
   ForgotPassword: ForgotPasswordScreen,
   ResetPassword: ResetPasswordScreen,
   // Só em desenvolvimento: calibração dos beacons físicos (fora do app final).
-  ...(__DEV__ ? { BeaconDiagnostics: BeaconDiagnosticsScreen } : {}),
+  ...(isBeaconDiagnosticsEnabled() ? { BeaconDiagnostics: BeaconDiagnosticsScreen } : {}),
 };
 
 const mobileScreens = new Set(Object.keys(screens));
@@ -1842,7 +1842,7 @@ export default function App() {
         ...detected,
 
         // Pelo iBeacon, o identificador é "ibeacon:1:10"; o código interno
-        // (ex.: MBM04-01) vem do backend (ou da tabela local, se offline).
+        // (ex.: FSC-01) vem do backend (ou da tabela local, se offline).
         beacon_code:
           detected.beacon_code ||
           beaconIdentifier,
@@ -2113,6 +2113,10 @@ export default function App() {
         request?.id ||
         fallback.id ||
         `VAR-${Date.now()}`,
+
+      accessToken:
+        request?.access_token ||
+        fallback.accessToken,
 
       visitorName:
         request?.visitor_name ||

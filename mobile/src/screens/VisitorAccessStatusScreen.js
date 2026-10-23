@@ -227,7 +227,8 @@ export default function VisitorAccessStatusScreen({
       try {
         const updated =
           await navoraApi.getVisitorAccessRequest(
-            request.id
+            request.id,
+            request.accessToken
           );
 
         if (

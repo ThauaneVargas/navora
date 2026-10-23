@@ -15,7 +15,18 @@ import {
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
-const demoPassword = 'navora-demo-123';
+// Senha das contas de demonstração. A padrão é pública (está na documentação),
+// então só vale em banco local. Em qualquer outro banco (produção) o seed exige
+// SEED_DEMO_PASSWORD — e, com ela definida, também troca a senha de contas
+// demo que já existam.
+const isLocalDatabase = /@(localhost|127.0.0.1)[:/]/.test(process.env.DATABASE_URL ?? '');
+const customDemoPassword = process.env.SEED_DEMO_PASSWORD?.trim();
+if (!isLocalDatabase && !customDemoPassword) {
+  throw new Error(
+    'Seed em banco que nao e local: defina SEED_DEMO_PASSWORD (senha forte) para as contas de demonstracao.',
+  );
+}
+const demoPassword = customDemoPassword || 'navora-demo-123';
 
 const areaSeeds = [
   { code: 'private', name: 'HMC Private', label: 'Private', description: 'Rotas e setores do atendimento particular/convenio.' },
@@ -146,6 +157,7 @@ async function upsertDemoUser(data: {
       phone: data.phone,
       role: data.role,
       active: true,
+      ...(customDemoPassword ? { passwordHash } : {}),
     },
     create: {
       email: data.email,
@@ -539,28 +551,28 @@ async function main() {
   }
 
   // Beacons físicos: Feasycom FSC-BP104D, configurados em 21/10 (ver
-  // docs/beacons-configuracao.md). Os códigos MBM04-xx são mantidos porque
-  // aparecem no app, no painel e nos testes. measuredPower fica nulo até a
+  // docs/beacons-configuracao.md). Códigos FSC-xx (até 22/10 eram MBM04-xx; a
+  // migration 20261022233000 renomeia). measuredPower fica nulo até a
   // calibração no hospital.
   const NAVORA_IBEACON_UUID = '7f3c2a91-5b4e-4d8a-9c61-2e8b0d5f4a17';
   const physicalBeacons = [
     {
-      code: 'MBM04-01', major: 1, minor: 10, node: 'private-entry',
+      code: 'FSC-01', major: 1, minor: 10, node: 'private-entry',
       name: 'Entrada Private', area: 'private', areaName: 'HMC Private',
       location: 'Entrada pelos fundos', sector: 'Entrada Private', battery: 92,
     },
     {
-      code: 'MBM04-02', major: 1, minor: 20, node: 'private-reception',
+      code: 'FSC-02', major: 1, minor: 20, node: 'private-reception',
       name: 'Recepcao Private', area: 'private', areaName: 'HMC Private',
       location: 'Recepcao Private', sector: 'Recepcao Private', battery: 88,
     },
     {
-      code: 'MBM04-10', major: 2, minor: 10, node: 'sus-entry',
+      code: 'FSC-10', major: 2, minor: 10, node: 'sus-entry',
       name: 'Entrada Hospital Marco Capute', area: 'sus', areaName: 'Hospital Marco Capute',
       location: 'Entrada pela frente', sector: 'Entrada Hospital Marco Capute', battery: 90,
     },
     {
-      code: 'MBM04-11', major: 2, minor: 20, node: 'sus-reception',
+      code: 'FSC-11', major: 2, minor: 20, node: 'sus-reception',
       name: 'Recepcao Hospital Marco Capute', area: 'sus', areaName: 'Hospital Marco Capute',
       location: 'Recepcao Hospital Marco Capute', sector: 'Recepcao Hospital Marco Capute', battery: 84,
     },
@@ -582,10 +594,10 @@ async function main() {
   }
 
   await prisma.beacon.upsert({
-    where: { code: 'MBM04-20' },
+    where: { code: 'SIM-20' },
     update: { navigationNodeId: nodes.get('corridor-a')?.id },
     create: {
-      code: 'MBM04-20',
+      code: 'SIM-20',
       name: 'Corredor compartilhado',
       area: 'shared',
       areaName: 'Compartilhado',
@@ -615,7 +627,7 @@ async function main() {
           reason: 'SOS paciente Private pendente',
           location: 'Recepcao Private',
           sector: 'Recepcao Private',
-          beaconCode: 'MBM04-02',
+          beaconCode: 'FSC-02',
           message: 'SOS paciente Private pendente',
           priority: Priority.CRITICAL,
           status: CallStatus.PENDING,
@@ -630,7 +642,7 @@ async function main() {
           reason: 'Pedido de ajuda visitante SUS pendente',
           location: 'Recepcao Hospital Marco Capute',
           sector: 'Recepcao Hospital Marco Capute',
-          beaconCode: 'MBM04-11',
+          beaconCode: 'FSC-11',
           message: 'Pedido de ajuda visitante SUS pendente',
           priority: Priority.MEDIUM,
           status: CallStatus.PENDING,
@@ -654,8 +666,8 @@ async function main() {
           requestedDestination: 'Visita / Internacao Private',
           accessibility: 'Nao',
           currentLocation: 'Entrada Private',
-          currentBeacon: 'MBM04-01',
-          beacon: 'MBM04-01',
+          currentBeacon: 'FSC-01',
+          beacon: 'FSC-01',
           status: VisitorAccessStatus.PENDING,
         },
         {
@@ -669,8 +681,8 @@ async function main() {
           requestedDestination: 'Visita / Internacao Hospital Marco Capute',
           accessibility: 'Sim',
           currentLocation: 'Recepcao Hospital Marco Capute',
-          currentBeacon: 'MBM04-11',
-          beacon: 'MBM04-11',
+          currentBeacon: 'FSC-11',
+          beacon: 'FSC-11',
           status: VisitorAccessStatus.APPROVED,
           permissionMinutes: 30,
           authorizedRoute: 'Recepcao Hospital Marco Capute -> rota autorizada -> destino',
