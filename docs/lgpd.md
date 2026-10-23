@@ -20,6 +20,7 @@ Atualizado em 22/10/2026. Este documento descreve **o que o sistema faz hoje** c
 | GPS ("Como chegar") | celular | só no aparelho, enquanto a tela está aberta | — |
 | Foto de perfil | paciente | só no aparelho (`profilePhotoService`) | — |
 | Dados do visitante (nome, telefone, nascimento) | visitante, **só se marcar "Lembrar meus dados"** | só no aparelho (`visitorStorage`, SecureStore); botão "Esquecer meus dados" no formulário | não |
+| Histórico de rotas (destinos iniciados) | sistema | só no aparelho (`routeHistoryStorage`), últimas 12; "Sair" apaga — o destino pode revelar saúde | pode revelar saúde |
 | Visita em andamento (pedido + código secreto) | sistema | só no aparelho, até a visita terminar/expirar/ser negada (ou 24 h sem resposta); "Sair" apaga | — |
 
 Hospedagem: Render (backend e Postgres), região **Oregon, EUA** (confirmado no painel em 23/10 — o `backend-nest/render.yaml` diz `ohio`, mas os serviços reais foram criados em Oregon). Isso é **transferência internacional** (art. 33) — está informado na política do app; ver "decisões" abaixo.

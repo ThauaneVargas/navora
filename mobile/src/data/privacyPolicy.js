@@ -3,8 +3,8 @@
 // versão — o backend guarda qual versão cada paciente aceitou.
 // Escreva só o que o app faz de fato (ver docs/lgpd.md).
 
-export const PRIVACY_POLICY_VERSION = '2026-10-22';
-export const PRIVACY_POLICY_UPDATED_LABEL = '22 de outubro de 2026';
+export const PRIVACY_POLICY_VERSION = '2026-10-23';
+export const PRIVACY_POLICY_UPDATED_LABEL = '23 de outubro de 2026';
 
 export const PRIVACY_SECTIONS = [
   {
@@ -28,7 +28,9 @@ export const PRIVACY_SECTIONS = [
     body:
       'Dentro do hospital, o app usa beacons Bluetooth para saber por qual entrada você chegou — só com o app aberto, nunca em segundo plano. ' +
       'O GPS só é usado na tela "Como chegar ao hospital", enquanto ela estiver aberta. ' +
-      'Não guardamos um histórico da sua localização.',
+      'O servidor não guarda um histórico da sua localização. ' +
+      'A lista de rotas que você iniciou (em "Histórico de rotas") fica só no seu celular e é apagada quando você toca em Sair. ' +
+      'Visitantes podem, se quiserem, deixar nome e telefone salvos só no próprio celular.',
   },
   {
     icon: 'account-group-outline',

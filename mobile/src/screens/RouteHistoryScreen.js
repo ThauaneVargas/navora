@@ -1,143 +1,127 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
+import { EmptyState, PrimaryButton } from '../components/PremiumUI';
 import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import { loadRouteHistory, subscribeRouteHistory } from '../services/routeHistoryStorage';
 
-const history = [
-  {
-    id: '1',
-    destination: 'Tomografia',
-    sector: 'Setor de Imagem',
-    floor: 'Piso Terreo',
-    date: 'Hoje',
-    time: '14:32',
-    distance: '124 m',
-    duration: '2 min',
-    icon: 'radioactive-circle-outline',
-    status: 'concluida',
-  },
-  {
-    id: '2',
-    destination: 'Recepção Principal',
-    sector: 'Ala Principal',
-    floor: 'Piso Terreo',
-    date: 'Hoje',
-    time: '13:10',
-    distance: '68 m',
-    duration: '1 min',
-    icon: 'account-tie-outline',
-    status: 'concluida',
-  },
-  {
-    id: '3',
-    destination: 'Ultrassonografia 01',
-    sector: 'Ala B',
-    floor: 'Piso Terreo',
-    date: 'Ontem',
-    time: '09:45',
-    distance: '212 m',
-    duration: '4 min',
-    icon: 'sine-wave',
-    status: 'concluida',
-  },
-  {
-    id: '4',
-    destination: 'Elevador A',
-    sector: 'Corredor Principal',
-    floor: 'Piso Terreo',
-    date: 'Ontem',
-    time: '09:41',
-    distance: '88 m',
-    duration: '1 min',
-    icon: 'elevator-passenger-outline',
-    status: 'concluida',
-  },
-  {
-    id: '5',
-    destination: 'Laboratorio de Analises',
-    sector: 'Ala Clinica',
-    floor: '1o Andar',
-    date: '07/09',
-    time: '08:20',
-    distance: '178 m',
-    duration: '3 min',
-    icon: 'flask-outline',
-    status: 'concluida',
-  },
-];
+// Antes esta tela mostrava uma lista fixa de exemplo. Agora lê as rotas que
+// a pessoa iniciou neste celular (routeHistoryStorage), que somem ao sair.
+
+const dayLabel = (iso) => {
+  const date = new Date(iso);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === today.toDateString()) return 'Hoje';
+  if (date.toDateString() === yesterday.toDateString()) return 'Ontem';
+  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+};
+
+const timeLabel = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 
 export default function RouteHistoryScreen({ navigate, goBack }) {
   const { appColors } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
+  const [history, setHistory] = useState([]);
+
+  useEffect(() => {
+    let active = true;
+    loadRouteHistory().then((items) => active && setHistory(items));
+    const unsubscribe = subscribeRouteHistory((items) => active && setHistory(items));
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
 
   const grouped = useMemo(() => {
-    const groups = {};
+    const groups = new Map();
     history.forEach((item) => {
-      if (!groups[item.date]) groups[item.date] = [];
-      groups[item.date].push(item);
+      const label = dayLabel(item.t);
+      if (!groups.has(label)) groups.set(label, []);
+      groups.get(label).push(item);
     });
-    return Object.entries(groups);
-  }, []);
+    return [...groups.entries()];
+  }, [history]);
+
+  const arrivedCount = history.filter((item) => item.a).length;
 
   return (
     <Screen>
       <Header title="Histórico de rotas" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
-      <View style={[styles.statsRow, shadows.card]}>
-        <StatItem label="Rotas" value={history.length} icon="routes" styles={styles} appColors={appColors} />
-        <View style={styles.statDivider} />
-        <StatItem label="Distancia total" value="670 m" icon="map-marker-distance" styles={styles} appColors={appColors} />
-        <View style={styles.statDivider} />
-        <StatItem label="Tempo total" value="11 min" icon="clock-outline" styles={styles} appColors={appColors} />
-      </View>
-
-      {grouped.map(([date, items]) => (
-        <View key={date}>
-          <Text style={styles.dateLabel}>{date}</Text>
-          <View style={[styles.group, shadows.card]}>
-            {items.map((item, index) => (
-              <Pressable
-                key={item.id}
-                onPress={() => navigate('Navigation')}
-                style={({ pressed }) => [
-                  styles.row,
-                  index < items.length - 1 && styles.rowBorder,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <View style={styles.rowIcon}>
-                  <MaterialCommunityIcons name={item.icon} size={19} color={appColors.primary} />
-                </View>
-                <View style={styles.rowCopy}>
-                  <Text style={styles.rowTitle} numberOfLines={1}>{item.destination}</Text>
-                  <Text style={styles.rowSub} numberOfLines={1}>
-                    {item.sector} · {item.floor}
-                  </Text>
-                  <View style={styles.rowMeta}>
-                    <MaterialCommunityIcons name="clock-outline" size={11} color={appColors.muted} />
-                    <Text style={styles.rowMetaText}>{item.time}</Text>
-                    <Text style={styles.rowMetaDot}>·</Text>
-                    <Text style={styles.rowMetaText}>{item.distance}</Text>
-                    <Text style={styles.rowMetaDot}>·</Text>
-                    <Text style={styles.rowMetaText}>{item.duration}</Text>
-                  </View>
-                </View>
-                <View style={styles.checkBadge}>
-                  <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />
-                </View>
-              </Pressable>
-            ))}
-          </View>
+      {history.length === 0 ? (
+        <View style={styles.emptyWrap}>
+          <EmptyState
+            icon="map-marker-path"
+            title="Nenhuma rota ainda"
+            text="Quando você iniciar uma rota pelo app, ela aparece aqui para você repetir com um toque."
+            action={<PrimaryButton title="Buscar um destino" icon="magnify" onPress={() => navigate('Search')} />}
+          />
         </View>
-      ))}
+      ) : (
+        <>
+          <View style={[styles.statsRow, shadows.card]}>
+            <StatItem label="Rotas" value={history.length} icon="routes" styles={styles} appColors={appColors} />
+            <View style={styles.statDivider} />
+            <StatItem label="Concluídas" value={arrivedCount} icon="flag-checkered" styles={styles} appColors={appColors} />
+          </View>
+
+          {grouped.map(([date, items]) => (
+            <View key={date}>
+              <Text style={styles.dateLabel}>{date}</Text>
+              <View style={[styles.group, shadows.card]}>
+                {items.map((item, index) => (
+                  <Pressable
+                    key={item.t}
+                    onPress={() => navigate('Search', { query: item.n })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${item.n}, ${item.a ? 'concluída' : 'iniciada'} às ${timeLabel(item.t)}`}
+                    accessibilityHint="Abre a busca para fazer esta rota de novo"
+                    style={({ pressed }) => [
+                      styles.row,
+                      index < items.length - 1 && styles.rowBorder,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <View style={styles.rowIcon}>
+                      <MaterialCommunityIcons name={item.i || 'map-marker-outline'} size={19} color={appColors.primary} />
+                    </View>
+                    <View style={styles.rowCopy}>
+                      <Text style={styles.rowTitle} numberOfLines={1}>{item.n}</Text>
+                      <Text style={styles.rowSub} numberOfLines={1}>
+                        {[item.c === 'Servicos' ? 'Serviços' : item.c, item.f].filter(Boolean).join(' · ') || 'Destino'}
+                      </Text>
+                      <View style={styles.rowMeta}>
+                        <MaterialCommunityIcons name="clock-outline" size={13} color={appColors.muted} />
+                        <Text style={styles.rowMetaText}>{timeLabel(item.t)}</Text>
+                        <Text style={styles.rowMetaDot}>·</Text>
+                        <Text style={styles.rowMetaText}>{item.a ? 'Concluída' : 'Iniciada'}</Text>
+                      </View>
+                    </View>
+                    {item.a ? (
+                      <View style={styles.checkBadge}>
+                        <MaterialCommunityIcons name="check" size={14} color="#FFFFFF" />
+                      </View>
+                    ) : (
+                      <MaterialCommunityIcons name="replay" size={20} color={appColors.primary} />
+                    )}
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ))}
+        </>
+      )}
 
       <View style={[styles.infoCard, shadows.card]}>
-        <MaterialCommunityIcons name="information-outline" size={16} color={appColors.muted} />
+        <MaterialCommunityIcons name="shield-lock-outline" size={16} color={appColors.muted} />
         <Text style={styles.infoText}>
-          O histórico exibe as últimas rotas concluídas. Rotas canceladas não são salvas.
+          O histórico fica só neste celular e é apagado quando você toca em Sair. Toque numa rota para fazê-la de novo.
         </Text>
       </View>
     </Screen>
@@ -155,6 +139,9 @@ function StatItem({ label, value, icon, styles, appColors }) {
 }
 
 const createStyles = (colors) => StyleSheet.create({
+  emptyWrap: {
+    marginTop: 24,
+  },
   statsRow: {
     marginTop: 16,
     borderRadius: 20,
@@ -247,7 +234,7 @@ const createStyles = (colors) => StyleSheet.create({
   },
   rowMetaText: {
     color: colors.muted,
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '800',
   },
   rowMetaDot: {

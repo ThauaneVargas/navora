@@ -55,6 +55,7 @@ import { deriveNavigationProgress } from './src/services/navigationAdapter';
 import { hospitalDetectionService } from './src/services/hospitalDetectionService';
 import { startVisitorAccessMonitor, stopVisitorAccessMonitor } from './src/services/visitorAccessMonitor';
 import { clearActiveVisit, loadActiveVisit, saveActiveVisit } from './src/services/visitorStorage';
+import { clearRouteHistory, recordRoute } from './src/services/routeHistoryStorage';
 
 const screens = {
   Splash: SplashScreen,
@@ -245,6 +246,12 @@ export default function App() {
     if (userProfile?.type !== 'visitor') return;
     saveActiveVisit(userProfile, visitorAccessRequest);
   }, [userProfile, visitorAccessRequest]);
+
+  // Histórico de rotas (só no celular): registra a rota iniciada e marca
+  // como concluída quando ela chega ao destino.
+  useEffect(() => {
+    if (activeRoute) recordRoute(activeRoute);
+  }, [activeRoute]);
 
   const navigate = (
     nextScreen,
@@ -915,6 +922,8 @@ export default function App() {
     stopVisitorAccessMonitor();
     clearActiveVisit();
     restoredVisitRef.current = false;
+    // O histórico de rotas pode revelar dado de saúde: sai junto com a pessoa.
+    clearRouteHistory();
 
     setIdentificationDrafts({
       patient: {},

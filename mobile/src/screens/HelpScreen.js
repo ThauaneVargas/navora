@@ -30,6 +30,10 @@ import {
 } from '../theme/colors';
 
 import {
+  toneColors,
+} from '../theme/tones';
+
+import {
   useApp,
 } from '../context/AppContext';
 
@@ -463,8 +467,9 @@ export default function HelpScreen({
             }
           >
             <SmallTile
-              icon="map-marker-outline"
+              icon="map-marker-question-outline"
               title="Estou perdido"
+              tone="amber"
               onPress={
                 actions.lost
               }
@@ -477,6 +482,7 @@ export default function HelpScreen({
             <SmallTile
               icon="wheelchair-accessibility"
               title="Acessibilidade"
+              tone="blue"
               onPress={
                 actions.accessibility
               }
@@ -489,8 +495,9 @@ export default function HelpScreen({
 
 
           <WideTile
-            icon="account-group-outline"
+            icon="face-agent"
             title="Falar com a recepção"
+            tone="teal"
             onPress={
               actions.reception
             }
@@ -721,10 +728,14 @@ function ActionTile({
 function SmallTile({
   icon,
   title,
+  tone,
   onPress,
   appColors,
   styles,
 }) {
+  const { isDark } = useApp();
+  const toned = toneColors(tone, appColors, isDark);
+
   return (
     <Pressable
       onPress={onPress}
@@ -742,15 +753,19 @@ function SmallTile({
       ]}
     >
       <View
-        style={
-          styles.smallIconWrap
-        }
+        style={[
+          styles.smallIconWrap,
+          {
+            backgroundColor:
+              toned.bg,
+          },
+        ]}
       >
         <MaterialCommunityIcons
           name={icon}
           size={22}
           color={
-            appColors.primary
+            toned.fg
           }
         />
       </View>
@@ -778,11 +793,15 @@ function SmallTile({
 function WideTile({
   icon,
   title,
+  tone,
   loading,
   onPress,
   appColors,
   styles,
 }) {
+  const { isDark } = useApp();
+  const toned = toneColors(tone, appColors, isDark);
+
   return (
     <Pressable
       onPress={onPress}
@@ -802,14 +821,18 @@ function WideTile({
       ]}
     >
       <View
-        style={
-          styles.smallIconWrap
-        }
+        style={[
+          styles.smallIconWrap,
+          {
+            backgroundColor:
+              toned.bg,
+          },
+        ]}
       >
         {loading ? (
           <ActivityIndicator
             color={
-              appColors.primary
+              toned.fg
             }
           />
         ) : (
@@ -817,7 +840,7 @@ function WideTile({
             name={icon}
             size={23}
             color={
-              appColors.primary
+              toned.fg
             }
           />
         )}

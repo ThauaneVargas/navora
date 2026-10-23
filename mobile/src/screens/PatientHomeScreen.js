@@ -33,6 +33,8 @@ import {
   useApp,
 } from '../context/AppContext';
 
+import { toneColors } from '../theme/tones';
+
 import {
   getAreaById,
   getReceptionDestination,
@@ -1834,25 +1836,6 @@ export default function PatientHomeScreen({
 /*
  * ACESSO RÁPIDO
  */
-
-// Cada atalho tem uma cor própria (fundo suave + ícone colorido), pra Home
-// não ficar toda igual. "wine" usa o bordô do tema.
-const QUICK_TONES = {
-  blue: { light: '#2768B7', dark: '#7FB2FF' },
-  teal: { light: '#0F7F7B', dark: '#5ED3CD' },
-  amber: { light: '#A85F00', dark: '#F6B93B' },
-  violet: { light: '#6247B0', dark: '#B8A4FF' },
-  green: { light: '#167A45', dark: '#5BD691' },
-};
-
-function toneColors(tone, appColors, isDark) {
-  const palette = QUICK_TONES[tone];
-  if (!palette) {
-    return { fg: appColors.primary, bg: appColors.iconBg, ring: appColors.border };
-  }
-  const fg = isDark ? palette.dark : palette.light;
-  return { fg, bg: `${fg}1F`, ring: `${fg}33` };
-}
 
 function QuickCard({
   icon,

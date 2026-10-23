@@ -6,18 +6,19 @@ import Screen from '../components/Screen';
 import { colors } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import { isBeaconDiagnosticsEnabled } from '../services/indoorLocationService';
+import { toneColors } from '../theme/tones';
 
 const menuItems = [
   // Só na versão de desenvolvimento ou no APK de teste (calibração dos beacons físicos).
-  ...(isBeaconDiagnosticsEnabled() ? [{ title: 'Diagnóstico de beacons', subtitle: 'Versão de teste — calibração', icon: 'access-point', screen: 'BeaconDiagnostics' }] : []),
-  { title: 'Meu perfil', subtitle: 'Dados pessoais e acessos', icon: 'account-outline', screen: 'Profile' },
-  { title: 'Como chegar ao hospital', subtitle: 'Rota ate a entrada principal', icon: 'map-marker-distance', screen: 'ExternalRoute' },
-  { title: 'Acessibilidade', subtitle: 'Rotas adaptadas', icon: 'wheelchair-accessibility', screen: 'Accessibility' },
-  { title: 'Rotas de emergencia', subtitle: 'Saidas seguras', icon: 'exit-run', screen: 'EmergencyRoutes' },
-  { title: 'Histórico de rotas', subtitle: 'Últimos destinos', icon: 'history', screen: 'RouteHistory' },
-  { title: 'Notificações', subtitle: 'Avisos do Navora', icon: 'bell-outline', screen: 'Notifications' },
+  ...(isBeaconDiagnosticsEnabled() ? [{ title: 'Diagnóstico de beacons', subtitle: 'Versão de teste — calibração', icon: 'access-point', screen: 'BeaconDiagnostics', tone: 'blue' }] : []),
+  { title: 'Meu perfil', subtitle: 'Dados pessoais e acessos', icon: 'account-circle-outline', screen: 'Profile' },
+  { title: 'Como chegar ao hospital', subtitle: 'Rota ate a entrada principal', icon: 'map-marker-distance', screen: 'ExternalRoute', tone: 'teal' },
+  { title: 'Acessibilidade', subtitle: 'Rotas adaptadas', icon: 'wheelchair-accessibility', screen: 'Accessibility', tone: 'blue' },
+  { title: 'Rotas de emergencia', subtitle: 'Saidas seguras', icon: 'exit-run', screen: 'EmergencyRoutes', tone: 'green' },
+  { title: 'Histórico de rotas', subtitle: 'Últimos destinos', icon: 'history', screen: 'RouteHistory', tone: 'violet' },
+  { title: 'Notificações', subtitle: 'Avisos do Navora', icon: 'bell-outline', screen: 'Notifications', tone: 'amber' },
   { title: 'Configurações', subtitle: 'Preferências do app', icon: 'cog-outline', screen: 'Settings' },
-  { title: 'Privacidade', subtitle: 'Dados e permissões', icon: 'shield-lock-outline', screen: 'Privacy' },
+  { title: 'Privacidade', subtitle: 'Dados e permissões', icon: 'shield-lock-outline', screen: 'Privacy', tone: 'teal' },
   { title: 'Sair', subtitle: 'Encerrar sessão', icon: 'logout', screen: 'HomeStart', danger: true },
 ];
 
@@ -35,6 +36,7 @@ function MenuItem({
   icon,
   title,
   subtitle,
+  tone,
   onPress,
   danger = false,
   noArrow = false,
@@ -43,9 +45,10 @@ function MenuItem({
   isDark,
   style,
 }) {
-  const iconColor = danger ? appColors.danger : appColors.primary;
+  const toned = toneColors(tone, appColors, isDark);
+  const iconColor = danger ? appColors.danger : toned.fg;
   const backgroundColor = danger ? (isDark ? '#2A171B' : '#FFF7F8') : appColors.surface;
-  const iconBg = danger ? (isDark ? '#3A1A20' : '#FFE8EC') : appColors.iconBg;
+  const iconBg = danger ? (isDark ? '#3A1A20' : '#FFE8EC') : toned.bg;
 
   return (
     <Pressable
@@ -180,6 +183,7 @@ export default function MenuScreen({ navigate, goBack, onLogout }) {
               icon={item.icon}
               title={item.title}
               subtitle={item.subtitle}
+              tone={item.tone}
               danger={item.danger}
               onPress={() => handlePress(item)}
               appColors={appColors}
