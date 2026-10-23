@@ -46,8 +46,8 @@ Hospedagem: Render (backend e Postgres), região **Oregon, EUA** (confirmado no 
 ## 3. Pendências — o que fazer antes de paciente real
 
 **Produção (precisa do merge desta branch)**
-1. Fazer o merge → as migrations `add_visitor_access_token` e `add_patient_privacy_consent` rodam sozinhas no deploy.
-2. **Trocar a senha das contas demo em produção**: rodar o seed contra a produção com `SEED_DEMO_PASSWORD=<senha forte>` — ou apagar `paciente@`, `recepcao@`, `admin@navora.com` e criar contas reais da equipe (`POST /auth/register-staff`).
+1. ~~Fazer o merge~~ **Feito em 23/10** — migrations aplicadas no deploy.
+2. ~~Trocar a senha das contas demo em produção~~ **Feito em 23/10** (senhas novas, só direto no banco — não estão no repositório; a usuária guarda). A `navora-demo-123` continua valendo só no banco local.
 3. No painel do Render: tirar a regra de acesso `0.0.0.0/0` do banco `navora-db-2` e apagar o `navora-db` antigo.
 4. Trocar o `JWT_SECRET` de produção e a senha do banco (já circularam em conversas/prints).
 
