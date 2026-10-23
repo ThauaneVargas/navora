@@ -20,7 +20,7 @@ Atualizado em 22/10/2026. Este documento descreve **o que o sistema faz hoje** c
 | GPS ("Como chegar") | celular | só no aparelho, enquanto a tela está aberta | — |
 | Foto de perfil | paciente | só no aparelho (`profilePhotoService`) | — |
 
-Hospedagem: Render (backend e Postgres), região **Ohio, EUA** (`backend-nest/render.yaml`). Isso é **transferência internacional** (art. 33) — está informado na política do app; ver "decisões" abaixo.
+Hospedagem: Render (backend e Postgres), região **Oregon, EUA** (confirmado no painel em 23/10 — o `backend-nest/render.yaml` diz `ohio`, mas os serviços reais foram criados em Oregon). Isso é **transferência internacional** (art. 33) — está informado na política do app; ver "decisões" abaixo.
 
 ## 2. O que já está implementado
 

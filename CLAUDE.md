@@ -131,7 +131,7 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 **19. Segurança e LGPD (22/10) — FEITO no código, falta produção.** Tudo em `docs/lgpd.md` (inventário de dados, o que foi feito, pendências e decisões).
 - Corrigido: login Google sem checar `aud` (agora exige `GOOGLE_CLIENT_IDS`, senão desligado); `GET /visitor-access/:id` público com id sequencial (agora exige `X-Visitor-Token` devolvido no criar, ou JWT de equipe; app guarda em `accessToken`); código de troca de senha em texto e no log de produção (agora hash, log só fora de produção); seed recusa banco não local sem `SEED_DEMO_PASSWORD`.
 - LGPD: aceite obrigatório no cadastro (backend `400` sem `acceptedPrivacyPolicy`; grava data/versão), política única em `mobile/src/data/privacyPolicy.js` (a tela Privacidade antiga afirmava coisas falsas), "Excluir minha conta" (`DELETE /patients/me` com senha), aviso pro visitante.
-- **Decisão do usuário (22/10): planos pagos/hospedagem ficam pra depois** — antes, pesquisar custo (beacons, servidor, banco) e modelo de cobrança. Servidor hoje nos EUA (Render Ohio) = transferência internacional, já informada na política.
+- **Decisão do usuário (22/10): planos pagos/hospedagem ficam pra depois** — antes, pesquisar custo (beacons, servidor, banco) e modelo de cobrança. Servidor hoje nos EUA (Render Oregon) = transferência internacional, já informada na política.
 - Pendente em produção (após merge): trocar senhas das contas demo, tirar `0.0.0.0/0` do banco, trocar `JWT_SECRET`.
 
 ## Nota de versão
