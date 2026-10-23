@@ -1,7 +1,7 @@
 # Navora — Contexto para Claude Code
 
 ## Ordem de prioridade (atualizada 21/10 — os 7 bugs originais de setembro estão todos resolvidos)
-1. **Atualizar produção** — decisão do usuário. Produção roda `main` (commit `b93df9d`, 23/08); nada de setembro/outubro está lá (inclui coluna `notes` e as 3 opções de acessibilidade). Passos: push da branch → merge em `main` → o Render faz deploy e o `prisma migrate deploy` aplica as migrations sozinho → rodar o seed só se o banco estiver vazio.
+1. ~~Atualizar produção~~ **FEITO em 23/10:** `main` = `1fb6e98` (fast-forward da `feat/beacons-ble`), deploy automático do Render ok, 18 migrations aplicadas sem perda de dados, testado em produção (login, perfil com `notes`/consentimento, beacon por uuid → FSC-11, cadastro sem aceite → 400, visita sem código → 404). Push pra `main` = deploy de produção (o Claude Code é bloqueado de fazer; a usuária roda `git push origin feat/beacons-ble:main`). **Falta:** trocar senha das contas demo, tirar `0.0.0.0/0` do `navora-db-2`, trocar `JWT_SECRET` (`docs/lgpd.md` §3).
 2. **Banco de produção free expira 19/11/2026** — repetir o procedimento de `docs/arquitetura.md` §7 (plano pago adiado por decisão do usuário até pesquisar custos). Segurança/LGPD feitas no código em 22/10 (item 19), pendências de produção em `docs/lgpd.md` §3.
 3. **Beacons: testar o APK de desenvolvimento no celular e calibrar no hospital** — código pronto na branch `feat/beacons-ble` (item 17). Voz (reconhecimento do aparelho) ainda não foi feita — pode entrar no mesmo APK numa próxima rodada.
 4. **Testes no celular físico** pendentes: "Primeiro acesso", editar perfil (com observações), SOS aparecendo sozinho no painel em ~15 s (CTM-05/06/10/11 em `docs/casos_de_teste.md`).
@@ -139,7 +139,7 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 - Backend local: IP Wi-Fi da máquina de dev + porta 8000 (NestJS + PostgreSQL via Docker) — conferir `mobile/.env` bate com o IP atual.
 - Backend produção: `https://navora-backend-kpio.onrender.com` (Render.com — dorme após 15min, primeiro request pode levar 30-50s).
 - **Banco de produção é Postgres FREE e expira a cada ~30 dias.** O original expirou em 10/10 e derrubou a produção por 10 dias sem ninguém notar. Recriado em 20/10 como `navora-db-2` — **expira em 19/11/2026**. Procedimento de recriação (migrations+seed vindos de `main`, não desta branch) documentado em `docs/arquitetura.md` §7. Pra checar se produção está viva, testar **login**, não `/health` (que não consulta o banco).
-- **Produção está com o backend desatualizado em relação a esta branch** (`finalizacao-sem-ble`): faltam lá a tabela `notifications`, colunas `google_id`/`password_reset_token`/`password_reset_expires` em `users`, e o rate-limiting (`@nestjs/throttler`) + `helmet`. Antes de fazer merge pra `main`, avaliar esse gap com calma (não é automático — decisão do usuário).
+- Produção atualizada em 23/10 (ver prioridade 1). Render real: região **Oregon**, serviço `srv-dah043rl550s73d10v8g`, banco `dpg-dbburtjncjis73fdjpig-a` (`navora-db-2`).
 
 ## Identidade visual
 Fundo branco ou branco-gelo, detalhes em bordô (#980027), aparência limpa e premium, bastante espaço em branco, ícones simples, textos objetivos, botões grandes (público pode ter mobilidade reduzida/ansiedade).
