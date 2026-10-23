@@ -336,6 +336,7 @@ export default function HelpScreen({
         {/* CABEÇALHO PADRÃO */}
 
         <Header
+          fullBleed
           title="Ajuda e SOS"
           centerTitle
           onMenu={() =>
@@ -653,7 +654,9 @@ function ActionTile({
         {loading ? (
           <ActivityIndicator
             color={
-              appColors.primary
+              emergency
+                ? '#FFFFFF'
+                : appColors.primary
             }
           />
         ) : (
@@ -661,7 +664,9 @@ function ActionTile({
             name={icon}
             size={23}
             color={
-              appColors.primary
+              emergency
+                ? '#FFFFFF'
+                : appColors.primary
             }
           />
         )}
@@ -690,9 +695,11 @@ function ActionTile({
           </Text>
 
           <Text
-            style={
-              styles.tileSubtitle
-            }
+            style={[
+              styles.tileSubtitle,
+              emergency &&
+                styles.emergencySubtitle,
+            ]}
           >
             {subtitle}
           </Text>
@@ -853,7 +860,9 @@ function Chevron({
         name="chevron-right"
         size={20}
         color={
-          appColors.primary
+          active
+            ? '#FFFFFF'
+            : appColors.primary
         }
       />
     </View>
@@ -950,13 +959,13 @@ function createStyles(
         'space-between',
     },
 
+    // SOS precisa se destacar de longe: vermelho cheio, texto branco.
     actionTileEmergency: {
       backgroundColor:
-        appColors.surfaceAlt,
+        appColors.danger,
 
       borderColor:
-        appColors.borderStrong ||
-        appColors.border,
+        appColors.danger,
     },
 
     tileIconWrap: {
@@ -974,7 +983,7 @@ function createStyles(
 
     tileIconEmergency: {
       backgroundColor:
-        appColors.iconBg,
+        'rgba(255, 255, 255, 0.2)',
     },
 
     tileBottom: {
@@ -1000,8 +1009,12 @@ function createStyles(
     },
 
     emergencyText: {
+      color: '#FFFFFF',
+    },
+
+    emergencySubtitle: {
       color:
-        appColors.primaryDark,
+        'rgba(255, 255, 255, 0.88)',
     },
 
     tileSubtitle: {
@@ -1198,7 +1211,7 @@ function createStyles(
 
     chevronActive: {
       backgroundColor:
-        appColors.iconBg,
+        'rgba(255, 255, 255, 0.2)',
     },
 
     pressed: {

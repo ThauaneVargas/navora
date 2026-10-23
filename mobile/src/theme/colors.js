@@ -1,8 +1,9 @@
 export const lightColors = {
   primary: '#7A1021',
   primaryDark: '#4E0712',
-  background: '#F7F8FA',
-  backgroundSoft: '#EEF1F4',
+  // Fundo branco-gelo levemente rosado (combina com o bordô); cards ficam brancos por cima.
+  background: '#FBF4F5',
+  backgroundSoft: '#F5E9EC',
   surface: '#FFFFFF',
   surfaceAlt: '#FAF6F7',
   text: '#171417',
@@ -14,8 +15,8 @@ export const lightColors = {
   danger: '#B42332',
   success: '#168A4A',
   warning: '#B7791F',
-  bg: '#F7F8FA',
-  bgSoft: '#EEF1F4',
+  bg: '#FBF4F5',
+  bgSoft: '#F5E9EC',
   surfaceSoft: '#FAF6F7',
   primarySoft: '#F5E8EB',
   primaryDeep: '#2D070D',

@@ -85,6 +85,7 @@ export default function PatientHomeScreen({
 }) {
   const {
     appColors,
+    isDark,
   } = useApp();
 
 
@@ -377,7 +378,9 @@ export default function PatientHomeScreen({
       ? [
           {
             icon:
-              'desk',
+              'face-agent',
+
+            tone: 'amber',
 
             title:
               'Recepção',
@@ -388,7 +391,9 @@ export default function PatientHomeScreen({
 
           {
             icon:
-              'toilet',
+              'human-male-female',
+
+            tone: 'teal',
 
             title:
               'Banheiros',
@@ -407,7 +412,9 @@ export default function PatientHomeScreen({
           // Sala de espera existe nas duas unidades e é liberada para visitante.
           {
             icon:
-              'seat-outline',
+              'sofa-outline',
+
+            tone: 'violet',
 
             title:
               'Sala de espera',
@@ -426,6 +433,8 @@ export default function PatientHomeScreen({
             icon:
               'exit-run',
 
+            tone: 'green',
+
             title:
               'Saída',
 
@@ -442,7 +451,9 @@ export default function PatientHomeScreen({
       : [
           {
             icon:
-              'office-building',
+              'office-building-marker-outline',
+
+            tone: 'wine',
 
             title:
               'Setores',
@@ -459,7 +470,9 @@ export default function PatientHomeScreen({
 
           {
             icon:
-              'flask',
+              'flask-outline',
+
+            tone: 'blue',
 
             title:
               'Exames',
@@ -476,7 +489,9 @@ export default function PatientHomeScreen({
 
           {
             icon:
-              'toilet',
+              'human-male-female',
+
+            tone: 'teal',
 
             title:
               'Banheiros',
@@ -493,7 +508,9 @@ export default function PatientHomeScreen({
 
           {
             icon:
-              'desk',
+              'face-agent',
+
+            tone: 'amber',
 
             title:
               'Recepção',
@@ -1178,6 +1195,7 @@ export default function PatientHomeScreen({
                       item.title
                     }
                     {...item}
+                    isDark={isDark}
                     appColors={
                       appColors
                     }
@@ -1709,6 +1727,7 @@ export default function PatientHomeScreen({
             <SupportCard
               icon="alarm-light-outline"
               title="Ajuda / SOS"
+              emergency
               onPress={() =>
                 navigate(
                   'Help',
@@ -1816,25 +1835,49 @@ export default function PatientHomeScreen({
  * ACESSO RÁPIDO
  */
 
+// Cada atalho tem uma cor própria (fundo suave + ícone colorido), pra Home
+// não ficar toda igual. "wine" usa o bordô do tema.
+const QUICK_TONES = {
+  blue: { light: '#2768B7', dark: '#7FB2FF' },
+  teal: { light: '#0F7F7B', dark: '#5ED3CD' },
+  amber: { light: '#A85F00', dark: '#F6B93B' },
+  violet: { light: '#6247B0', dark: '#B8A4FF' },
+  green: { light: '#167A45', dark: '#5BD691' },
+};
+
+function toneColors(tone, appColors, isDark) {
+  const palette = QUICK_TONES[tone];
+  if (!palette) {
+    return { fg: appColors.primary, bg: appColors.iconBg, ring: appColors.border };
+  }
+  const fg = isDark ? palette.dark : palette.light;
+  return { fg, bg: `${fg}1F`, ring: `${fg}33` };
+}
+
 function QuickCard({
   icon,
   title,
+  tone,
   onPress,
+  isDark,
   appColors,
 }) {
+  const { fg, bg, ring } = toneColors(tone, appColors, isDark);
+
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
       style={({ pressed }) => [
         styles.quickCard,
-
         {
           backgroundColor:
             appColors.surface,
+          borderColor:
+            appColors.border,
         },
-
         shadows.card,
-
         pressed &&
           styles.pressed,
       ]}
@@ -1842,26 +1885,22 @@ function QuickCard({
       <View
         style={[
           styles.quickIcon,
-
           {
-            backgroundColor:
-              appColors.primary,
+            backgroundColor: bg,
+            borderColor: ring,
           },
-
-          shadows.soft,
         ]}
       >
         <MaterialCommunityIcons
           name={icon}
-          size={22}
-          color="#FFFFFF"
+          size={28}
+          color={fg}
         />
       </View>
 
       <Text
         style={[
           styles.quickTitle,
-
           {
             color:
               appColors.text,
@@ -1882,25 +1921,29 @@ function QuickCard({
 function SupportCard({
   icon,
   title,
+  emergency = false,
   onPress,
   appColors,
 }) {
+  // SOS em vermelho cheio, pra ser achado de longe (igual à tela Ajuda).
+  const fg = emergency ? '#FFFFFF' : appColors.text;
+
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
       style={({ pressed }) => [
         styles.supportCard,
-
         {
-          backgroundColor:
-            appColors.surface,
-
-          borderColor:
-            appColors.border,
+          backgroundColor: emergency
+            ? appColors.danger
+            : appColors.surface,
+          borderColor: emergency
+            ? appColors.danger
+            : appColors.border,
         },
-
         shadows.card,
-
         pressed &&
           styles.pressed,
       ]}
@@ -1908,10 +1951,10 @@ function SupportCard({
       <View
         style={[
           styles.supportIcon,
-
           {
-            backgroundColor:
-              appColors.iconBg,
+            backgroundColor: emergency
+              ? 'rgba(255, 255, 255, 0.2)'
+              : appColors.iconBg,
           },
         ]}
       >
@@ -1919,7 +1962,9 @@ function SupportCard({
           name={icon}
           size={21}
           color={
-            appColors.primary
+            emergency
+              ? '#FFFFFF'
+              : appColors.primary
           }
         />
       </View>
@@ -1927,10 +1972,8 @@ function SupportCard({
       <Text
         style={[
           styles.supportTitle,
-
           {
-            color:
-              appColors.text,
+            color: fg,
           },
         ]}
       >
@@ -1941,7 +1984,9 @@ function SupportCard({
         name="chevron-right"
         size={19}
         color={
-          appColors.muted
+          emergency
+            ? '#FFFFFF'
+            : appColors.muted
         }
       />
     </Pressable>
@@ -2305,9 +2350,10 @@ const styles =
     quickCard: {
       width: '48.5%',
 
-      minHeight: 96,
+      minHeight: 112,
 
-      borderRadius: 20,
+      borderRadius: 22,
+      borderWidth: 1,
 
       padding: 14,
 
@@ -2315,15 +2361,16 @@ const styles =
 
       justifyContent: 'center',
 
-      gap: 9,
+      gap: 10,
     },
 
     quickIcon: {
-      width: 44,
+      width: 56,
 
-      height: 44,
+      height: 56,
 
-      borderRadius: 14,
+      borderRadius: 18,
+      borderWidth: 1,
 
       alignItems: 'center',
 
@@ -2332,9 +2379,9 @@ const styles =
     },
 
     quickTitle: {
-      fontSize: 12.5,
+      fontSize: 14,
 
-      lineHeight: 16,
+      lineHeight: 18,
 
       fontWeight: '900',
 

@@ -35,6 +35,8 @@ export default function SearchScreen({
   const styles = useMemo(() => createStyles(appColors), [appColors]);
   const [query, setQuery] = useState(routeParams.query || '');
   const [filter, setFilter] = useState(routeParams.category || 'Todos');
+  // O ícone de filtro da busca era só desenho: agora mostra/esconde os filtros.
+  const [showFilters, setShowFilters] = useState(true);
   const [selectedDestination, setSelectedDestination] = useState(null);
   const area = getAreaById(userProfile.area);
   const profileLabel = userProfile.type === 'visitor' ? 'Visitante' : 'Paciente';
@@ -178,7 +180,31 @@ export default function SearchScreen({
           style={styles.input}
           accessibilityLabel="Buscar destino"
         />
-        <MaterialCommunityIcons name="tune-variant" size={21} color={appColors.primary} />
+        {query ? (
+          <Pressable
+            onPress={() => setQuery('')}
+            accessibilityRole="button"
+            accessibilityLabel="Limpar busca"
+            hitSlop={10}
+            style={styles.searchAction}
+          >
+            <MaterialCommunityIcons name="close-circle" size={21} color={appColors.muted} />
+          </Pressable>
+        ) : null}
+        <Pressable
+          onPress={() => setShowFilters((value) => !value)}
+          accessibilityRole="button"
+          accessibilityLabel={showFilters ? 'Esconder filtros' : 'Mostrar filtros'}
+          accessibilityState={{ expanded: showFilters }}
+          hitSlop={10}
+          style={[styles.searchAction, filter !== 'Todos' && styles.searchActionActive]}
+        >
+          <MaterialCommunityIcons
+            name="tune-variant"
+            size={21}
+            color={filter !== 'Todos' ? '#FFFFFF' : appColors.primary}
+          />
+        </Pressable>
       </View>
 
       {wrongAreaDestination ? (
@@ -199,13 +225,28 @@ export default function SearchScreen({
         </View>
       ) : null}
 
-      <View style={styles.filters}>
-        {filters.map((item) => (
-          <Pressable key={item} onPress={() => setFilter(item)} style={[styles.filter, filter === item && styles.filterActive]}>
-            <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>{item}</Text>
-          </Pressable>
-        ))}
-      </View>
+      {showFilters ? (
+        <View style={styles.filters}>
+          {filters.map((item) => (
+            <Pressable
+              key={item}
+              onPress={() => setFilter(item)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: filter === item }}
+              style={[styles.filter, filter === item && styles.filterActive]}
+            >
+              <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>
+                {item === 'Servicos' ? 'Serviços' : item}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
+      <Text style={styles.resultCount} accessibilityLiveRegion="polite">
+        {visibleDestinations.length === 1 ? '1 destino' : `${visibleDestinations.length} destinos`}
+        {filter !== 'Todos' ? ` em ${filter === 'Servicos' ? 'Serviços' : filter}` : ''}
+      </Text>
 
       <View style={styles.list}>
         {visibleDestinations.map((item) => {
@@ -365,10 +406,19 @@ const createStyles = (colors) => StyleSheet.create({
   },
   accessNoticeText: { flex: 1, color: colors.primary, fontSize: 12, lineHeight: 16, fontWeight: '900' },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12, marginBottom: 8 },
+  searchAction: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchActionActive: { backgroundColor: colors.primary },
+  resultCount: { color: colors.muted, fontSize: 13, fontWeight: '800', marginTop: 4, marginBottom: 2 },
   filter: {
-    minHeight: 34,
-    borderRadius: 17,
-    paddingHorizontal: 12,
+    minHeight: 40,
+    borderRadius: 20,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
@@ -376,7 +426,7 @@ const createStyles = (colors) => StyleSheet.create({
     borderColor: colors.border,
   },
   filterActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterText: { color: colors.muted, fontSize: 11, fontWeight: '900' },
+  filterText: { color: colors.muted, fontSize: 13, fontWeight: '900' },
   filterTextActive: { color: '#FFFFFF' },
   list: {
     marginTop: 6,

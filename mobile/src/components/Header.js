@@ -40,6 +40,11 @@ export default function Header({
   onRightPress,
 
   notificationCount = 0,
+
+  // true quando a tela usa <Screen padded={false}>: aí não há margem lateral
+  // pra "compensar", e o cabeçalho não pode esticar além da borda do celular
+  // (o ☰ e o 🔔 ficavam colados/cortados na ponta da tela).
+  fullBleed = false,
 }) {
   const { width } =
     useWindowDimensions();
@@ -91,7 +96,9 @@ export default function Header({
         styles.wrapper,
         {
           marginHorizontal:
-            -horizontalPadding,
+            fullBleed
+              ? 0
+              : -horizontalPadding,
         },
       ]}
     >

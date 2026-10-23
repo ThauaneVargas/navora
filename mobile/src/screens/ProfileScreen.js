@@ -633,6 +633,7 @@ export default function ProfileScreen({
         {/* CABEÇALHO */}
 
         <Header
+          fullBleed
           title="Meu perfil"
           centerTitle
           onMenu={() =>

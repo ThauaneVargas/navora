@@ -138,7 +138,7 @@ export default function AssistantScreen({
   return (
     <Screen scroll={false} padded={false} withBottomTabs>
       <View style={styles.screen}>
-        <Header title="Assistente Navora" subtitle="Orientação guiada" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+        <Header fullBleed title="Assistente Navora" subtitle="Orientação guiada" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
         <KeyboardAvoidingView
           style={styles.keyboardArea}
