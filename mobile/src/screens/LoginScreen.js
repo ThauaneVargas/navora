@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -18,6 +18,7 @@ import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { navoraApi, isNetworkError } from '../services/api';
 import { getAuthToken, saveAuthToken } from '../services/authToken';
+import { useApp } from '../context/AppContext';
 
 const REMEMBERED_EMAIL_KEY = 'navora.login.remembered_email';
 
@@ -35,18 +36,6 @@ async function clearRememberedEmail() {
   try { await SecureStore.deleteItemAsync(REMEMBERED_EMAIL_KEY); } catch {}
 }
 
-const COLORS = {
-  burgundy: '#980027',
-  burgundyDark: '#7D001F',
-  burgundyLight: '#FFF6F8',
-  background: '#FFFFFF',
-  backgroundSoft: '#FBFBFC',
-  text: '#202124',
-  secondary: '#696B70',
-  placeholder: '#92959B',
-  border: '#E4E4E6',
-  inputText: '#36383D',
-};
 
 const PROFILE_OPTIONS = [
   {
@@ -62,7 +51,7 @@ const PROFILE_OPTIONS = [
 ];
 
 const shadow = {
-  shadowColor: COLORS.burgundyDark,
+  shadowColor: '#7D001F',
   shadowOffset: { width: 0, height: 4 },
   shadowOpacity: 0.06,
   shadowRadius: 8,
@@ -72,6 +61,8 @@ const shadow = {
 const GOOGLE_LOGO = require('../../assets/images/logo google.png');
 
 export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, navigate }) => {
+  const styles = useThemeStyles();
+  const { appColors: colors } = useApp();
   const { width, height } = useWindowDimensions();
   const stageMaxWidth = Math.min(width, 430);
   const compact = height < 720;
@@ -332,7 +323,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
                     <MaterialCommunityIcons
                       name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                       size={18}
-                      color={COLORS.secondary}
+                      color={colors.muted}
                     />
                   </Pressable>
                 }
@@ -392,10 +383,10 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
                 ]}
               >
                 {biometricLoading ? (
-                  <ActivityIndicator color={COLORS.burgundy} size="small" />
+                  <ActivityIndicator color={colors.primary} size="small" />
                 ) : (
                   <>
-                    <MaterialCommunityIcons name="fingerprint" size={24} color={COLORS.burgundy} />
+                    <MaterialCommunityIcons name="fingerprint" size={24} color={colors.primary} />
                     <Text style={styles.biometricText}>Entrar com biometria</Text>
                   </>
                 )}
@@ -438,81 +429,99 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
   );
 };
 
-const ProfileSelectorCard = ({ profile, selected, disabled, onPress }) => (
-  <Pressable
-    onPress={onPress}
-    disabled={disabled}
-    style={({ pressed }) => [
-      styles.profileCard,
-      selected && styles.profileCardSelected,
-      pressed && !disabled && styles.profileCardPressed,
-    ]}
-  >
-    <View style={[styles.profileIconWrap, selected && styles.profileIconWrapSelected]}>
-      <MaterialCommunityIcons
-        name={profile.icon}
-        size={28}
-        color={selected ? COLORS.burgundy : COLORS.secondary}
-      />
-    </View>
-    <Text style={[styles.profileTitle, selected && styles.profileTitleSelected]}>
-      {profile.title}
-    </Text>
-    {selected ? (
-      <View style={styles.selectedBadge}>
-        <MaterialCommunityIcons name="check" size={11} color="#FFFFFF" />
+const ProfileSelectorCard = ({ profile, selected, disabled, onPress }) => {
+  const styles = useThemeStyles();
+  const { appColors: colors } = useApp();
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.profileCard,
+        selected && styles.profileCardSelected,
+        pressed && !disabled && styles.profileCardPressed,
+      ]}
+    >
+      <View style={[styles.profileIconWrap, selected && styles.profileIconWrapSelected]}>
+        <MaterialCommunityIcons
+          name={profile.icon}
+          size={28}
+          color={selected ? colors.primary : colors.muted}
+        />
       </View>
-    ) : null}
-  </Pressable>
-);
+      <Text style={[styles.profileTitle, selected && styles.profileTitleSelected]}>
+        {profile.title}
+      </Text>
+      {selected ? (
+        <View style={styles.selectedBadge}>
+          <MaterialCommunityIcons name="check" size={11} color="#FFFFFF" />
+        </View>
+      ) : null}
+    </Pressable>
+  );
+};
 
-const LoginInput = ({ icon, rightAction, ...inputProps }) => (
-  <View style={styles.inputBox}>
-    <MaterialCommunityIcons name={icon} size={19} color={COLORS.burgundy} />
-    <TextInput
-      style={styles.input}
-      placeholderTextColor={COLORS.placeholder}
-      selectionColor={COLORS.burgundy}
-      {...inputProps}
-    />
-    {rightAction}
-  </View>
-);
+const LoginInput = ({ icon, rightAction, ...inputProps }) => {
+  const styles = useThemeStyles();
+  const { appColors: colors } = useApp();
+  return (
+    <View style={styles.inputBox}>
+      <MaterialCommunityIcons name={icon} size={19} color={colors.primary} />
+      <TextInput
+        style={styles.input}
+        placeholderTextColor={colors.lightText}
+        selectionColor={colors.primary}
+        {...inputProps}
+      />
+      {rightAction}
+    </View>
+  );
+};
 
-const SocialLoginButton = ({ icon, label, disabled, onPress }) => (
-  <Pressable
-    onPress={onPress}
-    disabled={disabled}
-    style={({ pressed }) => [
-      styles.socialButton,
-      pressed && !disabled && styles.socialButtonPressed,
-      disabled && styles.disabled,
-    ]}
-  >
-    {icon === 'google' ? (
-      <Image source={GOOGLE_LOGO} style={styles.socialIconImage} resizeMode="contain" />
-    ) : (
-      <FontAwesome name="apple" size={22} color="#000000" />
-    )}
-    <Text style={styles.socialText}>{label}</Text>
-  </Pressable>
-);
+const SocialLoginButton = ({ icon, label, disabled, onPress }) => {
+  const styles = useThemeStyles();
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.socialButton,
+        pressed && !disabled && styles.socialButtonPressed,
+        disabled && styles.disabled,
+      ]}
+    >
+      {icon === 'google' ? (
+        <Image source={GOOGLE_LOGO} style={styles.socialIconImage} resizeMode="contain" />
+      ) : (
+        <FontAwesome name="apple" size={22} color="#000000" />
+      )}
+      <Text style={styles.socialText}>{label}</Text>
+    </Pressable>
+  );
+};
 
-const styles = StyleSheet.create({
+// Estilos acompanham o tema (claro/escuro); antes a tela tinha uma paleta
+// própria, sempre clara.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+const createStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.surface,
   },
 
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.surface,
   },
 
   scrollContent: {
     flexGrow: 1,
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.surface,
   },
 
   stage: {
@@ -550,7 +559,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: COLORS.text,
+    color: colors.text,
     fontSize: 26,
     lineHeight: 31,
     fontWeight: '800',
@@ -563,7 +572,7 @@ const styles = StyleSheet.create({
   },
 
   titleAccent: {
-    color: COLORS.burgundy,
+    color: colors.primary,
   },
 
   profileGrid: {
@@ -577,8 +586,8 @@ const styles = StyleSheet.create({
     height: 92,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.background,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     paddingHorizontal: 10,
     paddingVertical: 10,
     alignItems: 'center',
@@ -588,8 +597,8 @@ const styles = StyleSheet.create({
 
   profileCardSelected: {
     borderWidth: 1.3,
-    borderColor: COLORS.burgundy,
-    backgroundColor: COLORS.burgundyLight,
+    borderColor: colors.primary,
+    backgroundColor: colors.surfaceAlt,
   },
 
   profileCardPressed: {
@@ -602,7 +611,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.backgroundSoft,
+    backgroundColor: colors.background,
     marginBottom: 4,
   },
 
@@ -611,7 +620,7 @@ const styles = StyleSheet.create({
   },
 
   profileTitle: {
-    color: COLORS.text,
+    color: colors.text,
     fontSize: 13,
     lineHeight: 16,
     fontWeight: '700',
@@ -619,7 +628,7 @@ const styles = StyleSheet.create({
   },
 
   profileTitleSelected: {
-    color: COLORS.burgundy,
+    color: colors.primary,
   },
 
   selectedBadge: {
@@ -629,7 +638,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: COLORS.burgundy,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -642,8 +651,8 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.background,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     paddingHorizontal: 13,
     flexDirection: 'row',
     alignItems: 'center',
@@ -653,7 +662,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: '100%',
-    color: COLORS.inputText,
+    color: colors.text,
     fontSize: 13,
     fontWeight: '500',
     paddingVertical: 0,
@@ -688,20 +697,20 @@ const styles = StyleSheet.create({
     height: 17,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.background,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
   },
 
   checkboxChecked: {
-    borderColor: COLORS.burgundy,
-    backgroundColor: COLORS.burgundy,
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
   },
 
   rememberText: {
-    color: COLORS.text,
+    color: colors.text,
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '600',
@@ -713,7 +722,7 @@ const styles = StyleSheet.create({
   },
 
   forgotText: {
-    color: COLORS.burgundy,
+    color: colors.primary,
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '800',
@@ -722,7 +731,7 @@ const styles = StyleSheet.create({
   loginButton: {
     height: 48,
     borderRadius: 14,
-    backgroundColor: COLORS.burgundy,
+    backgroundColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -731,7 +740,7 @@ const styles = StyleSheet.create({
   },
 
   loginButtonPressed: {
-    backgroundColor: COLORS.burgundyDark,
+    backgroundColor: colors.primaryDark,
     transform: [{ scale: 0.99 }],
   },
 
@@ -747,8 +756,8 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.background,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -756,12 +765,12 @@ const styles = StyleSheet.create({
   },
 
   biometricButtonPressed: {
-    backgroundColor: COLORS.burgundyLight,
+    backgroundColor: colors.surfaceAlt,
     transform: [{ scale: 0.99 }],
   },
 
   biometricText: {
-    color: COLORS.burgundy,
+    color: colors.primary,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '800',
@@ -778,11 +787,11 @@ const styles = StyleSheet.create({
   divider: {
     flex: 1,
     height: 1,
-    backgroundColor: COLORS.border,
+    backgroundColor: colors.border,
   },
 
   dividerText: {
-    color: COLORS.secondary,
+    color: colors.muted,
     fontSize: 10,
     lineHeight: 13,
     fontWeight: '600',
@@ -798,8 +807,8 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.background,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -807,7 +816,7 @@ const styles = StyleSheet.create({
   },
 
   socialButtonPressed: {
-    backgroundColor: COLORS.burgundyLight,
+    backgroundColor: colors.surfaceAlt,
     transform: [{ scale: 0.99 }],
   },
 
@@ -817,7 +826,7 @@ const styles = StyleSheet.create({
   },
 
   socialText: {
-    color: COLORS.text,
+    color: colors.text,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '800',
@@ -833,14 +842,14 @@ const styles = StyleSheet.create({
   },
 
   signupText: {
-    color: COLORS.secondary,
+    color: colors.muted,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '600',
   },
 
   signupLink: {
-    color: COLORS.burgundy,
+    color: colors.primary,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '900',
