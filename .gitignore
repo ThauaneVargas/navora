@@ -38,3 +38,8 @@ desktop.ini
 
 # Builds de revisão
 review-dist/
+
+# Saídas de verificação de build (expo export) e pacotes de imagem soltos — não são código do app
+mobile/verify-android/
+mobile/verify-web/
+mobile/assets/images/*.zip
