@@ -15,6 +15,8 @@ import { StatusBar } from 'expo-status-bar';
 
 import KeyboardAwareScrollView from './KeyboardAwareScrollView';
 
+import { useRouteBarSpace } from './ActiveRouteBar';
+
 import { useApp } from '../context/AppContext';
 
 import {
@@ -37,6 +39,8 @@ export default function Screen({
 }) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  // Barra "Rota em andamento" acima das abas: a rolagem ganha esse espaço.
+  const routeBarSpace = useRouteBarSpace();
 
   const {
     isDark,
@@ -82,7 +86,7 @@ export default function Screen({
   );
 
   const bottomPadding = withBottomTabs
-    ? 62 + bottomInset + 18
+    ? 62 + bottomInset + 18 + routeBarSpace
     : 18;
 
   const contentStyle = [

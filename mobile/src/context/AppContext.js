@@ -74,7 +74,9 @@ const defaultActiveRoute = {
   source: 'fallback',
 };
 
-export function AppProvider({ children }) {
+// liveRoute: a rota REAL em andamento (estado do App.js), ou null. Diferente
+// de activeRoute abaixo, que é um exemplo usado como reserva pelas telas de mapa.
+export function AppProvider({ children, liveRoute = null }) {
   const [themeMode, setThemeMode] = useState('light');
   const [language, setLanguageState] = useState(DEFAULT_LANGUAGE);
   const [preferencesLoaded, setPreferencesLoaded] = useState(false);
@@ -158,6 +160,7 @@ export function AppProvider({ children }) {
       language,
       setLanguage,
       t,
+      liveRoute,
       userProfile,
       setArea,
       setProfileType,
@@ -170,7 +173,7 @@ export function AppProvider({ children }) {
       userPreferences,
       activeRoute,
     }),
-    [themeMode, isDark, language, setLanguage, t, userProfile, currentLocation, userPreferences, activeRoute]
+    [themeMode, isDark, language, setLanguage, t, liveRoute, userProfile, currentLocation, userPreferences, activeRoute]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -187,6 +190,7 @@ export function useApp() {
       language: DEFAULT_LANGUAGE,
       setLanguage: () => {},
       t: (key, params) => translate(DEFAULT_LANGUAGE, key, params),
+      liveRoute: null,
       userProfile: defaultUserProfile,
       setArea: () => {},
       setProfileType: () => {},

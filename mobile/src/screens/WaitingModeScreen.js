@@ -92,7 +92,7 @@ export default function WaitingModeScreen({ navigate, goBack, routeParams = {}, 
         <Text style={styles.finishText}>Finalizar atendimento</Text>
       </Pressable>
 
-      <BottomTabs active="Home" navigate={navigate} />
+      <BottomTabs active="Home" navigate={navigate} hideRouteBar />
     </Screen>
   );
 }

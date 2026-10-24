@@ -1077,6 +1077,15 @@ export default function App() {
         nextDestination.time ||
         '2 min',
 
+      // Padrões inventados ficam marcados pra barra de rota não exibi-los.
+      distanceIsFallback:
+        !nextDestination.distance ||
+        Boolean(nextDestination.distanceIsFallback),
+
+      timeIsFallback:
+        !nextDestination.time ||
+        Boolean(nextDestination.timeIsFallback),
+
       status: 'active',
 
       area:
@@ -2501,7 +2510,7 @@ export default function App() {
   }
 
   return (
-    <AppProvider>
+    <AppProvider liveRoute={activeRoute}>
       <SafeAreaProvider>
         {screen === 'Login' ? (
           <LoginScreen

@@ -13,12 +13,10 @@ import {
 } from 'react-native-safe-area-context';
 
 import {
-  MaterialCommunityIcons,
-} from '@expo/vector-icons';
-
-import {
   useApp,
 } from '../context/AppContext';
+
+import { BellIcon, MenuIcon } from './NavIcons';
 
 const logo =
   require('../../assets/images/navora_symbol.png');
@@ -30,7 +28,7 @@ export default function AppHeader({
   const insets =
     useSafeAreaInsets();
 
-  const { appColors } =
+  const { appColors, t } =
     useApp();
 
   const topPadding =
@@ -39,49 +37,35 @@ export default function AppHeader({
       8
     );
 
+  const badgeLabel =
+    notificationCount > 9
+      ? '9+'
+      : String(notificationCount);
+
   return (
     <View
       style={[
         styles.header,
         {
-          paddingTop:
-            topPadding,
-
-          backgroundColor:
-            appColors.surface,
-
-          borderBottomColor:
-            appColors.border,
+          paddingTop: topPadding,
+          backgroundColor: appColors.surface,
+          borderBottomColor: appColors.border,
         },
       ]}
     >
       <View style={styles.row}>
         <Pressable
-          onPress={() =>
-            navigate('Menu')
-          }
+          onPress={() => navigate('Menu')}
           accessibilityRole="button"
-          accessibilityLabel="Abrir menu"
-          hitSlop={8}
+          accessibilityLabel={t('header.openMenu')}
+          hitSlop={4}
           style={({ pressed }) => [
             styles.iconButton,
-            {
-              backgroundColor:
-                appColors.surface,
-
-              borderColor:
-                appColors.border,
-            },
-
-            pressed &&
-              styles.pressed,
+            { backgroundColor: appColors.iconBg },
+            pressed && styles.pressed,
           ]}
         >
-          <MaterialCommunityIcons
-            name="menu"
-            size={23}
-            color={appColors.text}
-          />
+          <MenuIcon color={appColors.primary} />
         </Pressable>
 
         <View
@@ -95,65 +79,43 @@ export default function AppHeader({
           />
 
           <Text
-            style={[
-              styles.brandName,
-              {
-                color:
-                  appColors.text,
-              },
-            ]}
+            style={[styles.brandName, { color: appColors.text }]}
+            maxFontSizeMultiplier={1.3}
           >
             Navora
           </Text>
         </View>
 
         <Pressable
-          onPress={() =>
-            navigate(
-              'Notifications'
-            )
-          }
+          onPress={() => navigate('Notifications')}
           accessibilityRole="button"
-          accessibilityLabel="Abrir notificações"
-          hitSlop={8}
+          accessibilityLabel={
+            notificationCount > 0
+              ? t('header.openNotificationsCount', { count: badgeLabel })
+              : t('header.openNotifications')
+          }
+          hitSlop={4}
           style={({ pressed }) => [
             styles.iconButton,
-            {
-              backgroundColor:
-                appColors.surface,
-
-              borderColor:
-                appColors.border,
-            },
-
-            pressed &&
-              styles.pressed,
+            { backgroundColor: appColors.iconBg },
+            pressed && styles.pressed,
           ]}
         >
-          <MaterialCommunityIcons
-            name="bell-outline"
-            size={22}
-            color={appColors.text}
-          />
+          <BellIcon color={appColors.primary} />
 
           {notificationCount > 0 ? (
             <View
               style={[
                 styles.badge,
                 {
-                  backgroundColor:
-                    appColors.primary,
+                  backgroundColor: appColors.primaryStrong,
+                  // Borda na cor do cabeçalho: "branca" no claro, escura no modo noturno.
+                  borderColor: appColors.surface,
                 },
               ]}
             >
-              <Text
-                style={
-                  styles.badgeText
-                }
-              >
-                {notificationCount > 9
-                  ? '9+'
-                  : notificationCount}
+              <Text style={styles.badgeText} maxFontSizeMultiplier={1.2}>
+                {badgeLabel}
               </Text>
             </View>
           ) : null}
@@ -168,47 +130,36 @@ const styles =
     header: {
       width: '100%',
       borderBottomWidth: 1,
-
       paddingHorizontal: 16,
       paddingBottom: 8,
-
       zIndex: 100,
     },
 
     row: {
-      height: 46,
-
+      height: 48,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent:
-        'space-between',
+      justifyContent: 'space-between',
     },
 
+    // 42x42 visível; o hitSlop={4} leva a área de toque a 50 px (mínimo 44).
     iconButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-
-      borderWidth: 1,
-
+      width: 42,
+      height: 42,
+      borderRadius: 14,
       alignItems: 'center',
       justifyContent: 'center',
-
       position: 'relative',
     },
 
     brand: {
       position: 'absolute',
-
-      left: 52,
-      right: 52,
-
-      height: 46,
-
+      left: 56,
+      right: 56,
+      height: 48,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-
       gap: 6,
     },
 
@@ -226,33 +177,25 @@ const styles =
 
     badge: {
       position: 'absolute',
-
-      top: -3,
-      right: -3,
-
-      minWidth: 17,
-      height: 17,
-      borderRadius: 9,
-
+      top: -4,
+      right: -4,
+      minWidth: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 2,
       paddingHorizontal: 4,
-
       alignItems: 'center',
       justifyContent: 'center',
     },
 
     badgeText: {
       color: '#FFFFFF',
-      fontSize: 9,
+      fontSize: 10,
       fontWeight: '900',
     },
 
     pressed: {
       opacity: 0.72,
-
-      transform: [
-        {
-          scale: 0.97,
-        },
-      ],
+      transform: [{ scale: 0.97 }],
     },
   });

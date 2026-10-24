@@ -19,6 +19,17 @@ export default {
     subtitle: 'Escolha o idioma do app',
     changed: 'Idioma alterado',
   },
+  header: {
+    openMenu: 'Abrir menu',
+    openNotifications: 'Abrir notificações',
+    openNotificationsCount: 'Abrir notificações, {count} novas',
+  },
+  routeBar: {
+    label: 'ROTA EM ANDAMENTO',
+    continue: 'Continuar',
+    a11y: 'Rota em andamento para {destination}',
+    continueA11y: 'Continuar a rota para {destination}',
+  },
   tabs: {
     home: 'Início',
     navigate: 'Navegar',
@@ -179,6 +190,10 @@ export default {
     notReleased: 'Este destino não está liberado para sua área atual. Siga para a recepção ou use apenas serviços da unidade ativa.',
   },
   home: {
+    routeInProgress: 'Você tem uma rota em andamento.',
+    lostSub: 'Receber orientação',
+    sosSub: 'Chamar a equipe',
+    searchA11y: 'Buscar destino',
     hello: 'Olá, {name}!',
     visitorSub: 'O Navora acompanha sua visita.',
     patientSub: 'Para onde vamos hoje?',

@@ -24,6 +24,7 @@ import {
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
+import { useRouteBarSpace } from '../components/ActiveRouteBar';
 
 import {
   shadows,
@@ -55,6 +56,10 @@ export default function HelpScreen({
 }) {
   const insets =
     useSafeAreaInsets();
+
+  // Espaço da barra "Rota em andamento" (aparece acima das abas).
+  const routeBarSpace =
+    useRouteBarSpace();
 
   const {
     appColors,
@@ -371,7 +376,7 @@ export default function HelpScreen({
                 Math.max(
                   insets.bottom,
                   14
-                ) + 104,
+                ) + 104 + routeBarSpace,
             },
           ]}
         >

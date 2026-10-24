@@ -124,7 +124,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
             <Text style={styles.primaryText}>Buscar destino</Text>
           </Pressable>
         </View>
-        <BottomTabs active="Navigate" navigate={navigate} />
+        <BottomTabs active="Navigate" navigate={navigate} hideRouteBar />
       </Screen>
     );
   }
@@ -349,7 +349,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
         </>
       )}
 
-      <BottomTabs active="Navigate" navigate={navigate} />
+      <BottomTabs active="Navigate" navigate={navigate} hideRouteBar />
     </Screen>
   );
 }

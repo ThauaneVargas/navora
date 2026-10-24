@@ -28,6 +28,12 @@ export const lightColors = {
   darkCard: '#171922',
   overlay: 'rgba(23, 20, 23, 0.48)',
   attention: '#B7791F',
+  // Bordô sólido com texto branco (SOS, seta da busca, "Continuar").
+  primaryStrong: '#7A1021',
+  // Borda dos cartões de destaque (barra de rota em andamento).
+  accentBorder: '#E3C9CF',
+  // Ícone/rótulo de aba inativa.
+  tabInactive: '#7E7880',
 };
 
 export const darkColors = {
@@ -58,6 +64,10 @@ export const darkColors = {
   darkCard: '#1A1A21',
   overlay: 'rgba(0, 0, 0, 0.58)',
   attention: '#F6B93B',
+  // No escuro o primary é rosa claro; branco em cima dele fica ilegível.
+  primaryStrong: '#B3203A',
+  accentBorder: '#4A2A31',
+  tabInactive: '#9C98A3',
 };
 
 export const colors = lightColors;

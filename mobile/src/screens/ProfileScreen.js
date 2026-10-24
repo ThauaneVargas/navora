@@ -35,6 +35,8 @@ import Header
 import BottomTabs
   from '../components/BottomTabs';
 
+import { useRouteBarSpace } from '../components/ActiveRouteBar';
+
 import {
   shadows,
 } from '../theme/colors';
@@ -123,6 +125,10 @@ export default function ProfileScreen({
 }) {
   const insets =
     useSafeAreaInsets();
+
+  // Espaço da barra "Rota em andamento" (aparece acima das abas).
+  const routeBarSpace =
+    useRouteBarSpace();
 
   const { height: windowHeight } =
     useWindowDimensions();
@@ -662,7 +668,7 @@ export default function ProfileScreen({
                 Math.max(
                   insets.bottom,
                   14
-                ) + 104,
+                ) + 104 + routeBarSpace,
             },
           ]}
         >

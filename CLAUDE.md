@@ -139,6 +139,12 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 - Teclado: com `edgeToEdge` o Android não encolhe a janela; `components/KeyboardAwareScrollView.js` (sem lib nativa — a `react-native-keyboard-controller` traz reanimated/worklets que conflita com o Expo 57) mede o teclado e rola até o campo em foco. Já está dentro do `Screen`; não usar `KeyboardAvoidingView` em tela nova.
 - Idiomas pt/en/es (decisão do usuário: por etapas): `src/i18n` + `t()` do `useApp()`; teste garante mesmas chaves nos 3. Seletor em Configurações e no topo do login. **Traduzidas:** abas, Configurações, Menu, Login, Ajuda/SOS, Navegar, Home, Perfil. **Faltam:** cadastro do paciente, fluxo do visitante, Privacidade (texto da política em `data/privacyPolicy.js`), Notificações, Mapa/rota, Assistente (respostas do `navoraAssistant.js` são em português), telas de chegada e as demais. Motivo de chamado enviado à recepção fica em português de propósito; nomes de destinos vêm do hospital.
 
+**21. Redesign da Home "versão 6" (24/10)** — Home, `AppHeader`, `BottomTabs` e barra de rota ativa. Sem mexer em backend/navegação/SOS/IA.
+- Regra de cor: bordô sólido (`appColors.primaryStrong` — #7A1021 no claro, #B3203A no escuro pra texto branco ter contraste) **só** no card Ajuda/SOS, seta da busca e botão "Continuar". O resto: tile `iconBg` + ícone bordô, sem degradê/sombra pesada. Tokens novos em `theme/colors.js`: `primaryStrong`, `accentBorder`, `tabInactive`.
+- `react-native-svg` 15.15.4 (aprovado pela usuária; versão do Expo 57, sem peer conflitante). Ícones próprios em `components/NavIcons.js` (menu, sino, 5 abas).
+- `components/ActiveRouteBar.js`: barra "Rota em andamento" dentro do `BottomTabs` (aparece em toda tela com abas; `hideRouteBar` no Mapa/3D/Modo espera). Lê `liveRoute` do `AppContext` — é o `activeRoute` REAL do `App.js` passado ao `AppProvider`; o `activeRoute` do contexto é exemplo ("Tomografia") usado só como reserva pelas telas de mapa. Distância/tempo padrão do adapter ('80 m'/'2 min') vêm marcados `distanceIsFallback`/`timeIsFallback` e a barra esconde. `useRouteBarSpace()` soma o espaço da barra no fim da rolagem (Screen, Home, Ajuda, Perfil, Assistente).
+- Home: saiu o bloco "Sua jornada" (localização "aproximada" mostrada como dado + próxima rota vazia). Cartões de status do visitante mantidos sem mudança.
+
 ## Nota de versão
 - Projeto está no **Expo SDK 57**.
 - Backend local: IP Wi-Fi da máquina de dev + porta 8000 (NestJS + PostgreSQL via Docker) — conferir `mobile/.env` bate com o IP atual.

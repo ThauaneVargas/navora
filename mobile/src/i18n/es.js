@@ -18,6 +18,17 @@ export default {
     subtitle: 'Elige el idioma de la app',
     changed: 'Idioma cambiado',
   },
+  header: {
+    openMenu: 'Abrir menú',
+    openNotifications: 'Abrir notificaciones',
+    openNotificationsCount: 'Abrir notificaciones, {count} nuevas',
+  },
+  routeBar: {
+    label: 'RUTA EN CURSO',
+    continue: 'Continuar',
+    a11y: 'Ruta en curso hacia {destination}',
+    continueA11y: 'Continuar la ruta hacia {destination}',
+  },
   tabs: {
     home: 'Inicio',
     navigate: 'Navegar',
@@ -178,6 +189,10 @@ export default {
     notReleased: 'Este destino no está habilitado para tu área actual. Ve a la recepción o usa solo los servicios de la unidad activa.',
   },
   home: {
+    routeInProgress: 'Tienes una ruta en curso.',
+    lostSub: 'Recibir orientación',
+    sosSub: 'Llamar al equipo',
+    searchA11y: 'Buscar destino',
     hello: '¡Hola, {name}!',
     visitorSub: 'Navora te acompaña durante la visita.',
     patientSub: '¿A dónde vamos hoy?',

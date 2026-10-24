@@ -78,7 +78,7 @@ export default function Mode3DScreen({ navigate, goBack, activeRoute: selectedRo
             <Text style={styles.primaryText}>Buscar destino</Text>
           </Pressable>
         </View>
-        <BottomTabs active="Navigate" navigate={navigate} />
+        <BottomTabs active="Navigate" navigate={navigate} hideRouteBar />
       </Screen>
     );
   }
@@ -191,7 +191,7 @@ export default function Mode3DScreen({ navigate, goBack, activeRoute: selectedRo
         <Text style={styles.endText}>Encerrar rota</Text>
       </Pressable>
 
-      <BottomTabs active="Navigate" navigate={navigate} />
+      <BottomTabs active="Navigate" navigate={navigate} hideRouteBar />
     </Screen>
   );
 }

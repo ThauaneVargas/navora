@@ -18,6 +18,17 @@ export default {
     subtitle: 'Choose the app language',
     changed: 'Language changed',
   },
+  header: {
+    openMenu: 'Open menu',
+    openNotifications: 'Open notifications',
+    openNotificationsCount: 'Open notifications, {count} new',
+  },
+  routeBar: {
+    label: 'ROUTE IN PROGRESS',
+    continue: 'Continue',
+    a11y: 'Route in progress to {destination}',
+    continueA11y: 'Continue the route to {destination}',
+  },
   tabs: {
     home: 'Home',
     navigate: 'Navigate',
@@ -178,6 +189,10 @@ export default {
     notReleased: 'This destination is not open to your current area. Go to the reception or use only the services of the current unit.',
   },
   home: {
+    routeInProgress: 'You have a route in progress.',
+    lostSub: 'Get directions',
+    sosSub: 'Call the staff',
+    searchA11y: 'Search destination',
     hello: 'Hello, {name}!',
     visitorSub: 'Navora is with you during your visit.',
     patientSub: 'Where are we going today?',

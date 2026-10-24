@@ -13,6 +13,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import Screen from '../components/Screen';
 import { useKeyboardHeight } from '../components/KeyboardAwareScrollView';
+import { useRouteBarSpace } from '../components/ActiveRouteBar';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
 import { shadows } from '../theme/colors';
@@ -58,7 +59,9 @@ export default function AssistantScreen({
   // Com o teclado aberto, a caixa de mensagem fica logo acima dele (as abas
   // ficam escondidas atrás do teclado); fechado, fica acima das abas.
   const keyboardHeight = useKeyboardHeight();
-  const composerBottom = keyboardHeight ? keyboardHeight + 8 : Math.max(insets.bottom, 12) + 78;
+  // Com rota em andamento, a caixa fica acima da barra da rota também.
+  const routeBarSpace = useRouteBarSpace();
+  const composerBottom = keyboardHeight ? keyboardHeight + 8 : Math.max(insets.bottom, 12) + 78 + routeBarSpace;
   const composerSpace = composerBottom + 88;
 
   useEffect(() => {
