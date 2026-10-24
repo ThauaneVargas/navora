@@ -60,6 +60,7 @@ export default function HelpScreen({
     appColors,
     currentLocation:
       fallbackLocation,
+    t,
   } = useApp();
 
   const styles =
@@ -104,17 +105,20 @@ export default function HelpScreen({
       : 'Paciente';
 
 
+  // Sem pedido ainda: antes mostrava "Aguardando atendimento – Solicitada
+  // há 2 min", um pedido que não existia.
   const latestRequest =
-    lastRequest || {
-      title:
-        'Aguardando atendimento',
-
-      subtitle:
-        routeParams.type ===
-        'sos'
-          ? 'Solicitação urgente em andamento'
-          : 'Solicitada há 2 min',
-    };
+    lastRequest || (
+      routeParams.type === 'sos'
+        ? {
+            title: t('help.waiting'),
+            subtitle: t('help.urgentInProgress'),
+          }
+        : {
+            title: t('help.noRequestTitle'),
+            subtitle: t('help.noRequestSub'),
+          }
+    );
 
 
   const submit = async (
@@ -246,18 +250,18 @@ export default function HelpScreen({
       setLastRequest({
         title:
           isSos
-            ? 'SOS enviado'
-            : 'Aguardando atendimento',
+            ? t('help.sosSent')
+            : t('help.waiting'),
 
         subtitle:
           request?.id
-            ? `Protocolo ${request.id}`
-            : 'Solicitada agora',
+            ? t('help.protocol', { id: request.id })
+            : t('help.requestedNow'),
       });
     } catch {
       Alert.alert(
-        'Não foi possível enviar',
-        'Confira a conexão e tente novamente. Se for urgente, procure a recepção imediatamente.'
+        t('help.sendFailedTitle'),
+        t('help.sendFailed')
       );
     } finally {
       setSubmittingKind(
@@ -269,17 +273,17 @@ export default function HelpScreen({
 
   const confirmSos = () => {
     Alert.alert(
-      'Acionar SOS?',
-      'Use o SOS apenas em situação urgente. A equipe receberá sua localização atual.',
+      t('help.confirmSosTitle'),
+      t('help.confirmSos'),
       [
         {
-          text: 'Cancelar',
+          text: t('common.cancel'),
           style: 'cancel',
         },
 
         {
           text:
-            'Acionar SOS',
+            t('help.triggerSos'),
 
           style:
             'destructive',
@@ -341,7 +345,7 @@ export default function HelpScreen({
 
         <Header
           fullBleed
-          title="Ajuda e SOS"
+          title={t('help.title')}
           centerTitle
           onMenu={() =>
             navigate('Menu')
@@ -383,7 +387,7 @@ export default function HelpScreen({
                 styles.heroTitle
               }
             >
-              Como podemos ajudar?
+              {t('help.howCanWeHelp')}
             </Text>
 
             <Text
@@ -391,7 +395,7 @@ export default function HelpScreen({
                 styles.sectionText
               }
             >
-              Escolha a opção que melhor se aplica à sua necessidade.
+              {t('help.chooseOption')}
             </Text>
           </View>
 
@@ -403,8 +407,8 @@ export default function HelpScreen({
           >
             <ActionTile
               icon="headphones"
-              title="Preciso de ajuda"
-              subtitle="Falar com a equipe"
+              title={t('help.needHelp')}
+              subtitle={t('help.needHelpSub')}
               onPress={
                 actions.help
               }
@@ -420,8 +424,8 @@ export default function HelpScreen({
 
             <ActionTile
               icon="alarm-light-outline"
-              title="SOS - Emergência"
-              subtitle="Atendimento imediato"
+              title={t('help.sos')}
+              subtitle={t('help.sosSub')}
               emergency
               onPress={
                 actions.sos
@@ -448,7 +452,7 @@ export default function HelpScreen({
                 styles.sectionTitle
               }
             >
-              Ajuda rápida
+              {t('help.quickHelp')}
             </Text>
 
             <Text
@@ -456,7 +460,7 @@ export default function HelpScreen({
                 styles.sectionText
               }
             >
-              Acesso rápido para as necessidades mais comuns.
+              {t('help.quickHelpSub')}
             </Text>
           </View>
 
@@ -468,7 +472,7 @@ export default function HelpScreen({
           >
             <SmallTile
               icon="map-marker-question-outline"
-              title="Estou perdido"
+              title={t('help.lost')}
               tone="amber"
               onPress={
                 actions.lost
@@ -481,7 +485,7 @@ export default function HelpScreen({
 
             <SmallTile
               icon="wheelchair-accessibility"
-              title="Acessibilidade"
+              title={t('help.accessibility')}
               tone="blue"
               onPress={
                 actions.accessibility
@@ -496,7 +500,7 @@ export default function HelpScreen({
 
           <WideTile
             icon="face-agent"
-            title="Falar com a recepção"
+            title={t('help.talkToReception')}
             tone="teal"
             onPress={
               actions.reception
@@ -522,7 +526,7 @@ export default function HelpScreen({
                 styles.sectionTitle
               }
             >
-              Sua solicitação
+              {t('help.yourRequest')}
             </Text>
 
             <Text
@@ -530,7 +534,7 @@ export default function HelpScreen({
                 styles.sectionText
               }
             >
-              Acompanhe o status do seu pedido de ajuda.
+              {t('help.yourRequestSub')}
             </Text>
           </View>
 
@@ -540,7 +544,7 @@ export default function HelpScreen({
               actions.request
             }
             accessibilityRole="button"
-            accessibilityLabel="Abrir status da solicitação"
+            accessibilityLabel={t('help.openRequestStatus')}
             style={({ pressed }) => [
               styles.statusCard,
 

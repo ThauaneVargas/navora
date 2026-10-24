@@ -27,7 +27,7 @@ const tabs = [
 
     screen: 'Home',
 
-    label: 'Início',
+    labelKey: 'tabs.home',
 
     icon:
       'home-outline',
@@ -41,7 +41,7 @@ const tabs = [
 
     screen: 'Search',
 
-    label: 'Navegar',
+    labelKey: 'tabs.navigate',
 
     icon:
       'map-search-outline',
@@ -55,7 +55,7 @@ const tabs = [
 
     screen: 'Assistant',
 
-    label: 'IA',
+    labelKey: 'tabs.assistant',
 
     icon:
       'star-four-points-outline',
@@ -69,7 +69,7 @@ const tabs = [
 
     screen: 'Help',
 
-    label: 'Ajuda',
+    labelKey: 'tabs.help',
 
     icon:
       'hand-heart-outline',
@@ -83,7 +83,7 @@ const tabs = [
 
     screen: 'Profile',
 
-    label: 'Perfil',
+    labelKey: 'tabs.profile',
 
     icon:
       'account-outline',
@@ -103,6 +103,7 @@ export default function BottomTabs({
 
   const {
     appColors,
+    t,
   } = useApp();
 
 
@@ -157,7 +158,7 @@ export default function BottomTabs({
 
               accessibilityRole="button"
 
-              accessibilityLabel={`Abrir ${tab.label}`}
+              accessibilityLabel={t('tabs.open', { label: t(tab.labelKey) })}
 
               accessibilityState={{
                 selected:
@@ -215,7 +216,7 @@ export default function BottomTabs({
                     styles.activeLabel,
                 ]}
               >
-                {tab.label}
+                {t(tab.labelKey)}
               </Text>
 
 

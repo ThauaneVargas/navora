@@ -10,16 +10,16 @@ import { toneColors } from '../theme/tones';
 
 const menuItems = [
   // Só na versão de desenvolvimento ou no APK de teste (calibração dos beacons físicos).
-  ...(isBeaconDiagnosticsEnabled() ? [{ title: 'Diagnóstico de beacons', subtitle: 'Versão de teste — calibração', icon: 'access-point', screen: 'BeaconDiagnostics', tone: 'blue' }] : []),
-  { title: 'Meu perfil', subtitle: 'Dados pessoais e acessos', icon: 'account-circle-outline', screen: 'Profile' },
-  { title: 'Como chegar ao hospital', subtitle: 'Rota ate a entrada principal', icon: 'map-marker-distance', screen: 'ExternalRoute', tone: 'teal' },
-  { title: 'Acessibilidade', subtitle: 'Rotas adaptadas', icon: 'wheelchair-accessibility', screen: 'Accessibility', tone: 'blue' },
-  { title: 'Rotas de emergencia', subtitle: 'Saidas seguras', icon: 'exit-run', screen: 'EmergencyRoutes', tone: 'green' },
-  { title: 'Histórico de rotas', subtitle: 'Últimos destinos', icon: 'history', screen: 'RouteHistory', tone: 'violet' },
-  { title: 'Notificações', subtitle: 'Avisos do Navora', icon: 'bell-outline', screen: 'Notifications', tone: 'amber' },
-  { title: 'Configurações', subtitle: 'Preferências do app', icon: 'cog-outline', screen: 'Settings' },
-  { title: 'Privacidade', subtitle: 'Dados e permissões', icon: 'shield-lock-outline', screen: 'Privacy', tone: 'teal' },
-  { title: 'Sair', subtitle: 'Encerrar sessão', icon: 'logout', screen: 'HomeStart', danger: true },
+  ...(isBeaconDiagnosticsEnabled() ? [{ titleKey: 'menu.beaconDiagnostics', subtitleKey: 'menu.beaconDiagnosticsSub', icon: 'access-point', screen: 'BeaconDiagnostics', tone: 'blue' }] : []),
+  { titleKey: 'menu.profile', subtitleKey: 'menu.profileSub', icon: 'account-circle-outline', screen: 'Profile' },
+  { titleKey: 'menu.howToGet', subtitleKey: 'menu.howToGetSub', icon: 'map-marker-distance', screen: 'ExternalRoute', tone: 'teal' },
+  { titleKey: 'menu.accessibility', subtitleKey: 'menu.accessibilitySub', icon: 'wheelchair-accessibility', screen: 'Accessibility', tone: 'blue' },
+  { titleKey: 'menu.emergencyRoutes', subtitleKey: 'menu.emergencyRoutesSub', icon: 'exit-run', screen: 'EmergencyRoutes', tone: 'green' },
+  { titleKey: 'menu.routeHistory', subtitleKey: 'menu.routeHistorySub', icon: 'history', screen: 'RouteHistory', tone: 'violet' },
+  { titleKey: 'menu.notifications', subtitleKey: 'menu.notificationsSub', icon: 'bell-outline', screen: 'Notifications', tone: 'amber' },
+  { titleKey: 'menu.settings', subtitleKey: 'menu.settingsSub', icon: 'cog-outline', screen: 'Settings' },
+  { titleKey: 'menu.privacy', subtitleKey: 'menu.privacySub', icon: 'shield-lock-outline', screen: 'Privacy', tone: 'teal' },
+  { titleKey: 'menu.logout', subtitleKey: 'menu.logoutSub', icon: 'logout', screen: 'HomeStart', danger: true },
 ];
 
 function menuShadow(themeColors, isDark) {
@@ -96,7 +96,7 @@ function MenuItem({
 export default function MenuScreen({ navigate, goBack, onLogout }) {
   const styles = useThemeStyles();
   const insets = useSafeAreaInsets();
-  const { isDark, toggleTheme, appColors } = useApp();
+  const { isDark, toggleTheme, appColors, t } = useApp();
 
   const handlePress = (item) => {
     if (item.danger) {
@@ -124,7 +124,7 @@ export default function MenuScreen({ navigate, goBack, onLogout }) {
             <MaterialCommunityIcons name="chevron-left" size={27} color={isDark ? appColors.text : appColors.primaryDark} />
           </Pressable>
 
-          <Text style={[styles.headerTitle, { color: appColors.text }]}>Menu</Text>
+          <Text style={[styles.headerTitle, { color: appColors.text }]}>{t('menu.title')}</Text>
 
           <Pressable
             onPress={() => navigate('Notifications')}
@@ -152,8 +152,8 @@ export default function MenuScreen({ navigate, goBack, onLogout }) {
         >
           <MenuItem
             icon={isDark ? 'weather-night' : 'white-balance-sunny'}
-            title="Modo noturno"
-            subtitle="Melhor para uso a noite"
+            title={t('settings.darkMode')}
+            subtitle={t('menu.darkModeSub')}
             onPress={toggleTheme}
             noArrow
             appColors={appColors}
@@ -173,7 +173,7 @@ export default function MenuScreen({ navigate, goBack, onLogout }) {
           <MenuItem
             icon="navigation-variant"
             title="Navora"
-            subtitle="Navegação hospitalar inteligente e segura."
+            subtitle={t('menu.tagline')}
             onPress={() => navigate('Home')}
             appColors={appColors}
             isDark={isDark}
@@ -181,10 +181,10 @@ export default function MenuScreen({ navigate, goBack, onLogout }) {
 
           {menuItems.map((item, index) => (
             <MenuItem
-              key={item.title}
+              key={item.titleKey}
               icon={item.icon}
-              title={item.title}
-              subtitle={item.subtitle}
+              title={t(item.titleKey)}
+              subtitle={t(item.subtitleKey)}
               tone={item.tone}
               danger={item.danger}
               onPress={() => handlePress(item)}

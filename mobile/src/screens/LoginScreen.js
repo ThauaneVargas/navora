@@ -19,6 +19,7 @@ import * as SecureStore from 'expo-secure-store';
 import { navoraApi, isNetworkError } from '../services/api';
 import { getAuthToken, saveAuthToken } from '../services/authToken';
 import { useApp } from '../context/AppContext';
+import LanguagePicker from '../components/LanguagePicker';
 
 const REMEMBERED_EMAIL_KEY = 'navora.login.remembered_email';
 
@@ -41,12 +42,12 @@ const PROFILE_OPTIONS = [
   {
     key: 'PATIENT',
     icon: 'account-heart-outline',
-    title: 'Paciente',
+    titleKey: 'common.patient',
   },
   {
     key: 'VISITOR',
     icon: 'account-group-outline',
-    title: 'Visitante',
+    titleKey: 'common.visitor',
   },
 ];
 
@@ -62,7 +63,7 @@ const GOOGLE_LOGO = require('../../assets/images/logo google.png');
 
 export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, navigate }) => {
   const styles = useThemeStyles();
-  const { appColors: colors } = useApp();
+  const { appColors: colors, t } = useApp();
   const { width, height } = useWindowDimensions();
   const stageMaxWidth = Math.min(width, 430);
   const compact = height < 720;
@@ -111,7 +112,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
     }
 
     if (!emailOrCpf || !password) {
-      Alert.alert('Atenção', 'Preencha e-mail ou senha.');
+      Alert.alert(t('common.attention'), t('login.fillFields'));
       return;
     }
 
@@ -121,12 +122,12 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
       const auth = await navoraApi.login({ email: emailOrCpf.trim(), password });
 
       if (!auth?.access_token) {
-        Alert.alert('Erro', 'Resposta inválida do servidor.');
+        Alert.alert(t('common.error'), t('login.invalidResponse'));
         return;
       }
 
       if (auth.user?.role !== 'PATIENT') {
-        Alert.alert('Acesso negado', 'Este aplicativo é exclusivo para pacientes.');
+        Alert.alert(t('common.accessDenied'), t('login.patientsOnly'));
         return;
       }
 
@@ -149,21 +150,21 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
     } catch (error) {
       if (isNetworkError(error)) {
         if (error?.timeout) {
-          Alert.alert('Servidor demorou demais', 'O servidor está inicializando. Aguarde alguns segundos e tente novamente.');
+          Alert.alert(t('login.serverSlowTitle'), t('login.serverSlow'));
         } else {
-          Alert.alert('Sem conexão', 'Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.');
+          Alert.alert(t('common.noConnection'), t('login.cannotConnect'));
         }
         return;
       }
       if (error?.status === 401 || error?.status === 403) {
-        Alert.alert('Acesso negado', 'E-mail ou senha incorretos. Verifique seus dados e tente novamente.');
+        Alert.alert(t('common.accessDenied'), t('login.wrongCredentials'));
         return;
       }
       if (error?.status >= 500) {
-        Alert.alert('Erro no servidor', 'O servidor encontrou um problema. Tente novamente em instantes.');
+        Alert.alert(t('login.serverErrorTitle'), t('login.serverError'));
         return;
       }
-      Alert.alert('Erro', `Não foi possível entrar agora (${error?.status || 'erro desconhecido'}). Tente novamente.`);
+      Alert.alert(t('common.error'), t('login.genericError', { status: error?.status || t('login.unknownError') }));
     } finally {
       setLoading(false);
     }
@@ -175,8 +176,8 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
 
   const handleGoogleLogin = () => {
     Alert.alert(
-      'Login com Google',
-      'Em breve disponível. Configure os Client IDs do Google para ativar.',
+      t('login.googleTitle'),
+      t('login.googleSoon'),
       [{ text: 'OK' }]
     );
   };
@@ -185,7 +186,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
     if (provider === 'Google') {
       handleGoogleLogin();
     } else {
-      Alert.alert(provider, 'Login com Apple ainda não está disponível neste ambiente.');
+      Alert.alert(provider, t('login.appleSoon'));
     }
   };
 
@@ -197,26 +198,26 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
     try {
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       if (!hasHardware) {
-        Alert.alert('Autenticação biométrica', 'Este aparelho não possui hardware biométrico compatível.');
+        Alert.alert(t('login.biometricTitle'), t('login.biometricNoHardware'));
         return;
       }
 
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       if (!isEnrolled) {
-        Alert.alert('Autenticação biométrica', 'Nenhuma biometria está cadastrada neste aparelho.');
+        Alert.alert(t('login.biometricTitle'), t('login.biometricNotEnrolled'));
         return;
       }
 
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Autenticação biométrica',
-        cancelLabel: 'Cancelar',
-        fallbackLabel: 'Usar senha',
+        promptMessage: t('login.biometricTitle'),
+        cancelLabel: t('common.cancel'),
+        fallbackLabel: t('login.usePassword'),
         disableDeviceFallback: false,
       });
 
       if (!result.success) {
         if (result.error !== 'user_cancel' && result.error !== 'system_cancel') {
-          Alert.alert('Autenticação biométrica', 'Não foi possível autenticar com biometria.');
+          Alert.alert(t('login.biometricTitle'), t('login.biometricFailed'));
         }
         return;
       }
@@ -224,15 +225,15 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
       const storedToken = await getAuthToken();
       if (!storedToken) {
         Alert.alert(
-          'Autenticação biométrica',
-          'Entre com sua senha uma vez para vincular sua conta neste dispositivo.'
+          t('login.biometricTitle'),
+          t('login.biometricLinkFirst')
         );
         return;
       }
 
       const patient = await navoraApi.getMyPatientProfile();
       if (!patient) {
-        Alert.alert('Sessão expirada', 'Sua sessão expirou. Entre com sua senha.');
+        Alert.alert(t('login.sessionExpiredTitle'), t('login.sessionExpired'));
         return;
       }
 
@@ -243,14 +244,14 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
       });
     } catch (error) {
       if (isNetworkError(error)) {
-        Alert.alert('Sem conexão', 'Verifique sua internet e tente novamente.');
+        Alert.alert(t('common.noConnection'), t('common.checkInternet'));
         return;
       }
       if (error?.status === 401 || error?.status === 403) {
-        Alert.alert('Sessão expirada', 'Sua sessão expirou. Entre com sua senha.');
+        Alert.alert(t('login.sessionExpiredTitle'), t('login.sessionExpired'));
         return;
       }
-      Alert.alert('Autenticação biométrica', 'Não foi possível autenticar com biometria.');
+      Alert.alert(t('login.biometricTitle'), t('login.biometricFailed'));
     } finally {
       setBiometricLoading(false);
     }
@@ -268,6 +269,9 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
           keyboardShouldPersistTaps="handled"
         >
           <View style={[styles.stage, { maxWidth: stageMaxWidth }]}>
+            {/* Idioma antes de entrar: quem não lê português troca aqui. */}
+            <LanguagePicker compact style={styles.languagePicker} />
+
             <View style={[styles.brandBlock, compact && styles.brandBlockCompact]}>
               <Image
                 source={require('../../assets/images/navora_symbol.png')}
@@ -278,7 +282,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
 
             <View style={styles.header}>
               <Text style={[styles.title, compact && styles.titleCompact]}>
-                Entrar no <Text style={styles.titleAccent}>Navora</Text>
+                {t('login.title')} <Text style={styles.titleAccent}>Navora</Text>
               </Text>
             </View>
 
@@ -297,7 +301,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
             <View style={styles.form}>
               <LoginInput
                 icon="account-outline"
-                placeholder="E-mail ou CPF"
+                placeholder={t('login.emailOrCpf')}
                 value={emailOrCpf}
                 onChangeText={setEmailOrCpf}
                 keyboardType="email-address"
@@ -307,7 +311,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
 
               <LoginInput
                 icon="lock-outline"
-                placeholder="Senha"
+                placeholder={t('login.password')}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -318,7 +322,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
                     disabled={loading}
                     style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
                     accessibilityRole="button"
-                    accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    accessibilityLabel={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                   >
                     <MaterialCommunityIcons
                       name={showPassword ? 'eye-off-outline' : 'eye-outline'}
@@ -342,7 +346,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
                       <MaterialCommunityIcons name="check" size={12} color="#FFFFFF" />
                     ) : null}
                   </View>
-                  <Text style={styles.rememberText}>Lembrar meus dados</Text>
+                  <Text style={styles.rememberText}>{t('login.remember')}</Text>
                 </Pressable>
 
                 <Pressable
@@ -350,7 +354,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
                   disabled={loading}
                   style={({ pressed }) => [styles.forgotButton, pressed && styles.pressed]}
                 >
-                  <Text style={styles.forgotText}>Esqueci minha senha &gt;</Text>
+                  <Text style={styles.forgotText}>{t('login.forgot')} &gt;</Text>
                 </Pressable>
               </View>
 
@@ -368,7 +372,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
                 ) : (
                   <>
                     <MaterialCommunityIcons name="login" size={18} color="#FFFFFF" />
-                    <Text style={styles.loginButtonText}>ENTRAR</Text>
+                    <Text style={styles.loginButtonText}>{t('login.enter')}</Text>
                   </>
                 )}
               </Pressable>
@@ -387,7 +391,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
                 ) : (
                   <>
                     <MaterialCommunityIcons name="fingerprint" size={24} color={colors.primary} />
-                    <Text style={styles.biometricText}>Entrar com biometria</Text>
+                    <Text style={styles.biometricText}>{t('login.biometric')}</Text>
                   </>
                 )}
               </Pressable>
@@ -395,7 +399,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
 
             <View style={styles.dividerRow}>
               <View style={styles.divider} />
-              <Text style={styles.dividerText}>ou continue com</Text>
+              <Text style={styles.dividerText}>{t('login.orContinue')}</Text>
               <View style={styles.divider} />
             </View>
 
@@ -419,8 +423,8 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
               disabled={loading}
               style={({ pressed }) => [styles.signupRow, pressed && styles.pressed]}
             >
-              <Text style={styles.signupText}>Ainda não tem uma conta? </Text>
-              <Text style={styles.signupLink}>Cadastre-se</Text>
+              <Text style={styles.signupText}>{t('login.noAccount')}</Text>
+              <Text style={styles.signupLink}>{t('login.signUp')}</Text>
             </Pressable>
           </View>
         </KeyboardAwareScrollView>
@@ -431,7 +435,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
 
 const ProfileSelectorCard = ({ profile, selected, disabled, onPress }) => {
   const styles = useThemeStyles();
-  const { appColors: colors } = useApp();
+  const { appColors: colors, t } = useApp();
   return (
     <Pressable
       onPress={onPress}
@@ -450,7 +454,7 @@ const ProfileSelectorCard = ({ profile, selected, disabled, onPress }) => {
         />
       </View>
       <Text style={[styles.profileTitle, selected && styles.profileTitleSelected]}>
-        {profile.title}
+        {t(profile.titleKey)}
       </Text>
       {selected ? (
         <View style={styles.selectedBadge}>
@@ -508,6 +512,11 @@ function useThemeStyles() {
 }
 
 const createStyles = (colors) => StyleSheet.create({
+  languagePicker: {
+    alignSelf: 'flex-end',
+    marginBottom: 4,
+  },
+
   container: {
     flex: 1,
     backgroundColor: colors.surface,
