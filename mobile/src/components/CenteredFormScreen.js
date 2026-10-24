@@ -1,20 +1,19 @@
 import React from 'react';
-import { KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Screen from './Screen';
 
 // Formulário curto centralizado na tela (esqueci a senha / redefinir senha).
-// Usa o Screen (SafeAreaView da safe-area-context): antes essas duas telas não
-// tinham proteção de borda nenhuma com o edgeToEdge do Android (gap do bug 2).
+// Usa o Screen (safe area + rolagem que respeita o teclado). Antes tinha um
+// KeyboardAvoidingView próprio, que às vezes subia demais, e fundo branco fixo
+// (não acompanhava o modo noturno).
 export default function CenteredFormScreen({ children }) {
   return (
-    <Screen scroll={false} padded={false}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-        {children}
-      </KeyboardAvoidingView>
+    <Screen padded={false}>
+      <View style={styles.container}>{children}</View>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF', justifyContent: 'center', padding: 22 },
+  container: { flex: 1, justifyContent: 'center', padding: 22 },
 });

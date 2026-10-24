@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Platform,
-  ScrollView,
   StyleSheet,
   View,
   useWindowDimensions,
@@ -13,6 +12,8 @@ import {
 } from 'react-native-safe-area-context';
 
 import { StatusBar } from 'expo-status-bar';
+
+import KeyboardAwareScrollView from './KeyboardAwareScrollView';
 
 import { useApp } from '../context/AppContext';
 
@@ -170,10 +171,13 @@ export default function Screen({
           },
         ]}
       >
-        <ScrollView
+        <KeyboardAwareScrollView
           style={styles.scroll}
           contentContainerStyle={
             contentStyle
+          }
+          minBottomPadding={
+            bottomPadding
           }
           showsVerticalScrollIndicator={
             false
@@ -186,7 +190,7 @@ export default function Screen({
           overScrollMode="never"
         >
           {children}
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </View>
     </SafeAreaView>
   );

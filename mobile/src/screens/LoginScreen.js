@@ -4,10 +4,7 @@ import {
   Alert,
   Animated,
   Image,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +12,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import KeyboardAwareScrollView from '../components/KeyboardAwareScrollView';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
@@ -268,12 +266,9 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView
+        <KeyboardAwareScrollView
           contentContainerStyle={[
             styles.scrollContent,
             { minHeight: height, paddingVertical: compact ? 10 : 16 },
@@ -437,9 +432,9 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
               <Text style={styles.signupLink}>Cadastre-se</Text>
             </Pressable>
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </SafeAreaView>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 

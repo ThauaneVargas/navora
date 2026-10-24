@@ -7,12 +7,12 @@ import {
   Pressable,
   StyleSheet,
   Platform,
-  KeyboardAvoidingView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 import Screen from '../components/Screen';
+import { useKeyboardHeight } from '../components/KeyboardAwareScrollView';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
 import { shadows } from '../theme/colors';
@@ -55,8 +55,15 @@ export default function AssistantScreen({
     navigationSource === 'api' && navigationData?.destinations?.length
       ? navigationData.destinations
       : fallbackDestinations;
-  const composerBottom = Math.max(insets.bottom, 12) + 78;
+  // Com o teclado aberto, a caixa de mensagem fica logo acima dele (as abas
+  // ficam escondidas atrás do teclado); fechado, fica acima das abas.
+  const keyboardHeight = useKeyboardHeight();
+  const composerBottom = keyboardHeight ? keyboardHeight + 8 : Math.max(insets.bottom, 12) + 78;
   const composerSpace = composerBottom + 88;
+
+  useEffect(() => {
+    if (keyboardHeight) setTimeout(() => scrollRef.current?.scrollToEnd?.({ animated: true }), 60);
+  }, [keyboardHeight]);
 
   useEffect(() => {
     setTimeout(() => scrollRef.current?.scrollToEnd?.({ animated: true }), 80);
@@ -140,11 +147,7 @@ export default function AssistantScreen({
       <View style={styles.screen}>
         <Header fullBleed title="Assistente Navora" subtitle="Orientação guiada" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
-        <KeyboardAvoidingView
-          style={styles.keyboardArea}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          keyboardVerticalOffset={0}
-        >
+        <View style={styles.keyboardArea}>
           <ScrollView
             ref={scrollRef}
             showsVerticalScrollIndicator={false}
@@ -243,7 +246,7 @@ export default function AssistantScreen({
               <MaterialCommunityIcons name="microphone" size={19} color="#FFFFFF" />
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+        </View>
         <BottomTabs active="Assistant" navigate={navigate} />
       </View>
     </Screen>
