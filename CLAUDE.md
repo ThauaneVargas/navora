@@ -134,6 +134,11 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 - **Decisão do usuário (22/10): planos pagos/hospedagem ficam pra depois** — antes, pesquisar custo (beacons, servidor, banco) e modelo de cobrança. Servidor hoje nos EUA (Render Oregon) = transferência internacional, já informada na política.
 - Pendente em produção (após merge): trocar senhas das contas demo, tirar `0.0.0.0/0` do banco, trocar `JWT_SECRET`.
 
+**20. Modo noturno, teclado e idiomas (24/10)**
+- Modo noturno: 14 telas usavam a paleta fixa do tema claro (StyleSheet no nível do módulo importando `colors`, paleta própria tipo `COLORS`, ou hex escrito direto). Agora `createStyles(colors)` + hook `useThemeStyles()` por arquivo. Ao criar tela nova: **nunca** importar `colors` de `theme/colors` pra estilo — usar `appColors` do `useApp()`. O modo noturno e o idioma agora ficam salvos no celular (`AppContext`, SecureStore).
+- Teclado: com `edgeToEdge` o Android não encolhe a janela; `components/KeyboardAwareScrollView.js` (sem lib nativa — a `react-native-keyboard-controller` traz reanimated/worklets que conflita com o Expo 57) mede o teclado e rola até o campo em foco. Já está dentro do `Screen`; não usar `KeyboardAvoidingView` em tela nova.
+- Idiomas pt/en/es (decisão do usuário: por etapas): `src/i18n` + `t()` do `useApp()`; teste garante mesmas chaves nos 3. Seletor em Configurações e no topo do login. **Traduzidas:** abas, Configurações, Menu, Login, Ajuda/SOS, Navegar, Home, Perfil. **Faltam:** cadastro do paciente, fluxo do visitante, Privacidade (texto da política em `data/privacyPolicy.js`), Notificações, Mapa/rota, Assistente (respostas do `navoraAssistant.js` são em português), telas de chegada e as demais. Motivo de chamado enviado à recepção fica em português de propósito; nomes de destinos vêm do hospital.
+
 ## Nota de versão
 - Projeto está no **Expo SDK 57**.
 - Backend local: IP Wi-Fi da máquina de dev + porta 8000 (NestJS + PostgreSQL via Docker) — conferir `mobile/.env` bate com o IP atual.

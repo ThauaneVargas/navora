@@ -88,6 +88,7 @@ export default function PatientHomeScreen({
   const {
     appColors,
     isDark,
+    t,
   } = useApp();
 
 
@@ -110,8 +111,8 @@ export default function PatientHomeScreen({
   const name =
     userProfile.name ||
     (isVisitor
-      ? 'Visitante'
-      : 'Paciente');
+      ? t('common.visitor')
+      : t('common.patient'));
 
 
   /*
@@ -158,11 +159,13 @@ export default function PatientHomeScreen({
       () =>
         getRemainingTime(
           visitorAccessRequest,
-          now
+          now,
+          t
         ),
       [
         visitorAccessRequest,
         now,
+        t,
       ]
     );
 
@@ -239,7 +242,7 @@ export default function PatientHomeScreen({
     activeRoute?.destination ||
     userProfile
       .lastDestination ||
-    'Destino selecionado';
+    t('home.selectedDestination');
 
 
   /*
@@ -273,7 +276,7 @@ export default function PatientHomeScreen({
 
     activeHospital?.name ||
 
-    'Entrada identificada';
+    t('home.entranceIdentified');
 
 
   /*
@@ -385,7 +388,7 @@ export default function PatientHomeScreen({
             tone: 'amber',
 
             title:
-              'Recepção',
+              t('home.quick.reception'),
 
             onPress:
               goReception,
@@ -398,7 +401,7 @@ export default function PatientHomeScreen({
             tone: 'teal',
 
             title:
-              'Banheiros',
+              t('home.quick.restrooms'),
 
             onPress: () =>
               navigate(
@@ -419,7 +422,7 @@ export default function PatientHomeScreen({
             tone: 'violet',
 
             title:
-              'Sala de espera',
+              t('home.quick.waitingRoom'),
 
             onPress: () =>
               navigate(
@@ -438,7 +441,7 @@ export default function PatientHomeScreen({
             tone: 'green',
 
             title:
-              'Saída',
+              t('home.quick.exit'),
 
             onPress: () =>
               navigate(
@@ -458,7 +461,7 @@ export default function PatientHomeScreen({
             tone: 'wine',
 
             title:
-              'Setores',
+              t('home.quick.sectors'),
 
             onPress: () =>
               navigate(
@@ -477,7 +480,7 @@ export default function PatientHomeScreen({
             tone: 'blue',
 
             title:
-              'Exames',
+              t('home.quick.exams'),
 
             onPress: () =>
               navigate(
@@ -496,7 +499,7 @@ export default function PatientHomeScreen({
             tone: 'teal',
 
             title:
-              'Banheiros',
+              t('home.quick.restrooms'),
 
             onPress: () =>
               navigate(
@@ -515,7 +518,7 @@ export default function PatientHomeScreen({
             tone: 'amber',
 
             title:
-              'Recepção',
+              t('home.quick.reception'),
 
             onPress:
               goReception,
@@ -582,7 +585,7 @@ export default function PatientHomeScreen({
                 },
               ]}
             >
-              Olá, {name}!
+              {t('home.hello', { name })}
             </Text>
 
             <Text
@@ -596,8 +599,8 @@ export default function PatientHomeScreen({
               ]}
             >
               {isVisitor
-                ? 'O Navora acompanha sua visita.'
-                : 'Para onde vamos hoje?'}
+                ? t('home.visitorSub')
+                : t('home.patientSub')}
             </Text>
           </View>
 
@@ -645,7 +648,7 @@ export default function PatientHomeScreen({
                 },
               ]}
             >
-              Buscar setor, serviço ou destino
+              {t('home.searchPlaceholder')}
             </Text>
 
             <View
@@ -716,7 +719,7 @@ export default function PatientHomeScreen({
                 },
               ]}
             >
-              Como chegar ao hospital
+              {t('home.howToGet')}
             </Text>
 
             <MaterialCommunityIcons
@@ -794,7 +797,7 @@ export default function PatientHomeScreen({
                     },
                   ]}
                 >
-                  Validação necessária
+                  {t('home.validationNeeded')}
                 </Text>
 
                 <Text
@@ -808,7 +811,7 @@ export default function PatientHomeScreen({
                     },
                   ]}
                 >
-                  Vá à recepção para confirmar sua visita.
+                  {t('home.goToReception')}
                 </Text>
               </View>
 
@@ -885,7 +888,7 @@ export default function PatientHomeScreen({
                         },
                       ]}
                     >
-                      Visita autorizada
+                      {t('home.visitAuthorized')}
                     </Text>
 
                     <Text
@@ -901,7 +904,7 @@ export default function PatientHomeScreen({
                     >
                       {(() => {
                         const rd = visitorAccessRequest?.requestedDestination;
-                        return (typeof rd === 'string' ? rd : rd?.name) || 'Destino autorizado';
+                        return (typeof rd === 'string' ? rd : rd?.name) || t('home.authorizedDestination');
                       })()}
                     </Text>
                   </View>
@@ -971,7 +974,7 @@ export default function PatientHomeScreen({
                       styles.visitButtonText
                     }
                   >
-                    Iniciar rota
+                    {t('home.startRoute')}
                   </Text>
                 </Pressable>
               </View>
@@ -1045,7 +1048,7 @@ export default function PatientHomeScreen({
                     },
                   ]}
                 >
-                  Tempo encerrado
+                  {t('home.timeOver')}
                 </Text>
 
                 <Text
@@ -1058,7 +1061,7 @@ export default function PatientHomeScreen({
                     },
                   ]}
                 >
-                  Vá à saída ou procure a recepção.
+                  {t('home.goToExit')}
                 </Text>
               </View>
 
@@ -1134,7 +1137,7 @@ export default function PatientHomeScreen({
                       },
                     ]}
                   >
-                    Visita não liberada
+                    {t('home.visitNotReleased')}
                   </Text>
 
                   <Text
@@ -1147,7 +1150,7 @@ export default function PatientHomeScreen({
                       },
                     ]}
                   >
-                    Procure a recepção para orientação.
+                    {t('home.askReception')}
                   </Text>
                 </View>
 
@@ -1181,7 +1184,7 @@ export default function PatientHomeScreen({
                 },
               ]}
             >
-              Acessos rápidos
+              {t('home.quickAccess')}
             </Text>
 
 
@@ -1219,7 +1222,7 @@ export default function PatientHomeScreen({
                     },
                   ]}
                 >
-                  Enquanto a visita não for liberada, somente destinos públicos ficam disponíveis.
+                  {t('home.visitorPublicOnly')}
                 </Text>
               )}
           </View>
@@ -1290,7 +1293,7 @@ export default function PatientHomeScreen({
                     },
                   ]}
                 >
-                  Navora IA
+                  {t('home.aiTitle')}
                 </Text>
 
                 <View
@@ -1313,7 +1316,7 @@ export default function PatientHomeScreen({
                       },
                     ]}
                   >
-                    Assistente
+                    {t('home.assistant')}
                   </Text>
                 </View>
               </View>
@@ -1330,7 +1333,7 @@ export default function PatientHomeScreen({
                   },
                 ]}
               >
-                Pergunte por rotas, localização, acessibilidade ou orientação.
+                {t('home.aiSub')}
               </Text>
             </View>
 
@@ -1364,7 +1367,7 @@ export default function PatientHomeScreen({
                 },
               ]}
             >
-              Sua jornada
+              {t('home.journey')}
             </Text>
 
 
@@ -1450,8 +1453,8 @@ export default function PatientHomeScreen({
                   ]}
                 >
                   {presenceDetected
-                    ? 'Localização interna identificada'
-                    : 'Localização aproximada'}
+                    ? t('home.indoorLocation')
+                    : t('home.approxLocation')}
                 </Text>
               </View>
 
@@ -1591,7 +1594,7 @@ export default function PatientHomeScreen({
                         Boolean
                       )
                       .join(' • ') ||
-                      'Orientação ativa'}
+                      t('home.activeGuidance')}
                   </Text>
                 </View>
 
@@ -1674,7 +1677,7 @@ export default function PatientHomeScreen({
                       },
                     ]}
                   >
-                    Pronto para navegar
+                    {t('home.readyToNavigate')}
                   </Text>
 
                   <Text
@@ -1687,7 +1690,7 @@ export default function PatientHomeScreen({
                       },
                     ]}
                   >
-                    Escolha um destino e inicie sua rota.
+                    {t('home.chooseDestination')}
                   </Text>
                 </View>
 
@@ -1715,7 +1718,7 @@ export default function PatientHomeScreen({
           >
             <SupportCard
               icon="map-marker-question-outline"
-              title="Estou perdido"
+              title={t('help.lost')}
               onPress={() =>
                 navigate(
                   'Lost'
@@ -1728,7 +1731,7 @@ export default function PatientHomeScreen({
 
             <SupportCard
               icon="alarm-light-outline"
-              title="Ajuda / SOS"
+              title={t('home.helpSos')}
               emergency
               onPress={() =>
                 navigate(
@@ -1796,7 +1799,7 @@ export default function PatientHomeScreen({
                 },
               ]}
             >
-              Acessibilidade
+              {t('home.accessibility')}
             </Text>
 
             <Text
@@ -1809,7 +1812,7 @@ export default function PatientHomeScreen({
                 },
               ]}
             >
-              Ajustar rota e orientação
+              {t('home.adjustRoute')}
             </Text>
 
             <MaterialCommunityIcons
@@ -2040,7 +2043,8 @@ function getExpiryTimestamp(
 
 function getRemainingTime(
   request,
-  now
+  now,
+  t
 ) {
   const expiry =
     getExpiryTimestamp(
@@ -2053,7 +2057,7 @@ function getRemainingTime(
       label:
         request
           ?.allowedTime ||
-        'Definido pela recepção',
+        t('home.setByReception'),
 
       expired:
         false,
