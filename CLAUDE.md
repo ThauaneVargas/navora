@@ -146,7 +146,9 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 - Home: saiu o bloco "Sua jornada" (localização "aproximada" mostrada como dado + próxima rota vazia). Cartões de status do visitante mantidos sem mudança.
 
 ## Nota de versão
-- Projeto está no **Expo SDK 57**.
+- Projeto está no **Expo SDK 58** (desde 24/10, branch `chore/expo-sdk-58`): React Native 0.88, React 19.3. O campo `android.edgeToEdge` saiu do `app.json` (no SDK 58 é sempre ligado).
+- **Compilar APK no Windows:** com RN 0.88 os arquivos C++ gerados passam de 260 caracteres. O plugin `mobile/plugins/withShortCmakeStaging.js` manda a pasta de trabalho do C++ pra `C:/cx`, mas com o projeto dentro de `C:Users	hauaOneDriveDesktop...` ainda estoura. Hoje o APK é compilado de uma cópia em `C:
+vmobile` (robocopy da pasta `mobile`, **sem** excluir pastas `build` de dentro de `node_modules`). Solução definitiva sugerida: mover o projeto pra uma pasta curta fora do OneDrive (decisão da usuária).
 - Backend local: IP Wi-Fi da máquina de dev + porta 8000 (NestJS + PostgreSQL via Docker) — conferir `mobile/.env` bate com o IP atual.
 - Backend produção: `https://navora-backend-kpio.onrender.com` (Render.com — dorme após 15min, primeiro request pode levar 30-50s).
 - **Banco de produção é Postgres FREE e expira a cada ~30 dias.** O original expirou em 10/10 e derrubou a produção por 10 dias sem ninguém notar. Recriado em 20/10 como `navora-db-2` — **expira em 19/11/2026**. Procedimento de recriação (migrations+seed vindos de `main`, não desta branch) documentado em `docs/arquitetura.md` §7. Pra checar se produção está viva, testar **login**, não `/health` (que não consulta o banco).
