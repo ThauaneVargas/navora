@@ -4,10 +4,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
-import { colors, shadows } from '../theme/colors';
+import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 
 export default function WaitingModeScreen({ navigate, goBack, routeParams = {}, activeRoute: selectedRoute, userProfile }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   const { currentLocation: fallbackLocation, activeRoute: fallbackRoute } = useApp();
   const activeRoute = selectedRoute || fallbackRoute;
   const currentLocation = {
@@ -96,6 +98,8 @@ export default function WaitingModeScreen({ navigate, goBack, routeParams = {}, 
 }
 
 function Metric({ icon, label, value }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   return (
     <View style={[styles.metric, shadows.card]}>
       <MaterialCommunityIcons name={icon} size={22} color={colors.primary} />
@@ -106,6 +110,8 @@ function Metric({ icon, label, value }) {
 }
 
 function InfoRow({ icon, label, value }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   return (
     <View style={styles.infoRow}>
       <View style={styles.infoIcon}>
@@ -119,7 +125,14 @@ function InfoRow({ icon, label, value }) {
   );
 }
 
-const styles = StyleSheet.create({
+// Estilos acompanham o tema (claro/escuro); antes usavam a paleta fixa do
+// tema claro e não mudavam no modo noturno.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+const createStyles = (colors) => StyleSheet.create({
   hero: {
     borderRadius: 26,
     backgroundColor: colors.primary,
@@ -244,9 +257,9 @@ const styles = StyleSheet.create({
   },
   helpPanel: {
     borderRadius: 22,
-    backgroundColor: '#FFF1F3',
+    backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
-    borderColor: '#FFD2D7',
+    borderColor: colors.borderStrong,
     padding: 16,
     marginTop: 14,
   },

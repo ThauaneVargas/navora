@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
-import { colors } from '../theme/colors';
+
 import { useApp } from '../context/AppContext';
 import { isBeaconDiagnosticsEnabled } from '../services/indoorLocationService';
 import { toneColors } from '../theme/tones';
@@ -45,6 +45,7 @@ function MenuItem({
   isDark,
   style,
 }) {
+  const styles = useThemeStyles();
   const toned = toneColors(tone, appColors, isDark);
   const iconColor = danger ? appColors.danger : toned.fg;
   const backgroundColor = danger ? (isDark ? '#2A171B' : '#FFF7F8') : appColors.surface;
@@ -93,6 +94,7 @@ function MenuItem({
 }
 
 export default function MenuScreen({ navigate, goBack, onLogout }) {
+  const styles = useThemeStyles();
   const insets = useSafeAreaInsets();
   const { isDark, toggleTheme, appColors } = useApp();
 
@@ -197,7 +199,14 @@ export default function MenuScreen({ navigate, goBack, onLogout }) {
   );
 }
 
-const styles = StyleSheet.create({
+// Estilos acompanham o tema (claro/escuro); antes usavam a paleta fixa do
+// tema claro e não mudavam no modo noturno.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+const createStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

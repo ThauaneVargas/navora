@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
-import { colors, shadows } from '../theme/colors';
+import { shadows } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 import { isAuthError, navoraApi } from '../services/api';
 
 const options = [
@@ -41,6 +42,8 @@ const toBackendAccessibility = (value = {}) =>
   );
 
 export default function PatientAccessibilitySetupScreen({ navigate, goBack, routeParams = {}, onPatientReady, userProfile }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   const area = routeParams.area || userProfile?.area || 'private';
   const patientDraft = routeParams.patient || userProfile || {};
   const [selected, setSelected] = useState(patientDraft.accessibility || {});
@@ -114,8 +117,15 @@ export default function PatientAccessibilitySetupScreen({ navigate, goBack, rout
   );
 }
 
-const styles = StyleSheet.create({
-  hero: { minHeight: 78, borderRadius: 26, borderWidth: 1, borderColor: '#FFD2D7', backgroundColor: '#FFF7F8', padding: 14, marginTop: 4, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12, ...shadows.card },
+// Estilos acompanham o tema (claro/escuro); antes usavam a paleta fixa do
+// tema claro e não mudavam no modo noturno.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+const createStyles = (colors) => StyleSheet.create({
+  hero: { minHeight: 78, borderRadius: 26, borderWidth: 1, borderColor: colors.borderStrong, backgroundColor: '#FFF7F8', padding: 14, marginTop: 4, marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12, ...shadows.card },
   heroIcon: { width: 50, height: 50, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', ...shadows.soft },
   heroText: { flex: 1, color: colors.text, fontSize: 13, lineHeight: 19, fontWeight: '800' },
   card: { borderRadius: 26, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, overflow: 'hidden' },

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useApp } from '../context/AppContext';
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +14,8 @@ import CenteredFormScreen from '../components/CenteredFormScreen';
 import { navoraApi, isNetworkError } from '../services/api';
 
 export default function ForgotPasswordScreen({ navigate, goBack }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -44,7 +47,7 @@ export default function ForgotPasswordScreen({ navigate, goBack }) {
       <CenteredFormScreen>
         <View style={styles.card}>
           <View style={styles.iconRing}>
-            <MaterialCommunityIcons name="email-check-outline" size={38} color="#980027" />
+            <MaterialCommunityIcons name="email-check-outline" size={38} color={colors.primary} />
           </View>
           <Text style={styles.title}>Verifique seu e-mail</Text>
           <Text style={styles.body}>
@@ -70,12 +73,12 @@ export default function ForgotPasswordScreen({ navigate, goBack }) {
     <CenteredFormScreen>
       <View style={styles.card}>
         <Pressable onPress={() => goBack?.()} style={styles.back}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#980027" />
+          <MaterialCommunityIcons name="arrow-left" size={22} color={colors.primary} />
           <Text style={styles.backText}>Voltar</Text>
         </Pressable>
 
         <View style={styles.iconRing}>
-          <MaterialCommunityIcons name="lock-reset" size={38} color="#980027" />
+          <MaterialCommunityIcons name="lock-reset" size={38} color={colors.primary} />
         </View>
 
         <Text style={styles.title}>Recuperar senha</Text>
@@ -84,11 +87,11 @@ export default function ForgotPasswordScreen({ navigate, goBack }) {
         </Text>
 
         <View style={styles.inputBox}>
-          <MaterialCommunityIcons name="email-outline" size={19} color="#980027" />
+          <MaterialCommunityIcons name="email-outline" size={19} color={colors.primary} />
           <TextInput
             style={styles.input}
             placeholder="Seu e-mail"
-            placeholderTextColor="#92959B"
+            placeholderTextColor={colors.lightText}
             value={email}
             onChangeText={setEmail}
             keyboardType="email-address"
@@ -120,31 +123,38 @@ export default function ForgotPasswordScreen({ navigate, goBack }) {
   );
 }
 
-const styles = StyleSheet.create({
+// Estilos acompanham o tema (claro/escuro); antes usavam a paleta fixa do
+// tema claro e não mudavam no modo noturno.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+const createStyles = (colors) => StyleSheet.create({
   card: { gap: 14 },
   back: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  backText: { color: '#980027', fontSize: 14, fontWeight: '800' },
+  backText: { color: colors.primary, fontSize: 14, fontWeight: '800' },
   iconRing: {
     width: 80, height: 80, borderRadius: 40,
-    backgroundColor: '#FFF6F8', borderWidth: 1, borderColor: '#FFD2D7',
+    backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.borderStrong,
     alignItems: 'center', justifyContent: 'center', alignSelf: 'center',
   },
-  title: { color: '#202124', fontSize: 24, fontWeight: '900', textAlign: 'center' },
-  body: { color: '#696B70', fontSize: 14, lineHeight: 21, textAlign: 'center' },
-  bold: { color: '#202124', fontWeight: '800' },
-  hint: { color: '#92959B', fontSize: 12, lineHeight: 18, textAlign: 'center' },
+  title: { color: colors.text, fontSize: 24, fontWeight: '900', textAlign: 'center' },
+  body: { color: colors.muted, fontSize: 14, lineHeight: 21, textAlign: 'center' },
+  bold: { color: colors.text, fontWeight: '800' },
+  hint: { color: colors.lightText, fontSize: 12, lineHeight: 18, textAlign: 'center' },
   inputBox: {
-    height: 48, borderRadius: 12, borderWidth: 1, borderColor: '#E4E4E6',
+    height: 48, borderRadius: 12, borderWidth: 1, borderColor: colors.border,
     paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 9,
   },
-  input: { flex: 1, color: '#36383D', fontSize: 14, paddingVertical: 0 },
+  input: { flex: 1, color: colors.text, fontSize: 14, paddingVertical: 0 },
   btn: {
-    height: 50, borderRadius: 14, backgroundColor: '#980027',
+    height: 50, borderRadius: 14, backgroundColor: colors.primary,
     alignItems: 'center', justifyContent: 'center',
   },
   btnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
   secondaryBtn: { alignItems: 'center', paddingVertical: 6 },
-  secondaryText: { color: '#980027', fontSize: 13, fontWeight: '700' },
+  secondaryText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
   pressed: { opacity: 0.76 },
   disabled: { opacity: 0.68 },
 });

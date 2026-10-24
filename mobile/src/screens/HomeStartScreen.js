@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
-import { colors, radii, shadows, spacing, typography } from '../theme/colors';
+import { radii, shadows, spacing, typography } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 
 export default function HomeStartScreen({ navigate, onProfileDraft }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   const chooseProfile = (type) => {
     onProfileDraft?.({ type, area: 'private' });
     navigate(type === 'patient' ? 'PatientAccessChoice' : 'VisitorEntry', {
@@ -54,6 +57,8 @@ export default function HomeStartScreen({ navigate, onProfileDraft }) {
 }
 
 function ChoiceCard({ icon, title, subtitle, onPress }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.choiceCard, pressed && styles.pressed, shadows.card]}>
       <View style={styles.choiceIcon}>
@@ -68,7 +73,14 @@ function ChoiceCard({ icon, title, subtitle, onPress }) {
   );
 }
 
-const styles = StyleSheet.create({
+// Estilos acompanham o tema (claro/escuro); antes usavam a paleta fixa do
+// tema claro e não mudavam no modo noturno.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+const createStyles = (colors) => StyleSheet.create({
   stage: { minHeight: '100%', backgroundColor: colors.bg, paddingHorizontal: spacing.xxl, paddingTop: 52, paddingBottom: spacing.xxl },
   top: { minHeight: 48, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.md },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 9 },

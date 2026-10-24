@@ -4,22 +4,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
-import { colors, radii, shadows, spacing, typography } from '../theme/colors';
+import { radii, shadows, spacing, typography } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import { deriveNavigationProgress, normalizeRouteCoordinates } from '../services/navigationAdapter';
 
 const logo = require('../../assets/images/navora_symbol.png');
 
-const NAV_COLORS = {
-  burgundy: '#980027',
-  burgundyDark: '#7D001F',
-  burgundyLight: '#FFF5F7',
-  background: '#F8F9FB',
-  surface: '#FFFFFF',
-  text: '#111827',
-  secondary: '#667085',
-  border: '#E7E9EE',
-};
 
 const HOSPITAL_FLOORS = ['Térreo', '2º Andar', '3º Andar', '4º Andar'];
 
@@ -28,6 +18,7 @@ const HOSPITAL_FLOORS = ['Térreo', '2º Andar', '3º Andar', '4º Andar'];
 const EMPTY_LIST = [];
 
 export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute, navigationProgress: selectedProgress, onEndRoute }) {
+  const styles = useThemeStyles();
   const { activeRoute: fallbackRoute, appColors, isDark } = useApp();
   const { width, height } = useWindowDimensions();
   const activeRoute = selectedRoute || fallbackRoute;
@@ -364,6 +355,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
 }
 
 function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFloorChange, routeMap, zoom = 1, pan, panHandlers }) {
+  const styles = useThemeStyles();
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const visibleNodes = routeMap.nodesByFloor.get(activeFloor) || [];
   const visibleLines = routeMap.lines.filter((line) => line.floor === activeFloor);
@@ -404,7 +396,7 @@ function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFl
       </View>
 
       {routeMap.redirected ? (
-        <View style={[styles.redirectPill, { backgroundColor: isDark ? '#2A2430' : '#FFF6F7', borderColor: appColors.border }]}>
+        <View style={[styles.redirectPill, { backgroundColor: isDark ? '#2A2430' : appColors.surfaceAlt, borderColor: appColors.border }]}>
           <MaterialCommunityIcons name="call-split" size={15} color={appColors.primary} />
           <Text style={[styles.redirectText, { color: appColors.primary }]} numberOfLines={1}>
             Orientacao ajustada para {routeMap.destinationLabel}
@@ -473,6 +465,7 @@ function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFl
 }
 
 function RouteLine({ line, mapSize, appColors }) {
+  const styles = useThemeStyles();
   if (!mapSize.width || !mapSize.height) return null;
 
   const x1 = (line.from.normalizedX / 100) * mapSize.width;
@@ -485,7 +478,7 @@ function RouteLine({ line, mapSize, appColors }) {
   const backgroundColor = line.status === 'traversed'
     ? '#9CA3AF'
     : line.status === 'current'
-      ? NAV_COLORS.burgundy
+      ? appColors.primary
       : '#D6D8DE';
   const opacity = line.status === 'remaining' ? 0.78 : 0.95;
   const height = line.status === 'current' ? 7 : 5;
@@ -509,10 +502,11 @@ function RouteLine({ line, mapSize, appColors }) {
 }
 
 function RouteNode({ appColors, isDark, node }) {
+  const styles = useThemeStyles();
   const roleStyle = node.visualRole === 'origin'
-    ? { backgroundColor: NAV_COLORS.burgundy, borderColor: '#FFFFFF' }
+    ? { backgroundColor: appColors.primary, borderColor: '#FFFFFF' }
     : node.visualRole === 'destination'
-      ? { backgroundColor: NAV_COLORS.burgundy, borderColor: '#FFFFFF' }
+      ? { backgroundColor: appColors.primary, borderColor: '#FFFFFF' }
       : { backgroundColor: isDark ? '#2A2A34' : '#FFFFFF', borderColor: appColors.border };
   const icon = node.visualRole === 'origin'
     ? 'crosshairs-gps'
@@ -646,6 +640,7 @@ function shortFloor(floor) {
 }
 
 function Room({ style, label, appColors, isDark }) {
+  const styles = useThemeStyles();
   return (
     <View
       style={[
@@ -663,6 +658,7 @@ function Room({ style, label, appColors, isDark }) {
 }
 
 function Control({ icon, label, onPress, appColors }) {
+  const styles = useThemeStyles();
   return (
     <Pressable
       onPress={onPress}
@@ -691,7 +687,14 @@ function getProgressPercent(navigationProgress) {
   return Math.max(12, Math.min(100, Math.round((current / (total - 1)) * 100)));
 }
 
-const styles = StyleSheet.create({
+// Estilos acompanham o tema (claro/escuro); antes usavam a paleta fixa do
+// tema claro e não mudavam no modo noturno.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+const createStyles = (colors) => StyleSheet.create({
   topHeader: {
     minHeight: 50,
     flexDirection: 'row',
@@ -703,9 +706,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: NAV_COLORS.surface,
+    backgroundColor: colors.surface,
     borderWidth: 1,
-    borderColor: NAV_COLORS.border,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -719,7 +722,7 @@ const styles = StyleSheet.create({
     height: 24,
   },
   headerBrandText: {
-    color: NAV_COLORS.burgundy,
+    color: colors.primary,
     fontSize: 14,
     lineHeight: 18,
     fontWeight: '900',
@@ -988,7 +991,7 @@ const styles = StyleSheet.create({
     top: 206,
     height: 58,
     borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   corridorVertical: {
     position: 'absolute',
@@ -997,7 +1000,7 @@ const styles = StyleSheet.create({
     left: 258,
     width: 58,
     borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   room: {
     position: 'absolute',
@@ -1063,7 +1066,7 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: NAV_COLORS.burgundy,
+    backgroundColor: colors.primary,
     borderWidth: 3,
     borderColor: '#FFFFFF',
   },
@@ -1073,7 +1076,7 @@ const styles = StyleSheet.create({
     bottom: 114,
     minHeight: 26,
     borderRadius: 13,
-    backgroundColor: NAV_COLORS.burgundy,
+    backgroundColor: colors.primary,
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1094,7 +1097,7 @@ const styles = StyleSheet.create({
     maxWidth: 112,
     minHeight: 24,
     borderRadius: 12,
-    backgroundColor: NAV_COLORS.burgundy,
+    backgroundColor: colors.primary,
     paddingHorizontal: 9,
     alignItems: 'center',
     justifyContent: 'center',

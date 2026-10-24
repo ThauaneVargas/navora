@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useApp } from '../context/AppContext';
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +14,8 @@ import CenteredFormScreen from '../components/CenteredFormScreen';
 import { navoraApi, isNetworkError } from '../services/api';
 
 export default function ResetPasswordScreen({ navigate, goBack }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   const [token, setToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -54,7 +57,7 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
       <CenteredFormScreen>
         <View style={styles.card}>
           <View style={styles.iconRing}>
-            <MaterialCommunityIcons name="check-circle-outline" size={44} color="#980027" />
+            <MaterialCommunityIcons name="check-circle-outline" size={44} color={colors.primary} />
           </View>
           <Text style={styles.title}>Senha atualizada!</Text>
           <Text style={styles.body}>Sua senha foi redefinida com sucesso. Faça login com a nova senha.</Text>
@@ -70,12 +73,12 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
     <CenteredFormScreen>
       <View style={styles.card}>
         <Pressable onPress={() => goBack?.()} style={styles.back}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#980027" />
+          <MaterialCommunityIcons name="arrow-left" size={22} color={colors.primary} />
           <Text style={styles.backText}>Voltar</Text>
         </Pressable>
 
         <View style={styles.iconRing}>
-          <MaterialCommunityIcons name="lock-open-outline" size={38} color="#980027" />
+          <MaterialCommunityIcons name="lock-open-outline" size={38} color={colors.primary} />
         </View>
 
         <Text style={styles.title}>Nova senha</Text>
@@ -84,11 +87,11 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
         </Text>
 
         <View style={styles.inputBox}>
-          <MaterialCommunityIcons name="key-outline" size={19} color="#980027" />
+          <MaterialCommunityIcons name="key-outline" size={19} color={colors.primary} />
           <TextInput
             style={styles.input}
             placeholder="Código de recuperação"
-            placeholderTextColor="#92959B"
+            placeholderTextColor={colors.lightText}
             value={token}
             onChangeText={setToken}
             autoCapitalize="none"
@@ -98,27 +101,27 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
         </View>
 
         <View style={styles.inputBox}>
-          <MaterialCommunityIcons name="lock-outline" size={19} color="#980027" />
+          <MaterialCommunityIcons name="lock-outline" size={19} color={colors.primary} />
           <TextInput
             style={styles.input}
             placeholder="Nova senha"
-            placeholderTextColor="#92959B"
+            placeholderTextColor={colors.lightText}
             value={newPassword}
             onChangeText={setNewPassword}
             secureTextEntry={!showPass}
             editable={!loading}
           />
           <Pressable onPress={() => setShowPass((v) => !v)} hitSlop={8}>
-            <MaterialCommunityIcons name={showPass ? 'eye-off-outline' : 'eye-outline'} size={18} color="#92959B" />
+            <MaterialCommunityIcons name={showPass ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.lightText} />
           </Pressable>
         </View>
 
         <View style={[styles.inputBox, confirmPassword && newPassword !== confirmPassword && styles.inputBoxError]}>
-          <MaterialCommunityIcons name="lock-check-outline" size={19} color="#980027" />
+          <MaterialCommunityIcons name="lock-check-outline" size={19} color={colors.primary} />
           <TextInput
             style={styles.input}
             placeholder="Confirmar nova senha"
-            placeholderTextColor="#92959B"
+            placeholderTextColor={colors.lightText}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry={!showPass}
@@ -144,26 +147,33 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
   );
 }
 
-const styles = StyleSheet.create({
+// Estilos acompanham o tema (claro/escuro); antes usavam a paleta fixa do
+// tema claro e não mudavam no modo noturno.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+const createStyles = (colors) => StyleSheet.create({
   card: { gap: 14 },
   back: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  backText: { color: '#980027', fontSize: 14, fontWeight: '800' },
+  backText: { color: colors.primary, fontSize: 14, fontWeight: '800' },
   iconRing: {
     width: 80, height: 80, borderRadius: 40,
-    backgroundColor: '#FFF6F8', borderWidth: 1, borderColor: '#FFD2D7',
+    backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.borderStrong,
     alignItems: 'center', justifyContent: 'center', alignSelf: 'center',
   },
-  title: { color: '#202124', fontSize: 24, fontWeight: '900', textAlign: 'center' },
-  body: { color: '#696B70', fontSize: 14, lineHeight: 21, textAlign: 'center' },
+  title: { color: colors.text, fontSize: 24, fontWeight: '900', textAlign: 'center' },
+  body: { color: colors.muted, fontSize: 14, lineHeight: 21, textAlign: 'center' },
   inputBox: {
-    height: 48, borderRadius: 12, borderWidth: 1, borderColor: '#E4E4E6',
+    height: 48, borderRadius: 12, borderWidth: 1, borderColor: colors.border,
     paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 9,
   },
-  input: { flex: 1, color: '#36383D', fontSize: 14, paddingVertical: 0 },
-  inputBoxError: { borderColor: '#C0392B' },
-  errorText: { color: '#C0392B', fontSize: 12, fontWeight: '700', marginTop: -8 },
+  input: { flex: 1, color: colors.text, fontSize: 14, paddingVertical: 0 },
+  inputBoxError: { borderColor: colors.danger },
+  errorText: { color: colors.danger, fontSize: 12, fontWeight: '700', marginTop: -8 },
   btn: {
-    height: 50, borderRadius: 14, backgroundColor: '#980027',
+    height: 50, borderRadius: 14, backgroundColor: colors.primary,
     alignItems: 'center', justifyContent: 'center',
   },
   btnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },

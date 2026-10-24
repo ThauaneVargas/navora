@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
-import { colors, shadows } from '../theme/colors';
+import { shadows } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 
 export default function CareAreaChoiceScreen({ navigate, goBack, onAreaDetected }) {
+  const styles = useThemeStyles();
   const chooseArea = (area) => {
     if (area !== 'unknown') onAreaDetected?.(area);
     navigate('ExternalRoute', { area });
@@ -44,6 +46,8 @@ export default function CareAreaChoiceScreen({ navigate, goBack, onAreaDetected 
 }
 
 function ChoiceCard({ icon, title, subtitle, detail, onPress }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.card, pressed && styles.pressed, shadows.card]}>
       <View style={styles.icon}>
@@ -59,8 +63,15 @@ function ChoiceCard({ icon, title, subtitle, detail, onPress }) {
   );
 }
 
-const styles = StyleSheet.create({
-  hero: { minHeight: 82, borderRadius: 26, backgroundColor: '#FFF7F8', borderWidth: 1, borderColor: '#FFD2D7', padding: 16, marginTop: 4, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12, ...shadows.card },
+// Estilos acompanham o tema (claro/escuro); antes usavam a paleta fixa do
+// tema claro e não mudavam no modo noturno.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+const createStyles = (colors) => StyleSheet.create({
+  hero: { minHeight: 82, borderRadius: 26, backgroundColor: '#FFF7F8', borderWidth: 1, borderColor: colors.borderStrong, padding: 16, marginTop: 4, marginBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 12, ...shadows.card },
   heroMark: { width: 52, height: 52, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', ...shadows.soft },
   heroText: { flex: 1, color: colors.text, fontSize: 13, lineHeight: 19, fontWeight: '800' },
   card: { minHeight: 96, borderRadius: 26, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: 16, marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -69,7 +80,7 @@ const styles = StyleSheet.create({
   cardTitle: { color: colors.text, fontSize: 17, fontWeight: '900' },
   cardSub: { color: colors.text, fontSize: 13, fontWeight: '800', marginTop: 4 },
   cardDetail: { color: colors.muted, fontSize: 12, fontWeight: '800', marginTop: 3 },
-  aiCard: { minHeight: 78, borderRadius: 24, backgroundColor: '#FFF7F8', borderWidth: 1, borderColor: '#FFD2D7', padding: 14, marginTop: 18, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  aiCard: { minHeight: 78, borderRadius: 24, backgroundColor: '#FFF7F8', borderWidth: 1, borderColor: colors.borderStrong, padding: 14, marginTop: 18, flexDirection: 'row', alignItems: 'center', gap: 12 },
   aiIcon: { width: 50, height: 50, borderRadius: 25, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   aiTitle: { color: colors.primary, fontSize: 16, fontWeight: '900' },
   aiText: { color: colors.muted, fontSize: 12, lineHeight: 17, fontWeight: '800', marginTop: 3 },

@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
-import { colors, shadows } from '../theme/colors';
+import { shadows } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 
 export default function EmergencyRoutesScreen({ navigate, goBack }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   return (
     <Screen>
       <Header title="Rotas de emergência" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
@@ -60,6 +63,8 @@ export default function EmergencyRoutesScreen({ navigate, goBack }) {
 }
 
 function Step({ icon, title, desc }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   return (
     <View style={styles.step}>
       <View style={styles.stepIcon}>
@@ -73,7 +78,14 @@ function Step({ icon, title, desc }) {
   );
 }
 
-const styles = StyleSheet.create({
+// Estilos acompanham o tema (claro/escuro); antes usavam a paleta fixa do
+// tema claro e não mudavam no modo noturno.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+const createStyles = (colors) => StyleSheet.create({
   heroCard: {
     marginTop: 16,
     borderRadius: 26,
@@ -127,7 +139,7 @@ const styles = StyleSheet.create({
     height: 170,
     marginTop: 14,
     borderRadius: 22,
-    backgroundColor: '#F7F4F4',
+    backgroundColor: colors.backgroundSoft,
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
@@ -140,7 +152,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 58,
     borderRadius: 12,
-    backgroundColor: '#E8E1E3',
+    backgroundColor: colors.borderStrong,
   },
   mapRoomB: {
     position: 'absolute',
@@ -149,7 +161,7 @@ const styles = StyleSheet.create({
     width: 106,
     height: 62,
     borderRadius: 12,
-    backgroundColor: '#E8E1E3',
+    backgroundColor: colors.borderStrong,
   },
   mapCorridor: {
     position: 'absolute',
@@ -158,7 +170,7 @@ const styles = StyleSheet.create({
     top: 78,
     height: 34,
     borderRadius: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   escapeRoute: {
     position: 'absolute',
