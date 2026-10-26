@@ -6,57 +6,58 @@ import Header from '../components/Header';
 import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 
+// Rotas de emergência. Antes mostrava distância e tempo fixos ("68 m", "1 min"),
+// um mapa desenhado sempre igual e passos inventados ("corredor principal por
+// 32 m", "porta lateral perto do estacionamento") — dado falso numa emergência.
+// Agora: orientação geral de segurança, verdadeira em qualquer lugar do
+// hospital, + busca das saídas cadastradas + chamar a equipe.
+
+const STEPS = [
+  { icon: 'sign-direction', titleKey: 'emergency.step1', descKey: 'emergency.step1Desc' },
+  { icon: 'stairs-down', titleKey: 'emergency.step2', descKey: 'emergency.step2Desc' },
+  { icon: 'account-group-outline', titleKey: 'emergency.step3', descKey: 'emergency.step3Desc' },
+];
+
 export default function EmergencyRoutesScreen({ navigate, goBack }) {
-  const { appColors: colors } = useApp();
+  const { appColors: colors, t } = useApp();
   const styles = useThemeStyles();
   return (
     <Screen>
-      <Header title="Rotas de emergência" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title={t('emergency.title')} centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.heroCard, shadows.card]}>
         <View style={styles.exitIcon}>
           <MaterialCommunityIcons name="exit-run" size={54} color={colors.primary} />
         </View>
-        <Text style={styles.title}>Saída mais próxima</Text>
-        <Text style={styles.safeRoute}>Rota segura pelo corredor principal</Text>
-        <Text style={styles.distance}>Distância aproximada: 68 m</Text>
-        <Text style={styles.distance}>Tempo estimado: 1 min</Text>
-      </View>
-
-      <View style={[styles.mapCard, shadows.card]}>
-        <View style={styles.mapRoomA} />
-        <View style={styles.mapRoomB} />
-        <View style={styles.mapCorridor} />
-        <View style={styles.escapeRoute} />
-        <View style={styles.currentDot} />
-        <View style={styles.exitDoor}>
-          <MaterialCommunityIcons name="door-open" size={24} color="#FFFFFF" />
-        </View>
-        <Text style={styles.mapLabelStart}>Você</Text>
-        <Text style={styles.mapLabelExit}>Saída</Text>
+        <Text style={styles.title} accessibilityRole="header">{t('emergency.heroTitle')}</Text>
+        <Text style={styles.safeRoute}>{t('emergency.heroText')}</Text>
       </View>
 
       <View style={[styles.routeCard, shadows.card]}>
         <View style={styles.pathLine} />
-        <Step icon="map-marker" title="Você está aqui" desc="Recepção / entrada principal" />
-        <Step icon="arrow-right-top" title="Siga a sinalização verde" desc="Corredor principal por 32 m" />
-        <Step icon="door-open" title="Saída de emergência" desc="Porta lateral próxima ao estacionamento" />
+        {STEPS.map((step) => (
+          <Step key={step.titleKey} icon={step.icon} title={t(step.titleKey)} desc={t(step.descKey)} />
+        ))}
       </View>
 
       <Pressable
-        onPress={() => navigate('Navigation')}
+        onPress={() => navigate('Search', { query: 'Saída' })}
+        accessibilityRole="button"
+        accessibilityLabel={t('emergency.findExit')}
         style={({ pressed }) => [styles.mainButton, pressed && styles.pressed, shadows.soft]}
       >
-        <MaterialCommunityIcons name="navigation-variant" size={20} color="#FFFFFF" />
-        <Text style={styles.mainButtonText}>Iniciar rota de emergência</Text>
+        <MaterialCommunityIcons name="exit-run" size={20} color="#FFFFFF" />
+        <Text style={styles.mainButtonText}>{t('emergency.findExit')}</Text>
       </Pressable>
 
       <Pressable
         onPress={() => navigate('Help')}
+        accessibilityRole="button"
+        accessibilityLabel={t('emergency.callStaff')}
         style={({ pressed }) => [styles.secondaryButton, pressed && styles.pressed]}
       >
         <MaterialCommunityIcons name="hand-heart-outline" size={20} color={colors.primary} />
-        <Text style={styles.secondaryButtonText}>Avisar equipe</Text>
+        <Text style={styles.secondaryButtonText}>{t('emergency.callStaff')}</Text>
       </Pressable>
     </Screen>
   );

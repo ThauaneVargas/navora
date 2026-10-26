@@ -1,89 +1,74 @@
-import React, { useMemo, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import { isRouteBarVisible } from '../components/ActiveRouteBar';
 
-const nearbyPlaces = [
-  { icon: 'account-tie-outline', label: 'Recepção principal', distance: '18 m', screen: 'Navigation' },
-  { icon: 'elevator-passenger-outline', label: 'Elevador A', distance: '24 m', screen: 'Navigation' },
-  { icon: 'radioactive-circle-outline', label: 'Setor de Imagem', distance: '42 m', screen: 'Search' },
+// "Estou perdido". Antes mostrava um local inventado ("Recepção Principal ·
+// entrada confirmada", com selo LIVE pulsando) e lugares "próximos" com
+// distâncias fixas (18 m, 24 m, 42 m) — sempre iguais, sem saber onde a pessoa
+// está. Agora: orientação honesta + atalhos que abrem a busca com dados reais.
+
+// query = texto procurado na busca (nome do destino no hospital, em português).
+const shortcuts = [
+  { icon: 'face-agent', labelKey: 'lost.reception', query: 'Recepção' },
+  { icon: 'human-male-female', labelKey: 'lost.restroom', query: 'Banheiro' },
+  { icon: 'exit-run', labelKey: 'lost.exit', query: 'Saída' },
 ];
 
 const actions = [
   {
     icon: 'map-marker-path',
-    label: 'Recalcular minha rota',
-    subtitle: 'Traçar nova rota a partir daqui',
+    labelKey: 'lost.backToRoute',
+    subtitleKey: 'lost.backToRouteSub',
     screen: 'Navigation',
     variant: 'primary',
+    needsRoute: true,
   },
   {
     icon: 'robot-happy-outline',
-    label: 'Falar com a IA',
-    subtitle: 'Orientacao passo a passo',
+    labelKey: 'lost.askAssistant',
+    subtitleKey: 'lost.askAssistantSub',
     screen: 'Assistant',
     variant: 'secondary',
   },
   {
     icon: 'magnify',
-    label: 'Ver outros destinos',
-    subtitle: 'Buscar outro local no hospital',
+    labelKey: 'lost.searchDestination',
+    subtitleKey: 'lost.searchDestinationSub',
     screen: 'Search',
     variant: 'ghost',
   },
   {
     icon: 'bell-ring-outline',
-    label: 'Chamar ajuda',
-    subtitle: 'Acionar suporte humano',
+    labelKey: 'lost.callHelp',
+    subtitleKey: 'lost.callHelpSub',
     screen: 'Help',
     variant: 'danger',
   },
 ];
 
 export default function LostScreen({ navigate, goBack }) {
-  const { appColors, isDark } = useApp();
+  const { appColors, isDark, liveRoute, t } = useApp();
   const styles = useMemo(() => createStyles(appColors, isDark), [appColors, isDark]);
-  const pulse = useRef(new Animated.Value(1)).current;
-  const pulseOpacity = useRef(new Animated.Value(0.6)).current;
-
-  useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(pulse, { toValue: 1.8, duration: 1000, useNativeDriver: true }),
-          Animated.timing(pulseOpacity, { toValue: 0, duration: 1000, useNativeDriver: true }),
-        ]),
-        Animated.parallel([
-          Animated.timing(pulse, { toValue: 1, duration: 0, useNativeDriver: true }),
-          Animated.timing(pulseOpacity, { toValue: 0.6, duration: 0, useNativeDriver: true }),
-        ]),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, []);
+  // "Voltar para a minha rota" só aparece se existe rota de verdade em andamento.
+  const hasRoute = isRouteBarVisible(liveRoute);
+  const visibleActions = actions.filter((action) => !action.needsRoute || hasRoute);
 
   return (
     <Screen>
-      <Header title="Estou perdido" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title={t('lost.title')} centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.locationRow, shadows.soft]}>
-        <View style={styles.pingContainer}>
-          <Animated.View style={[styles.pingRing, { transform: [{ scale: pulse }], opacity: pulseOpacity }]} />
-          <View style={styles.pingDot}>
-            <MaterialCommunityIcons name="crosshairs-gps" size={17} color="#FFFFFF" />
-          </View>
+        <View style={styles.pingDot}>
+          <MaterialCommunityIcons name="account-question-outline" size={20} color="#FFFFFF" />
         </View>
         <View style={styles.locationCopy}>
-          <Text style={styles.locationLabel}>Você está em</Text>
-          <Text style={styles.locationName}>Recepção Principal</Text>
-          <Text style={styles.locationSub}>Corredor Principal · entrada confirmada</Text>
-        </View>
-        <View style={styles.liveChip}>
-          <Text style={styles.liveText}>LIVE</Text>
+          <Text style={styles.locationName}>{t('lost.calmTitle')}</Text>
+          <Text style={styles.locationSub}>{t('lost.calmText')}</Text>
         </View>
       </View>
 
@@ -92,56 +77,58 @@ export default function LostScreen({ navigate, goBack }) {
           <MaterialCommunityIcons name="robot-happy-outline" size={27} color="#FFFFFF" />
         </View>
         <View style={styles.aiCopy}>
-          <Text style={styles.aiTitle}>Sem problema, eu te oriento.</Text>
-          <Text style={styles.aiText}>
-            Posso recalcular sua rota, abrir o mapa ou guiar você passo a passo.
-          </Text>
+          <Text style={styles.aiTitle}>{t('lost.aiTitle')}</Text>
+          <Text style={styles.aiText}>{t('lost.aiText')}</Text>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Destinos próximos</Text>
+      <Text style={styles.sectionTitle}>{t('lost.shortcuts')}</Text>
       <View style={[styles.nearbyCard, shadows.card]}>
-        {nearbyPlaces.map((place, index) => (
+        {shortcuts.map((place, index) => (
           <Pressable
-            key={place.label}
-            onPress={() => navigate(place.screen)}
+            key={place.labelKey}
+            onPress={() => navigate('Search', { query: place.query })}
+            accessibilityRole="button"
+            accessibilityLabel={t(place.labelKey)}
             style={({ pressed }) => [
               styles.nearbyItem,
-              index < nearbyPlaces.length - 1 && styles.nearbyBorder,
+              index < shortcuts.length - 1 && styles.nearbyBorder,
               pressed && styles.pressed,
             ]}
           >
             <View style={styles.nearbyIconWrap}>
               <MaterialCommunityIcons name={place.icon} size={19} color={appColors.primary} />
             </View>
-            <Text style={styles.nearbyLabel} numberOfLines={1}>{place.label}</Text>
-            <Text style={styles.nearbyDistance}>{place.distance}</Text>
+            <Text style={styles.nearbyLabel} numberOfLines={1}>{t(place.labelKey)}</Text>
             <MaterialCommunityIcons name="chevron-right" size={17} color={appColors.muted} />
           </Pressable>
         ))}
       </View>
 
-      <Text style={styles.sectionTitle}>O que deseja fazer?</Text>
-      {actions.map((action) => (
+      <Text style={styles.sectionTitle}>{t('lost.whatToDo')}</Text>
+      {visibleActions.map((action) => (
         <ActionCard
-          key={action.label}
+          key={action.labelKey}
           action={action}
           navigate={navigate}
           styles={styles}
           appColors={appColors}
+          t={t}
         />
       ))}
     </Screen>
   );
 }
 
-function ActionCard({ action, navigate, styles, appColors }) {
+function ActionCard({ action, navigate, styles, appColors, t }) {
   const isPrimary = action.variant === 'primary';
   const isDanger = action.variant === 'danger';
 
   return (
     <Pressable
       onPress={() => navigate(action.screen)}
+      accessibilityRole="button"
+      accessibilityLabel={`${t(action.labelKey)}. ${t(action.subtitleKey)}`}
       style={({ pressed }) => [
         styles.actionCard,
         isPrimary && styles.actionCardPrimary,
@@ -170,10 +157,10 @@ function ActionCard({ action, navigate, styles, appColors }) {
             isDanger && styles.actionLabelDanger,
           ]}
         >
-          {action.label}
+          {t(action.labelKey)}
         </Text>
         <Text style={[styles.actionSub, isPrimary && styles.actionSubPrimary]}>
-          {action.subtitle}
+          {t(action.subtitleKey)}
         </Text>
       </View>
       <MaterialCommunityIcons

@@ -19,6 +19,12 @@ const DICTIONARIES = { pt, en, es };
 const lookup = (dictionary, key) =>
   key.split('.').reduce((node, part) => (node && typeof node === 'object' ? node[part] : undefined), dictionary);
 
+// Formato de data/hora de cada idioma (toLocaleDateString etc.).
+const LOCALES = { pt: 'pt-BR', en: 'en-US', es: 'es-ES' };
+export function localeFor(language) {
+  return LOCALES[language] || LOCALES.pt;
+}
+
 export function isSupportedLanguage(code) {
   return Boolean(DICTIONARIES[code]);
 }

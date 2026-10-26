@@ -56,7 +56,7 @@ function fromScreenToApi(activeOptions) {
 }
 
 export default function AccessibilityScreen({ navigate, goBack, userProfile }) {
-  const { appColors } = useApp();
+  const { appColors, t } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
   const [activeOptions, setActiveOptions] = useState(() =>
     fromApiToScreen(userProfile?.accessibility)
@@ -78,13 +78,13 @@ export default function AccessibilityScreen({ navigate, goBack, userProfile }) {
     setSaving(true);
     try {
       await navoraApi.updateAccessibility(fromScreenToApi(activeOptions));
-      Alert.alert('Salvo', 'Suas preferências de acessibilidade foram atualizadas.');
+      Alert.alert(t('accessibility.savedTitle'), t('accessibility.saved'));
       navigate('Menu');
     } catch (error) {
       if (isNetworkError(error)) {
-        Alert.alert('Sem conexão', 'Não foi possível salvar agora. Tente novamente.');
+        Alert.alert(t('common.noConnection'), t('accessibility.offline'));
       } else {
-        Alert.alert('Erro', 'Não foi possível salvar suas preferências.');
+        Alert.alert(t('common.error'), t('accessibility.fail'));
       }
     } finally {
       setSaving(false);
@@ -93,16 +93,16 @@ export default function AccessibilityScreen({ navigate, goBack, userProfile }) {
 
   return (
     <Screen>
-      <Header title="Acessibilidade" subtitle="Preferências para uma rota segura" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title={t('accessibility.title')} subtitle={t('accessibility.subtitle')} centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.heroCard, shadows.card]}>
         <View style={styles.heroIcon}>
           <MaterialCommunityIcons name="wheelchair-accessibility" size={34} color={appColors.primary} />
         </View>
         <View style={styles.heroCopy}>
-          <Text style={styles.heroTitle}>Preferências de rota</Text>
+          <Text style={styles.heroTitle}>{t('accessibility.heroTitle')}</Text>
           <Text style={styles.heroText}>
-            Estas opções ajudam o Navora a sugerir caminhos mais seguros e confortáveis.
+            {t('accessibility.heroText')}
           </Text>
         </View>
       </View>
@@ -117,16 +117,16 @@ export default function AccessibilityScreen({ navigate, goBack, userProfile }) {
               onPress={() => toggle(option.key)}
               accessibilityRole="switch"
               accessibilityState={{ checked: Boolean(active) }}
-              accessibilityLabel={option.title}
-              accessibilityHint={option.desc}
+              accessibilityLabel={t(`accessibility.opt_${option.key}`)}
+              accessibilityHint={t(`accessibility.opt_${option.key}Desc`)}
               style={({ pressed }) => [styles.option, active && styles.optionActive, pressed && styles.pressed, shadows.card]}
             >
               <View style={styles.iconBox}>
                 <MaterialCommunityIcons name={option.icon} size={24} color={appColors.primary} />
               </View>
               <View style={styles.copy}>
-                <Text style={styles.optionTitle}>{option.title}</Text>
-                <Text style={styles.optionDesc}>{option.desc}</Text>
+                <Text style={styles.optionTitle}>{t(`accessibility.opt_${option.key}`)}</Text>
+                <Text style={styles.optionDesc}>{t(`accessibility.opt_${option.key}Desc`)}</Text>
               </View>
               <View style={[styles.switchTrack, active && styles.switchTrackActive]}>
                 <View style={[styles.switchKnob, active && styles.switchKnobActive]} />
@@ -144,7 +144,7 @@ export default function AccessibilityScreen({ navigate, goBack, userProfile }) {
         {saving ? (
           <ActivityIndicator color="#FFFFFF" size="small" />
         ) : (
-          <Text style={styles.saveText}>Salvar preferências</Text>
+          <Text style={styles.saveText}>{t('accessibility.save')}</Text>
         )}
       </Pressable>
     </Screen>

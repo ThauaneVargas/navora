@@ -7,24 +7,25 @@ import { EmptyState, PrimaryButton } from '../components/PremiumUI';
 import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import { loadRouteHistory, subscribeRouteHistory } from '../services/routeHistoryStorage';
+import { localeFor } from '../i18n';
 
 // Antes esta tela mostrava uma lista fixa de exemplo. Agora lê as rotas que
 // a pessoa iniciou neste celular (routeHistoryStorage), que somem ao sair.
 
-const dayLabel = (iso) => {
+const dayLabel = (iso, t, language) => {
   const date = new Date(iso);
   const today = new Date();
   const yesterday = new Date();
   yesterday.setDate(today.getDate() - 1);
-  if (date.toDateString() === today.toDateString()) return 'Hoje';
-  if (date.toDateString() === yesterday.toDateString()) return 'Ontem';
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  if (date.toDateString() === today.toDateString()) return t('routeHistory.today');
+  if (date.toDateString() === yesterday.toDateString()) return t('routeHistory.yesterday');
+  return date.toLocaleDateString(localeFor(language), { day: '2-digit', month: '2-digit' });
 };
 
-const timeLabel = (iso) => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+const timeLabel = (iso, language) => new Date(iso).toLocaleTimeString(localeFor(language), { hour: '2-digit', minute: '2-digit' });
 
 export default function RouteHistoryScreen({ navigate, goBack }) {
-  const { appColors } = useApp();
+  const { appColors, t, language } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
   const [history, setHistory] = useState([]);
 
@@ -41,34 +42,41 @@ export default function RouteHistoryScreen({ navigate, goBack }) {
   const grouped = useMemo(() => {
     const groups = new Map();
     history.forEach((item) => {
-      const label = dayLabel(item.t);
+      const label = dayLabel(item.t, t, language);
       if (!groups.has(label)) groups.set(label, []);
       groups.get(label).push(item);
     });
     return [...groups.entries()];
-  }, [history]);
+  }, [history, t, language]);
 
   const arrivedCount = history.filter((item) => item.a).length;
+  // Categoria do destino traduzida quando existe (Exames, Serviços…); senão, como veio.
+  const categoryLabel = (category) => {
+    if (!category) return null;
+    const key = `search.filters.${category}`;
+    const label = t(key);
+    return label === key ? category : label;
+  };
 
   return (
     <Screen>
-      <Header title="Histórico de rotas" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title={t('routeHistory.title')} centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       {history.length === 0 ? (
         <View style={styles.emptyWrap}>
           <EmptyState
             icon="map-marker-path"
-            title="Nenhuma rota ainda"
-            text="Quando você iniciar uma rota pelo app, ela aparece aqui para você repetir com um toque."
-            action={<PrimaryButton title="Buscar um destino" icon="magnify" onPress={() => navigate('Search')} />}
+            title={t('routeHistory.emptyTitle')}
+            text={t('routeHistory.emptyText')}
+            action={<PrimaryButton title={t('routeHistory.searchDestination')} icon="magnify" onPress={() => navigate('Search')} />}
           />
         </View>
       ) : (
         <>
           <View style={[styles.statsRow, shadows.card]}>
-            <StatItem label="Rotas" value={history.length} icon="routes" styles={styles} appColors={appColors} />
+            <StatItem label={t('routeHistory.routes')} value={history.length} icon="routes" styles={styles} appColors={appColors} />
             <View style={styles.statDivider} />
-            <StatItem label="Concluídas" value={arrivedCount} icon="flag-checkered" styles={styles} appColors={appColors} />
+            <StatItem label={t('routeHistory.completed')} value={arrivedCount} icon="flag-checkered" styles={styles} appColors={appColors} />
           </View>
 
           {grouped.map(([date, items]) => (
@@ -80,8 +88,8 @@ export default function RouteHistoryScreen({ navigate, goBack }) {
                     key={item.t}
                     onPress={() => navigate('Search', { query: item.n })}
                     accessibilityRole="button"
-                    accessibilityLabel={`${item.n}, ${item.a ? 'concluída' : 'iniciada'} às ${timeLabel(item.t)}`}
-                    accessibilityHint="Abre a busca para fazer esta rota de novo"
+                    accessibilityLabel={t('routeHistory.rowA11y', { name: item.n, status: item.a ? t('routeHistory.completedOne') : t('routeHistory.started'), time: timeLabel(item.t, language) })}
+                    accessibilityHint={t('routeHistory.rowHint')}
                     style={({ pressed }) => [
                       styles.row,
                       index < items.length - 1 && styles.rowBorder,
@@ -94,13 +102,13 @@ export default function RouteHistoryScreen({ navigate, goBack }) {
                     <View style={styles.rowCopy}>
                       <Text style={styles.rowTitle} numberOfLines={1}>{item.n}</Text>
                       <Text style={styles.rowSub} numberOfLines={1}>
-                        {[item.c === 'Servicos' ? 'Serviços' : item.c, item.f].filter(Boolean).join(' · ') || 'Destino'}
+                        {[categoryLabel(item.c), item.f].filter(Boolean).join(' · ') || t('routeHistory.destination')}
                       </Text>
                       <View style={styles.rowMeta}>
                         <MaterialCommunityIcons name="clock-outline" size={13} color={appColors.muted} />
-                        <Text style={styles.rowMetaText}>{timeLabel(item.t)}</Text>
+                        <Text style={styles.rowMetaText}>{timeLabel(item.t, language)}</Text>
                         <Text style={styles.rowMetaDot}>·</Text>
-                        <Text style={styles.rowMetaText}>{item.a ? 'Concluída' : 'Iniciada'}</Text>
+                        <Text style={styles.rowMetaText}>{item.a ? t('routeHistory.completedOne') : t('routeHistory.started')}</Text>
                       </View>
                     </View>
                     {item.a ? (
@@ -121,7 +129,7 @@ export default function RouteHistoryScreen({ navigate, goBack }) {
       <View style={[styles.infoCard, shadows.card]}>
         <MaterialCommunityIcons name="shield-lock-outline" size={16} color={appColors.muted} />
         <Text style={styles.infoText}>
-          O histórico fica só neste celular e é apagado quando você toca em Sair. Toque numa rota para fazê-la de novo.
+          {t('routeHistory.info')}
         </Text>
       </View>
     </Screen>
