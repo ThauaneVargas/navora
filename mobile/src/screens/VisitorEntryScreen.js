@@ -50,6 +50,8 @@ const PURPOSES = [
     id: 'VISIT_PATIENT',
     icon: 'account-heart-outline',
     title: 'Visitar paciente',
+    titleKey: 'visitor.purposeVisitPatient',
+    textKey: 'visitor.purposeVisitPatientText',
     text: 'Quero visitar uma pessoa internada.',
   },
 
@@ -57,6 +59,8 @@ const PURPOSES = [
     id: 'RECEPTION',
     icon: 'desk',
     title: 'Ir à recepção',
+    titleKey: 'visitor.purposeReception',
+    textKey: 'visitor.purposeReceptionText',
     text: 'Preciso falar com a recepção.',
   },
 
@@ -64,6 +68,8 @@ const PURPOSES = [
     id: 'INFORMATION',
     icon: 'information-outline',
     title: 'Buscar informações',
+    titleKey: 'visitor.purposeInformation',
+    textKey: 'visitor.purposeInformationText',
     text: 'Preciso de orientação ou informações.',
   },
 
@@ -71,6 +77,8 @@ const PURPOSES = [
     id: 'OTHER',
     icon: 'dots-horizontal-circle-outline',
     title: 'Outros',
+    titleKey: 'visitor.purposeOther',
+    textKey: 'visitor.purposeOtherText',
     text: 'Outro motivo de visita.',
   },
 ];
@@ -81,70 +89,80 @@ const ACCESSIBILITY_OPTIONS = [
     id: 'wheelchair',
     icon: 'wheelchair-accessibility',
     label: 'Cadeira de rodas',
+    labelKey: 'visitor.accWheelchair',
   },
 
   {
     id: 'reducedMobility',
     icon: 'walk',
     label: 'Mobilidade reduzida',
+    labelKey: 'visitor.accReducedMobility',
   },
 
   {
     id: 'avoidStairs',
     icon: 'stairs',
     label: 'Rota sem escadas',
+    labelKey: 'visitor.accAvoidStairs',
   },
 
   {
     id: 'elevatorOnly',
     icon: 'elevator-passenger-outline',
     label: 'Utilizar somente elevador',
+    labelKey: 'visitor.accElevatorOnly',
   },
 
   {
     id: 'walkingHelp',
     icon: 'human-cane',
     label: 'Ajuda para caminhar',
+    labelKey: 'visitor.accWalkingHelp',
   },
 
   {
     id: 'voiceGuidance',
     icon: 'volume-high',
     label: 'Orientação por voz',
+    labelKey: 'visitor.accVoiceGuidance',
   },
 
   {
     id: 'largeText',
     icon: 'format-size',
     label: 'Textos e botões maiores',
+    labelKey: 'visitor.accLargeText',
   },
 
   {
     id: 'visualImpairment',
     icon: 'eye-outline',
     label: 'Deficiência visual',
+    labelKey: 'visitor.accVisualImpairment',
   },
 
   {
     id: 'hearingImpairment',
     icon: 'ear-hearing',
     label: 'Deficiência auditiva',
+    labelKey: 'visitor.accHearingImpairment',
   },
 
   {
     id: 'otherNeeds',
     icon: 'medical-bag',
     label: 'Outras necessidades',
+    labelKey: 'visitor.accOtherNeeds',
   },
 ];
 
 
 const STEP_TITLES = [
-  'Quem vai usar o app?',
-  'Motivo e destino',
-  'Acompanhantes',
-  'Acessibilidade',
-  'Revisar visita',
+  'visitor.step0',
+  'visitor.step1',
+  'visitor.step2',
+  'visitor.step3',
+  'visitor.step4',
 ];
 
 
@@ -160,6 +178,7 @@ export default function VisitorEntryScreen({
 }) {
   const {
     appColors,
+    t,
   } = useApp();
 
   const area =
@@ -467,8 +486,8 @@ export default function VisitorEntryScreen({
     if (step === 0) {
       if (!fullName.trim()) {
         Alert.alert(
-          'Nome completo',
-          'Informe seu nome completo para continuar.'
+          t('visitor.errFullNameTitle'),
+          t('visitor.errFullName')
         );
 
         return false;
@@ -479,8 +498,8 @@ export default function VisitorEntryScreen({
     if (step === 1) {
       if (!purpose) {
         Alert.alert(
-          'Motivo da visita',
-          'Selecione o objetivo da sua visita.'
+          t('visitor.errReasonTitle'),
+          t('visitor.errReason')
         );
 
         return false;
@@ -490,8 +509,8 @@ export default function VisitorEntryScreen({
       if (isPatientVisit) {
         if (!patientName.trim()) {
           Alert.alert(
-            'Nome do paciente',
-            'Informe o nome do paciente que você deseja visitar.'
+            t('visitor.errPatientNameTitle'),
+            t('visitor.errPatientName')
           );
 
           return false;
@@ -503,8 +522,8 @@ export default function VisitorEntryScreen({
           null
         ) {
           Alert.alert(
-            'Local do paciente',
-            'Informe se você sabe onde o paciente está.'
+            t('visitor.errPatientLocationTitle'),
+            t('visitor.errPatientLocationKnown')
           );
 
           return false;
@@ -517,8 +536,8 @@ export default function VisitorEntryScreen({
           !patientLocation.trim()
         ) {
           Alert.alert(
-            'Local do paciente',
-            'Informe o local que você conhece ou selecione “Não sei”.'
+            t('visitor.errPatientLocationTitle'),
+            t('visitor.errPatientLocation')
           );
 
           return false;
@@ -531,8 +550,8 @@ export default function VisitorEntryScreen({
         !destinationText.trim()
       ) {
         Alert.alert(
-          'Destino',
-          'Informe a pessoa, setor ou destino relacionado à visita.'
+          t('visitor.errDestinationTitle'),
+          t('visitor.errDestination')
         );
 
         return false;
@@ -548,8 +567,8 @@ export default function VisitorEntryScreen({
         companionTotal === 0
       ) {
         Alert.alert(
-          'Acompanhantes',
-          'Adicione pelo menos um acompanhante ou selecione “Não”.'
+          t('visitor.errCompanionsTitle'),
+          t('visitor.errCompanions')
         );
 
         return false;
@@ -567,8 +586,8 @@ export default function VisitorEntryScreen({
         companionWithoutName
       ) {
         Alert.alert(
-          'Nome do acompanhante',
-          'Informe o nome completo de cada acompanhante para continuar.'
+          t('visitor.errCompanionNameTitle'),
+          t('visitor.errCompanionName')
         );
 
         return false;
@@ -735,6 +754,15 @@ export default function VisitorEntryScreen({
     };
 
 
+  // Mesmo resumo, no idioma da pessoa (só pra tela de revisão).
+  const getAccessibilityDisplay = () => {
+    if (!needsSupport) return t('visitor.noSupportSummary');
+    const selected = ACCESSIBILITY_OPTIONS
+      .filter((item) => accessibility[item.id])
+      .map((item) => t(item.labelKey));
+    return selected.length ? selected.join(', ') : t('visitor.needSupportSummary');
+  };
+
   /*
    * ENVIAR SOLICITAÇÃO
    */
@@ -898,12 +926,12 @@ export default function VisitorEntryScreen({
               updated
             ) => {
               Alert.alert(
-                'Autorização confirmada',
-                'A recepção confirmou sua visita. O destino e o tempo autorizado já estão disponíveis no Navora.',
+                t('visitor.authConfirmedTitle'),
+                t('visitor.authConfirmed'),
                 [
                   {
                     text:
-                      'Agora não',
+                      t('visitor.notNow'),
 
                     style:
                       'cancel',
@@ -911,7 +939,7 @@ export default function VisitorEntryScreen({
 
                   {
                     text:
-                      'Ver autorização',
+                      t('visitor.seeAuthorization'),
 
                     onPress: () =>
                       navigate(
@@ -932,12 +960,12 @@ export default function VisitorEntryScreen({
               request,
             }) => {
               Alert.alert(
-                'Tempo de visita',
-                `Faltam aproximadamente ${minutes} minutos para o término da sua autorização.`,
+                t('visitor.visitTimeTitle'),
+                t('visitor.visitTimeLeft', { minutes }),
                 [
                   {
                     text:
-                      'Continuar',
+                      t('visitor.continue'),
 
                     style:
                       'cancel',
@@ -945,7 +973,7 @@ export default function VisitorEntryScreen({
 
                   {
                     text:
-                      'Ver opções',
+                      t('visitor.seeOptions'),
 
                     onPress: () =>
                       navigate(
@@ -964,12 +992,12 @@ export default function VisitorEntryScreen({
               request
             ) => {
               Alert.alert(
-                'Tempo de visita encerrado',
-                'O tempo autorizado terminou. Dirija-se à saída ou à recepção.',
+                t('visitor.visitOverTitle'),
+                t('visitor.visitOver'),
                 [
                   {
                     text:
-                      'Ir para início',
+                      t('visitor.goHome'),
 
                     onPress: () =>
                       navigate(
@@ -1006,12 +1034,12 @@ export default function VisitorEntryScreen({
   return (
     <Screen>
       <Header
-        title="Visitante"
-        subtitle={
+        title={t('visitor.headerTitle')}
+        subtitle={t(
           STEP_TITLES[
             step
           ]
-        }
+        )}
         onBack={
           previousStep
         }
@@ -1060,7 +1088,7 @@ export default function VisitorEntryScreen({
               },
             ]}
           >
-            Quem vai usar o app?
+            {t('visitor.step0')}
           </Text>
 
           <Text
@@ -1073,12 +1101,12 @@ export default function VisitorEntryScreen({
               },
             ]}
           >
-            Precisamos apenas dos dados básicos para identificar sua solicitação.
+            {t('visitor.basicData')}
           </Text>
 
 
           <Field
-            label="Nome completo"
+            label={t('visitor.fullName')}
             required
             value={
               fullName
@@ -1086,7 +1114,7 @@ export default function VisitorEntryScreen({
             onChangeText={
               updateName
             }
-            placeholder="Ex.: Maria Silva"
+            placeholder={t('visitor.fullNamePlaceholder')}
             autoCapitalize="words"
             appColors={
               appColors
@@ -1095,7 +1123,7 @@ export default function VisitorEntryScreen({
 
 
           <Field
-            label="Telefone"
+            label={t('visitor.phone')}
             value={phone}
             onChangeText={
               updatePhone
@@ -1110,14 +1138,14 @@ export default function VisitorEntryScreen({
 
 
           <Field
-            label="Data de nascimento"
+            label={t('visitor.birthDate')}
             value={
               birthDate
             }
             onChangeText={
               updateBirth
             }
-            placeholder="DD/MM/AAAA"
+            placeholder={t('visitor.birthDatePlaceholder')}
             keyboardType="number-pad"
             maxLength={10}
             appColors={
@@ -1158,7 +1186,7 @@ export default function VisitorEntryScreen({
                   { color: appColors.text },
                 ]}
               >
-                Lembrar meus dados neste celular
+                {t('visitor.rememberTitle')}
               </Text>
 
               <Text
@@ -1167,7 +1195,7 @@ export default function VisitorEntryScreen({
                   { color: appColors.muted },
                 ]}
               >
-                Na próxima visita, nome, telefone e nascimento já vêm preenchidos. Fica guardado só neste aparelho.
+                {t('visitor.rememberText')}
               </Text>
             </View>
           </Pressable>
@@ -1190,7 +1218,7 @@ export default function VisitorEntryScreen({
                   { color: appColors.danger },
                 ]}
               >
-                Esquecer meus dados
+                {t('visitor.forget')}
               </Text>
             </Pressable>
           ) : null}
@@ -1210,7 +1238,7 @@ export default function VisitorEntryScreen({
               },
             ]}
           >
-            Qual é o objetivo da visita?
+            {t('visitor.purposeQuestion')}
           </Text>
 
 
@@ -1228,12 +1256,8 @@ export default function VisitorEntryScreen({
                   icon={
                     item.icon
                   }
-                  title={
-                    item.title
-                  }
-                  text={
-                    item.text
-                  }
+                  title={t(item.titleKey)}
+                  text={t(item.textKey)}
                   selected={
                     purpose ===
                     item.id
@@ -1278,12 +1302,12 @@ export default function VisitorEntryScreen({
                   },
                 ]}
               >
-                Paciente
+                {t('visitor.patient')}
               </Text>
 
 
               <Field
-                label="Nome do paciente"
+                label={t('visitor.patientName')}
                 required
                 value={
                   patientName
@@ -1293,7 +1317,7 @@ export default function VisitorEntryScreen({
                     sanitizeName(value)
                   )
                 }
-                placeholder="Ex.: Ana Souza"
+                placeholder={t('visitor.patientNamePlaceholder')}
                 autoCapitalize="words"
                 appColors={
                   appColors
@@ -1311,7 +1335,7 @@ export default function VisitorEntryScreen({
                   },
                 ]}
               >
-                Você sabe onde o paciente está?
+                {t('visitor.knowWhere')}
               </Text>
 
 
@@ -1321,7 +1345,7 @@ export default function VisitorEntryScreen({
                 }
               >
                 <ChoiceButton
-                  label="Sim"
+                  label={t('visitor.yes')}
                   selected={
                     patientLocationKnown ===
                     true
@@ -1337,7 +1361,7 @@ export default function VisitorEntryScreen({
                 />
 
                 <ChoiceButton
-                  label="Não sei"
+                  label={t('visitor.dontKnow')}
                   selected={
                     patientLocationKnown ===
                     false
@@ -1361,7 +1385,7 @@ export default function VisitorEntryScreen({
               {patientLocationKnown ===
                 true && (
                 <Field
-                  label="Setor, quarto ou local"
+                  label={t('visitor.patientLocation')}
                   required
                   value={
                     patientLocation
@@ -1369,7 +1393,7 @@ export default function VisitorEntryScreen({
                   onChangeText={
                     setPatientLocation
                   }
-                  placeholder="Ex.: Internação, quarto 204"
+                  placeholder={t('visitor.patientLocationPlaceholder')}
                   appColors={
                     appColors
                   }
@@ -1405,7 +1429,7 @@ export default function VisitorEntryScreen({
                     },
                   ]}
                 >
-                  O Navora não confirma internação ou quarto antes da validação presencial. A recepção confirmará essas informações.
+                  {t('visitor.securityNotice')}
                 </Text>
               </View>
             </View>
@@ -1430,7 +1454,7 @@ export default function VisitorEntryScreen({
                 ]}
               >
                 <Field
-                  label="Pessoa, setor ou destino"
+                  label={t('visitor.destinationLabel')}
                   required={
                     purpose ===
                     'OTHER'
@@ -1444,8 +1468,8 @@ export default function VisitorEntryScreen({
                   placeholder={
                     purpose ===
                     'OTHER'
-                      ? 'Informe o destino'
-                      : 'Opcional'
+                      ? t('visitor.destinationRequired')
+                      : t('visitor.optional')
                   }
                   appColors={
                     appColors
@@ -1483,7 +1507,7 @@ export default function VisitorEntryScreen({
               },
             ]}
           >
-            Você está acompanhado?
+            {t('visitor.accompaniedQuestion')}
           </Text>
 
           <Text
@@ -1496,7 +1520,7 @@ export default function VisitorEntryScreen({
               },
             ]}
           >
-            Se houver acompanhantes, informe o nome completo e o tipo de cada pessoa.
+            {t('visitor.accompaniedHint')}
           </Text>
 
 
@@ -1506,7 +1530,7 @@ export default function VisitorEntryScreen({
             }
           >
             <ChoiceButton
-              label="Não"
+              label={t('visitor.no')}
               selected={
                 !accompanied
               }
@@ -1525,7 +1549,7 @@ export default function VisitorEntryScreen({
             />
 
             <ChoiceButton
-              label="Sim"
+              label={t('visitor.yes')}
               selected={
                 accompanied
               }
@@ -1642,7 +1666,7 @@ export default function VisitorEntryScreen({
                     },
                   ]}
                 >
-                  Adicionar outro acompanhante
+                  {t('visitor.addCompanion')}
                 </Text>
               </Pressable>
 
@@ -1657,7 +1681,7 @@ export default function VisitorEntryScreen({
                   },
                 ]}
               >
-                Total: {companionTotal} acompanhante(s)
+                {t('visitor.companionsTotal', { n: companionTotal })}
               </Text>
             </View>
           )}
@@ -1692,7 +1716,7 @@ export default function VisitorEntryScreen({
                 },
               ]}
             >
-              Alguém precisa de apoio?
+              {t('visitor.supportQuestion')}
             </Text>
 
 
@@ -1702,7 +1726,7 @@ export default function VisitorEntryScreen({
               }
             >
               <ChoiceButton
-                label="Não preciso"
+                label={t('visitor.noSupport')}
                 selected={
                   !needsSupport
                 }
@@ -1721,7 +1745,7 @@ export default function VisitorEntryScreen({
               />
 
               <ChoiceButton
-                label="Preciso de apoio"
+                label={t('visitor.needSupport')}
                 selected={
                   needsSupport
                 }
@@ -1753,9 +1777,7 @@ export default function VisitorEntryScreen({
                     icon={
                       item.icon
                     }
-                    title={
-                      item.label
-                    }
+                    title={t(item.labelKey)}
                     selected={
                       Boolean(
                         accessibility[
@@ -1811,13 +1833,13 @@ export default function VisitorEntryScreen({
                 },
               ]}
             >
-              Após enviar, você deverá ir obrigatoriamente à recepção para confirmar sua presença e os dados da visita.
+              {t('visitor.reviewNotice')}
             </Text>
           </View>
 
 
           <ReviewSection
-            title="Identificação"
+            title={t('visitor.identification')}
             onEdit={() =>
               setStep(0)
             }
@@ -1826,7 +1848,7 @@ export default function VisitorEntryScreen({
             }
           >
             <ReviewLine
-              label="Nome"
+              label={t('visitor.name')}
               value={
                 fullName
               }
@@ -1836,10 +1858,10 @@ export default function VisitorEntryScreen({
             />
 
             <ReviewLine
-              label="Telefone"
+              label={t('visitor.phone')}
               value={
                 phone ||
-                'Não informado'
+                t('common.notInformed')
               }
               appColors={
                 appColors
@@ -1847,10 +1869,10 @@ export default function VisitorEntryScreen({
             />
 
             <ReviewLine
-              label="Nascimento"
+              label={t('visitor.birth')}
               value={
                 birthDate ||
-                'Não informado'
+                t('common.notInformed')
               }
               appColors={
                 appColors
@@ -1860,7 +1882,7 @@ export default function VisitorEntryScreen({
 
 
           <ReviewSection
-            title="Visita"
+            title={t('visitor.visit')}
             onEdit={() =>
               setStep(1)
             }
@@ -1869,9 +1891,9 @@ export default function VisitorEntryScreen({
             }
           >
             <ReviewLine
-              label="Motivo"
+              label={t('visitor.reason')}
               value={
-                selectedPurpose?.title
+                selectedPurpose ? t(selectedPurpose.titleKey) : ''
               }
               appColors={
                 appColors
@@ -1881,7 +1903,7 @@ export default function VisitorEntryScreen({
             {isPatientVisit && (
               <>
                 <ReviewLine
-                  label="Paciente"
+                  label={t('visitor.patient')}
                   value={
                     patientName
                   }
@@ -1891,11 +1913,11 @@ export default function VisitorEntryScreen({
                 />
 
                 <ReviewLine
-                  label="Local"
+                  label={t('visitor.location')}
                   value={
                     patientLocationKnown
                       ? patientLocation
-                      : 'Não sei'
+                      : t('visitor.dontKnow')
                   }
                   appColors={
                     appColors
@@ -1907,7 +1929,7 @@ export default function VisitorEntryScreen({
 
 
           <ReviewSection
-            title="Acompanhantes"
+            title={t('visitor.step2')}
             onEdit={() =>
               setStep(2)
             }
@@ -1919,8 +1941,8 @@ export default function VisitorEntryScreen({
             companionTotal ===
               0 ? (
               <ReviewLine
-                label="Acompanhantes"
-                value="Nenhum"
+                label={t('visitor.step2')}
+                value={t('visitor.none')}
                 appColors={
                   appColors
                 }
@@ -1928,7 +1950,7 @@ export default function VisitorEntryScreen({
             ) : (
               <>
                 <ReviewLine
-                  label="Quantidade"
+                  label={t('visitor.quantity')}
                   value={String(
                     companionTotal
                   )}
@@ -1946,12 +1968,8 @@ export default function VisitorEntryScreen({
                       key={
                         companion.id
                       }
-                      label={`Acompanhante ${
-                        index + 1
-                      }`}
-                      value={`${companion.name.trim()} • ${companionTypeLabel(
-                        companion.type
-                      )}`}
+                      label={t('visitor.companionN', { n: index + 1 })}
+                      value={`${companion.name.trim()} • ${t(`visitor.companion_${companion.type}`)}`}
                       appColors={
                         appColors
                       }
@@ -1964,7 +1982,7 @@ export default function VisitorEntryScreen({
 
 
           <ReviewSection
-            title="Acessibilidade"
+            title={t('visitor.step3')}
             onEdit={() =>
               setStep(3)
             }
@@ -1973,9 +1991,9 @@ export default function VisitorEntryScreen({
             }
           >
             <ReviewLine
-              label="Apoio"
+              label={t('visitor.support')}
               value={
-                getAccessibilityText()
+                getAccessibilityDisplay()
               }
               appColors={
                 appColors
@@ -2008,7 +2026,7 @@ export default function VisitorEntryScreen({
               styles.primaryText
             }
           >
-            Continuar
+            {t('visitor.continue')}
           </Text>
 
           <MaterialCommunityIcons
@@ -2026,7 +2044,7 @@ export default function VisitorEntryScreen({
             { color: appColors.muted },
           ]}
         >
-          Ao enviar, seu nome e o motivo da visita vão para a recepção do hospital, só para autorizar e acompanhar esta visita. Mais detalhes em Menu → Privacidade.
+          {t('visitor.privacyNotice')}
         </Text>
         <Pressable
           onPress={
@@ -2062,8 +2080,8 @@ export default function VisitorEntryScreen({
             }
           >
             {submitting
-              ? 'Enviando...'
-              : 'Enviar solicitação de visita'}
+              ? t('visitor.sending')
+              : t('visitor.send')}
           </Text>
         </Pressable>
         </>
@@ -2119,6 +2137,7 @@ function Field({
   appColors,
   ...props
 }) {
+  const { t } = useApp();
   return (
     <View
       style={
@@ -2154,8 +2173,8 @@ function Field({
           ]}
         >
           {required
-            ? 'Obrigatório'
-            : 'Opcional'}
+            ? t('visitor.required')
+            : t('visitor.optional')}
         </Text>
       </View>
 
@@ -2352,6 +2371,7 @@ function CompanionCard({
   onChangeType,
   onRemove,
 }) {
+  const { t } = useApp();
   return (
     <View
       style={[
@@ -2386,7 +2406,7 @@ function CompanionCard({
               },
             ]}
           >
-            Acompanhante {index + 1}
+            {t('visitor.companionN', { n: index + 1 })}
           </Text>
 
           <Text
@@ -2399,7 +2419,7 @@ function CompanionCard({
               },
             ]}
           >
-            Nome completo obrigatório
+            {t('visitor.fullNameRequired')}
           </Text>
         </View>
 
@@ -2433,7 +2453,7 @@ function CompanionCard({
 
 
       <Field
-        label="Nome completo"
+        label={t('visitor.fullName')}
         required
         value={
           companion.name
@@ -2443,7 +2463,7 @@ function CompanionCard({
             sanitizeName(value)
           )
         }
-        placeholder="Ex.: João da Silva"
+        placeholder={t('visitor.fullNamePlaceholder')}
         autoCapitalize="words"
         appColors={
           appColors
@@ -2461,7 +2481,7 @@ function CompanionCard({
           },
         ]}
       >
-        Tipo
+        {t('visitor.type')}
       </Text>
 
 
@@ -2471,7 +2491,7 @@ function CompanionCard({
         }
       >
         <ChoiceButton
-          label="Adulto"
+          label={t('visitor.companion_adult')}
           selected={
             companion.type ===
             'adult'
@@ -2487,7 +2507,7 @@ function CompanionCard({
         />
 
         <ChoiceButton
-          label="Criança"
+          label={t('visitor.companion_child')}
           selected={
             companion.type ===
             'child'
@@ -2503,7 +2523,7 @@ function CompanionCard({
         />
 
         <ChoiceButton
-          label="Idoso"
+          label={t('visitor.companion_elderly')}
           selected={
             companion.type ===
             'elderly'
@@ -2529,6 +2549,7 @@ function ReviewSection({
   appColors,
   children,
 }) {
+  const { t } = useApp();
   return (
     <View
       style={[
@@ -2578,7 +2599,7 @@ function ReviewSection({
               },
             ]}
           >
-            Editar
+            {t('visitor.edit')}
           </Text>
         </Pressable>
       </View>

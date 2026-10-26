@@ -79,6 +79,7 @@ export default function VisitorAccessStatusScreen({
 }) {
   const {
     appColors,
+    t,
   } = useApp();
 
 
@@ -129,10 +130,11 @@ export default function VisitorAccessStatusScreen({
       () =>
         getRemainingTime(
           request,
-          now
+          now,
+          t
         ),
 
-      [request, now]
+      [request, now, t]
     );
 
 
@@ -374,10 +376,10 @@ export default function VisitorAccessStatusScreen({
     '#B77900';
 
   let title =
-    'Aguardando validação';
+    t('visitorStatus.pendingTitle');
 
   let description =
-    'Sua solicitação foi enviada. Vá até a recepção para confirmar presencialmente seus dados e concluir a liberação.';
+    t('visitorStatus.pendingText');
 
 
   if (approved && !expired) {
@@ -388,10 +390,10 @@ export default function VisitorAccessStatusScreen({
       appColors.success;
 
     title =
-      'Autorização confirmada';
+      t('visitorStatus.approvedTitle');
 
     description =
-      'A recepção confirmou sua visita. Você já pode iniciar a rota autorizada.';
+      t('visitorStatus.approvedText');
   }
 
 
@@ -403,10 +405,10 @@ export default function VisitorAccessStatusScreen({
       appColors.danger;
 
     title =
-      'Tempo de visita encerrado';
+      t('visitorStatus.expiredTitle');
 
     description =
-      'Dirija-se à saída ou volte à recepção caso precise de orientação ou mais tempo.';
+      t('visitorStatus.expiredText');
   }
 
 
@@ -418,18 +420,18 @@ export default function VisitorAccessStatusScreen({
       appColors.danger;
 
     title =
-      'Visita não liberada';
+      t('visitorStatus.deniedTitle');
 
     description =
-      'Procure a recepção para receber orientação.';
+      t('visitorStatus.deniedText');
   }
 
 
   return (
     <Screen>
       <Header
-        title="Autorização"
-        subtitle="Visita hospitalar"
+        title={t('visitorStatus.title')}
+        subtitle={t('visitorStatus.subtitle')}
         centerTitle
         onBack={() =>
           navigate('Home')
@@ -515,10 +517,12 @@ export default function VisitorAccessStatusScreen({
           ]}
         >
           <Info
-            label="Solicitação"
+            label={t('visitorStatus.request')}
             value={
-              request?.requestedDestination ||
-              'Visita'
+              (typeof request?.requestedDestination === 'string'
+                ? request.requestedDestination
+                : request?.requestedDestination?.name) ||
+              t('visitorStatus.visit')
             }
             appColors={
               appColors
@@ -527,10 +531,10 @@ export default function VisitorAccessStatusScreen({
 
 
           <Info
-            label="Recepção"
+            label={t('visitorStatus.reception')}
             value={
               reception?.name ||
-              'Recepção'
+              t('visitorStatus.reception')
             }
             appColors={
               appColors
@@ -541,7 +545,7 @@ export default function VisitorAccessStatusScreen({
           {approved &&
             request?.allowedRoute && (
             <Info
-              label="Rota liberada"
+              label={t('visitorStatus.allowedRoute')}
               value={
                 request.allowedRoute
               }
@@ -556,7 +560,7 @@ export default function VisitorAccessStatusScreen({
             (request?.sector ||
               request?.floor) && (
             <Info
-              label="Destino confirmado"
+              label={t('visitorStatus.confirmedDestination')}
               value={[
                 request?.sector,
                 request?.floor,
@@ -604,7 +608,7 @@ export default function VisitorAccessStatusScreen({
                     },
                   ]}
                 >
-                  TEMPO RESTANTE
+                  {t('visitorStatus.timeLeft')}
                 </Text>
 
                 <Text
@@ -657,7 +661,7 @@ export default function VisitorAccessStatusScreen({
                 },
               ]}
             >
-              Você pode continuar usando o Navora enquanto aguarda. Banheiros, recepção, lanchonete e outras áreas públicas continuam disponíveis.
+              {t('visitorStatus.whileWaiting')}
             </Text>
           </View>
         )}
@@ -693,7 +697,7 @@ export default function VisitorAccessStatusScreen({
               styles.primaryText
             }
           >
-            Iniciar rota autorizada
+            {t('visitorStatus.startRoute')}
           </Text>
         </Pressable>
       )}
@@ -729,7 +733,7 @@ export default function VisitorAccessStatusScreen({
               styles.primaryText
             }
           >
-            Ir até a recepção
+            {t('visitorStatus.goToReception')}
           </Text>
         </Pressable>
       )}
@@ -764,7 +768,7 @@ export default function VisitorAccessStatusScreen({
                 styles.primaryText
               }
             >
-              Ir para a saída
+              {t('visitorStatus.goToExit')}
             </Text>
           </Pressable>
 
@@ -803,7 +807,7 @@ export default function VisitorAccessStatusScreen({
                 },
               ]}
             >
-              Pedir mais tempo
+              {t('visitorStatus.askMoreTime')}
             </Text>
           </Pressable>
         </>
@@ -863,8 +867,8 @@ export default function VisitorAccessStatusScreen({
             ]}
           >
             {refreshing
-              ? 'Atualizando...'
-              : 'Atualizar status'}
+              ? t('visitorStatus.refreshing')
+              : t('visitorStatus.refresh')}
           </Text>
         </Pressable>
       )}
@@ -907,7 +911,7 @@ export default function VisitorAccessStatusScreen({
               },
             ]}
           >
-            Voltar à recepção
+            {t('visitorStatus.backToReception')}
           </Text>
         </Pressable>
       )}
@@ -949,7 +953,7 @@ export default function VisitorAccessStatusScreen({
             },
           ]}
         >
-          Falar com a recepção
+          {t('visitorStatus.talkToReception')}
         </Text>
       </Pressable>
 
@@ -990,7 +994,7 @@ export default function VisitorAccessStatusScreen({
             },
           ]}
         >
-          Voltar para o início
+          {t('visitorStatus.backHome')}
         </Text>
       </Pressable>
 
@@ -1032,7 +1036,7 @@ export default function VisitorAccessStatusScreen({
               },
             ]}
           >
-            Cancelar solicitação
+            {t('visitorStatus.cancelRequest')}
           </Text>
         </Pressable>
       )}
@@ -1096,7 +1100,7 @@ function normalizeRequest(
 
     allowedTime:
       updated?.permission_minutes
-        ? `${updated.permission_minutes} minutos`
+        ? `${updated.permission_minutes} min`
         : updated?.allowed_time ||
           fallback?.allowedTime,
 
@@ -1126,7 +1130,8 @@ function normalizeRequest(
 
 function getRemainingTime(
   request,
-  now
+  now,
+  t
 ) {
   let expiry = null;
 
@@ -1169,7 +1174,7 @@ function getRemainingTime(
     return {
       label:
         request?.allowedTime ||
-        'Definido pela recepção',
+        t('visitorStatus.setByReception'),
 
       expired: false,
 
