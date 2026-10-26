@@ -10,11 +10,13 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useApp } from '../context/AppContext';
 
 export const SplashScreen = ({
   onSplashFinish,
   duration = 4000,
 }) => {
+  const { t } = useApp();
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
 
@@ -165,7 +167,7 @@ export const SplashScreen = ({
             />
           </View>
 
-          <Text style={styles.loadingText}>Carregando...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
       </View>
     </View>

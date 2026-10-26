@@ -51,6 +51,7 @@ export default function Header({
 
   const {
     appColors,
+    t,
   } = useApp();
 
   const availableWidth =
@@ -131,7 +132,7 @@ export default function Header({
             disabled={!onMenu}
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Abrir menu"
+            accessibilityLabel={t('header.openMenu')}
             style={({ pressed }) => [
               styles.iconButton,
 
@@ -219,7 +220,7 @@ export default function Header({
             }
             hitSlop={8}
             accessibilityRole="button"
-            accessibilityLabel="Abrir notificações"
+            accessibilityLabel={t('header.openNotifications')}
             style={({ pressed }) => [
               styles.iconButton,
 
@@ -295,7 +296,7 @@ export default function Header({
               onPress={onBack}
               hitSlop={8}
               accessibilityRole="button"
-              accessibilityLabel="Voltar"
+              accessibilityLabel={t('header.back')}
               style={({ pressed }) => [
                 styles.backButton,
 

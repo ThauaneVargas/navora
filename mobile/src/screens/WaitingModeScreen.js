@@ -6,56 +6,60 @@ import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
 import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import { localeFor } from '../i18n';
 
 export default function WaitingModeScreen({ navigate, goBack, routeParams = {}, activeRoute: selectedRoute, userProfile }) {
-  const { appColors: colors } = useApp();
+  const { appColors: colors, t, language } = useApp();
   const styles = useThemeStyles();
-  const { currentLocation: fallbackLocation, activeRoute: fallbackRoute } = useApp();
-  const activeRoute = selectedRoute || fallbackRoute;
-  const currentLocation = {
-    ...fallbackLocation,
-    name: userProfile?.currentLocation || fallbackLocation.name,
-    beacon: userProfile?.currentBeacon || fallbackLocation.beacon,
-  };
-  const destination = routeParams.destination || activeRoute.destination;
+  const rawDestination = routeParams.destination || selectedRoute?.destination;
+  const destination = typeof rawDestination === 'string' ? rawDestination : rawDestination?.name || '';
+  const lastPosition = userProfile?.currentLocation || null;
+  const entrance = userProfile?.entryLabel || null;
+  const accessibility = userProfile?.accessibility || {};
+  const preferences = ['wheelchair', 'avoidStairs', 'preferElevator', 'voiceGuidance']
+    .filter((key) => accessibility[key])
+    .map((key) => t(`waiting.pref_${key}`));
+  const preferenceText = preferences.length ? preferences.join(', ') : t('waiting.prefStandard');
   const startedAt = useMemo(() => {
     const now = new Date();
-    return now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  }, []);
+    return now.toLocaleTimeString(localeFor(language), { hour: '2-digit', minute: '2-digit' });
+  }, [language]);
 
   return (
     <Screen withBottomTabs>
-      <Header title="Modo espera" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title={t('waiting.title')} centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.hero, shadows.card]}>
         <View style={styles.heroIcon}>
           <MaterialCommunityIcons name="timer-sand" size={34} color="#FFFFFF" />
         </View>
-        <Text style={styles.heroTitle}>Você chegou em {destination}</Text>
+        <Text style={styles.heroTitle}>
+          {destination ? t('waiting.arrivedAt', { destination }) : t('waiting.arrived')}
+        </Text>
         <Text style={styles.heroText}>
-          O Navora mantém sua rota ativa e pode chamar ajuda se você precisar.
+          {t('waiting.heroText')}
         </Text>
         <View style={styles.statusPill}>
           <View style={styles.statusDot} />
-          <Text style={styles.statusText}>Aguardando atendimento</Text>
+          <Text style={styles.statusText}>{t('waiting.waitingCare')}</Text>
         </View>
       </View>
 
       <View style={styles.grid}>
-        <Metric icon="clock-outline" label="Modo iniciado" value={startedAt} />
-        <Metric icon="map-marker-radius" label="Local atual" value={destination} />
+        <Metric icon="clock-outline" label={t('waiting.startedAt')} value={startedAt} />
+        {destination ? <Metric icon="map-marker-radius" label={t('waiting.currentPlace')} value={destination} /> : null}
       </View>
 
       <View style={[styles.infoCard, shadows.card]}>
-        <Text style={styles.sectionTitle}>Informações para a equipe</Text>
-        <InfoRow icon="map-marker" label="Última posição" value={`${currentLocation.name} - ${currentLocation.floor}`} />
-        <InfoRow icon="map-marker-check-outline" label="Entrada confirmada" value={currentLocation.name} />
-        <InfoRow icon="walk" label="Preferência de rota" value="Acessível, com elevador e voz" />
+        <Text style={styles.sectionTitle}>{t('waiting.forStaff')}</Text>
+        {lastPosition ? <InfoRow icon="map-marker" label={t('waiting.lastPosition')} value={lastPosition} /> : null}
+        {entrance ? <InfoRow icon="map-marker-check-outline" label={t('waiting.entrance')} value={entrance} /> : null}
+        <InfoRow icon="walk" label={t('waiting.routePreference')} value={preferenceText} />
       </View>
 
       <View style={[styles.helpPanel, shadows.card]}>
-        <Text style={styles.helpTitle}>Precisa de ajuda?</Text>
-        <Text style={styles.helpText}>Escolha o atendimento sem sair do modo espera.</Text>
+        <Text style={styles.helpTitle}>{t('waiting.needHelp')}</Text>
+        <Text style={styles.helpText}>{t('waiting.needHelpSub')}</Text>
 
         <View style={styles.actions}>
           <Pressable
@@ -63,7 +67,7 @@ export default function WaitingModeScreen({ navigate, goBack, routeParams = {}, 
             style={({ pressed }) => [styles.lightAction, pressed && styles.pressed]}
           >
             <MaterialCommunityIcons name="hand-heart-outline" size={21} color={colors.primary} />
-            <Text style={styles.lightActionText}>Chamar ajuda</Text>
+            <Text style={styles.lightActionText}>{t('waiting.callHelp')}</Text>
           </Pressable>
 
           <Pressable
@@ -71,7 +75,7 @@ export default function WaitingModeScreen({ navigate, goBack, routeParams = {}, 
             style={({ pressed }) => [styles.lightAction, pressed && styles.pressed]}
           >
             <MaterialCommunityIcons name="doctor" size={21} color={colors.primary} />
-            <Text style={styles.lightActionText}>Solicitar medico</Text>
+            <Text style={styles.lightActionText}>{t('waiting.requestDoctor')}</Text>
           </Pressable>
         </View>
 
@@ -80,7 +84,7 @@ export default function WaitingModeScreen({ navigate, goBack, routeParams = {}, 
           style={({ pressed }) => [styles.sosButton, pressed && styles.pressed, shadows.soft]}
         >
           <MaterialCommunityIcons name="alarm-light-outline" size={22} color="#FFFFFF" />
-          <Text style={styles.sosText}>SOS emergencia</Text>
+          <Text style={styles.sosText}>{t('waiting.sos')}</Text>
         </Pressable>
       </View>
 
@@ -89,7 +93,7 @@ export default function WaitingModeScreen({ navigate, goBack, routeParams = {}, 
         style={({ pressed }) => [styles.finishButton, pressed && styles.pressed]}
       >
         <MaterialCommunityIcons name="check-circle-outline" size={20} color={colors.primary} />
-        <Text style={styles.finishText}>Finalizar atendimento</Text>
+        <Text style={styles.finishText}>{t('waiting.finish')}</Text>
       </Pressable>
 
       <BottomTabs active="Home" navigate={navigate} hideRouteBar />
