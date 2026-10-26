@@ -42,7 +42,7 @@ const toBackendAccessibility = (value = {}) =>
   );
 
 export default function PatientAccessibilitySetupScreen({ navigate, goBack, routeParams = {}, onPatientReady, userProfile }) {
-  const { appColors: colors } = useApp();
+  const { appColors: colors, t } = useApp();
   const styles = useThemeStyles();
   const area = routeParams.area || userProfile?.area || 'private';
   const patientDraft = routeParams.patient || userProfile || {};
@@ -74,7 +74,7 @@ export default function PatientAccessibilitySetupScreen({ navigate, goBack, rout
       navigate('ArrivalPreparation');
     } catch (error) {
       if (isAuthError(error)) {
-        Alert.alert('Sessão expirada', 'Entre novamente para salvar suas preferências.');
+        Alert.alert(t('accessSetup.sessionExpiredTitle'), t('accessSetup.sessionExpired'));
         return;
       }
       onPatientReady?.({ ...localPatient, authSource: patientDraft.authSource || 'fallback' });
@@ -87,8 +87,8 @@ export default function PatientAccessibilitySetupScreen({ navigate, goBack, rout
   return (
     <Screen>
       <Header
-        title="Acessibilidade"
-        subtitle="Selecione apenas o que você precisa."
+        title={t('accessSetup.title')}
+        subtitle={t('accessSetup.subtitle')}
         onBack={() => goBack?.()}
         onMenu={() => navigate('Menu')}
       />
@@ -96,22 +96,22 @@ export default function PatientAccessibilitySetupScreen({ navigate, goBack, rout
         <View style={styles.heroIcon}>
           <MaterialCommunityIcons name="wheelchair-accessibility" size={28} color="#FFFFFF" />
         </View>
-        <Text style={styles.heroText}>Estas preferências ficam salvas no seu perfil de paciente.</Text>
+        <Text style={styles.heroText}>{t('accessSetup.hero')}</Text>
       </View>
       <View style={[styles.card, shadows.card]}>
-        {options.map(([key, label, icon]) => {
+        {options.map(([key, , icon]) => {
           const active = Boolean(selected[key]);
           return (
             <Pressable key={key} onPress={() => toggle(key)} style={[styles.row, active && styles.rowActive]}>
               <View style={styles.icon}><MaterialCommunityIcons name={icon} size={20} color={colors.primary} /></View>
-              <Text style={styles.rowText}>{label}</Text>
+              <Text style={styles.rowText}>{t(`accessSetup.opt_${key}`)}</Text>
               <MaterialCommunityIcons name={active ? 'toggle-switch' : 'toggle-switch-off-outline'} size={34} color={active ? colors.primary : colors.muted} />
             </Pressable>
           );
         })}
       </View>
       <Pressable disabled={loading} onPress={save} style={({ pressed }) => [styles.primary, pressed && styles.pressed, loading && styles.disabled, shadows.soft]}>
-        {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>Salvar e continuar</Text>}
+        {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>{t('accessSetup.save')}</Text>}
       </Pressable>
     </Screen>
   );

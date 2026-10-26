@@ -7,6 +7,7 @@ import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 
 export default function CareAreaChoiceScreen({ navigate, goBack, onAreaDetected }) {
+  const { t } = useApp();
   const styles = useThemeStyles();
   const chooseArea = (area) => {
     if (area !== 'unknown') onAreaDetected?.(area);
@@ -16,8 +17,8 @@ export default function CareAreaChoiceScreen({ navigate, goBack, onAreaDetected 
   return (
     <Screen>
       <Header
-        title="Para qual atendimento você deseja ir?"
-        subtitle="Escolha a área correta para receber a rota até a entrada do hospital."
+        title={t('careArea.title')}
+        subtitle={t('careArea.subtitle')}
         onBack={() => goBack?.()}
         onMenu={() => navigate('Menu')}
       />
@@ -25,20 +26,20 @@ export default function CareAreaChoiceScreen({ navigate, goBack, onAreaDetected 
         <View style={styles.heroMark}>
           <MaterialCommunityIcons name="hospital-marker" size={30} color="#FFFFFF" />
         </View>
-        <Text style={styles.heroText}>O Navora calcula a entrada certa antes de liberar a navegação interna.</Text>
+        <Text style={styles.heroText}>{t('careArea.hero')}</Text>
       </View>
 
-      <ChoiceCard icon="hospital-building" title="Unidade / entrada A" subtitle="Ambiente carregado pelo hospital ativo" detail="Entrada conforme dados atuais" onPress={() => chooseArea('private')} />
-      <ChoiceCard icon="medical-bag" title="Unidade / entrada B" subtitle="Outro ambiente disponível no hospital ativo" detail="Entrada conforme dados atuais" onPress={() => chooseArea('sus')} />
-      <ChoiceCard icon="help-circle-outline" title="Não sei meu atendimento" subtitle="Vamos te orientar até a recepção" detail="Confirmação presencial" onPress={() => chooseArea('unknown')} />
+      <ChoiceCard icon="hospital-building" title={t('careArea.unitA')} subtitle={t('careArea.unitASub')} detail={t('careArea.entranceByData')} onPress={() => chooseArea('private')} />
+      <ChoiceCard icon="medical-bag" title={t('careArea.unitB')} subtitle={t('careArea.unitBSub')} detail={t('careArea.entranceByData')} onPress={() => chooseArea('sus')} />
+      <ChoiceCard icon="help-circle-outline" title={t('careArea.unknown')} subtitle={t('careArea.unknownSub')} detail={t('careArea.inPerson')} onPress={() => chooseArea('unknown')} />
 
       <Pressable onPress={() => navigate('Assistant')} style={({ pressed }) => [styles.aiCard, pressed && styles.pressed, shadows.card]}>
         <View style={styles.aiIcon}>
           <MaterialCommunityIcons name="microphone" size={24} color="#FFFFFF" />
         </View>
         <View style={styles.copy}>
-          <Text style={styles.aiTitle}>Assistente Navora</Text>
-          <Text style={styles.aiText}>Posso ajudar você a escolher a entrada correta.</Text>
+          <Text style={styles.aiTitle}>{t('careArea.assistant')}</Text>
+          <Text style={styles.aiText}>{t('careArea.assistantSub')}</Text>
         </View>
       </Pressable>
     </Screen>

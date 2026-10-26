@@ -8,7 +8,7 @@ import { useApp } from '../context/AppContext';
 import { maskBirthDate, maskPhone, sanitizeName } from '../utils/masks';
 
 export default function PatientQuickRegisterScreen({ navigate, goBack, routeParams = {}, onPatientReady }) {
-  const { appColors } = useApp();
+  const { appColors, t } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
   const area = routeParams.area || 'private';
   const quick = routeParams.quick || false;
@@ -21,7 +21,7 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
 
   const continueFlow = () => {
     if (!quick && !name.trim()) {
-      Alert.alert('Nome completo', 'Informe seu nome completo para continuar.');
+      Alert.alert(t('quickRegister.errNameTitle'), t('quickRegister.errName'));
       return;
     }
 
@@ -59,8 +59,8 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
   return (
     <Screen>
       <Header
-        title={quick ? 'Acesso rápido' : 'Primeiro acesso'}
-        subtitle="Vamos preencher apenas o necessário para iniciar sua navegação."
+        title={quick ? t('quickRegister.quickTitle') : t('quickRegister.firstTitle')}
+        subtitle={t('quickRegister.subtitle')}
         onBack={() => goBack?.()}
         onMenu={() => navigate('Menu')}
       />
@@ -70,18 +70,18 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
             <MaterialCommunityIcons name="account-heart-outline" size={28} color="#FFFFFF" />
           </View>
           <View style={styles.copy}>
-            <Text style={styles.title}>{quick ? 'Continuar sem cadastro' : 'Vamos te conhecer rapidamente'}</Text>
-            <Text style={styles.subtitle}>Precisamos de algumas informações para te guiar melhor.</Text>
+            <Text style={styles.title}>{quick ? t('quickRegister.quickHero') : t('quickRegister.firstHero')}</Text>
+            <Text style={styles.subtitle}>{t('quickRegister.heroSub')}</Text>
           </View>
         </View>
         <View style={styles.authorizationCard}>
-          <Text style={styles.authorizationTitle}>Autorização e área</Text>
-          <Text style={styles.authorizationText}>Informe em qual unidade você está: HMC Marco Capute (SUS) ou HMC Private. Se não souber, você pode continuar para a home principal.</Text>
+          <Text style={styles.authorizationTitle}>{t('quickRegister.areaTitle')}</Text>
+          <Text style={styles.authorizationText}>{t('quickRegister.areaText')}</Text>
           <View style={styles.areaOptions}>
             {[
               { value: 'sus', label: 'HMC Marco Capute (SUS)' },
               { value: 'private', label: 'HMC Private' },
-              { value: 'unknown', label: 'Não sei / continuar' },
+              { value: 'unknown', label: t('quickRegister.areaUnknown') },
             ].map((option) => (
               <Pressable
                 key={option.value}
@@ -95,14 +95,14 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
         </View>
 
         <Input
-          label="Nome completo"
+          label={t('quickRegister.fullName')}
           value={name}
           onChangeText={(value) => setName(sanitizeName(value))}
-          placeholder="Seu nome completo"
+          placeholder={t('quickRegister.fullNamePlaceholder')}
           autoCapitalize="words"
         />
         <Input
-          label="Telefone opcional"
+          label={t('quickRegister.phoneOptional')}
           value={phone}
           onChangeText={(value) => setPhone(maskPhone(value))}
           placeholder="(00) 00000-0000"
@@ -110,28 +110,28 @@ export default function PatientQuickRegisterScreen({ navigate, goBack, routePara
           maxLength={15}
         />
         <Input
-          label="Data de nascimento opcional"
+          label={t('quickRegister.birthOptional')}
           value={birth}
           onChangeText={(value) => setBirth(maskBirthDate(value))}
-          placeholder="DD/MM/AAAA"
+          placeholder={t('quickRegister.birthPlaceholder')}
           keyboardType="number-pad"
           maxLength={10}
         />
-        <CheckRow title="Já sou paciente do hospital" active={alreadyPatient} onPress={() => setAlreadyPatient((value) => !value)} />
-        <Text style={styles.question}>Precisa de acessibilidade?</Text>
+        <CheckRow title={t('quickRegister.alreadyPatient')} active={alreadyPatient} onPress={() => setAlreadyPatient((value) => !value)} />
+        <Text style={styles.question}>{t('quickRegister.needsAccessibility')}</Text>
         <View style={styles.binary}>
           {['Sim', 'Não'].map((item) => (
             <Pressable key={item} onPress={() => setNeedsAccessibility(item === 'Sim')} style={[styles.binaryButton, needsAccessibility === (item === 'Sim') && styles.binaryActive]}>
-              <Text style={[styles.binaryText, needsAccessibility === (item === 'Sim') && styles.binaryTextActive]}>{item}</Text>
+              <Text style={[styles.binaryText, needsAccessibility === (item === 'Sim') && styles.binaryTextActive]}>{item === 'Sim' ? t('quickRegister.yes') : t('quickRegister.no')}</Text>
             </Pressable>
           ))}
         </View>
         <Pressable onPress={continueFlow} style={({ pressed }) => [styles.primary, pressed && styles.pressed]}>
-          <Text style={styles.primaryText}>Continuar</Text>
+          <Text style={styles.primaryText}>{t('quickRegister.continue')}</Text>
         </Pressable>
         {!quick ? (
           <Pressable onPress={continueFlow} style={styles.link}>
-            <Text style={styles.linkText}>Criar cadastro completo depois</Text>
+            <Text style={styles.linkText}>{t('quickRegister.laterFull')}</Text>
           </Pressable>
         ) : null}
       </View>

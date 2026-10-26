@@ -6,7 +6,7 @@ import { radii, shadows, spacing, typography } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 
 export default function HomeStartScreen({ navigate, onProfileDraft }) {
-  const { appColors: colors } = useApp();
+  const { appColors: colors, t } = useApp();
   const styles = useThemeStyles();
   const chooseProfile = (type) => {
     onProfileDraft?.({ type, area: 'private' });
@@ -28,28 +28,28 @@ export default function HomeStartScreen({ navigate, onProfileDraft }) {
         </View>
 
         <View style={styles.hero}>
-          <Text style={styles.title}>Seu guia inteligente no hospital</Text>
-          <Text style={styles.subtitle}>Escolha como deseja continuar. O Navora adapta a jornada para você.</Text>
+          <Text style={styles.title}>{t('start.title')}</Text>
+          <Text style={styles.subtitle}>{t('start.subtitle')}</Text>
         </View>
 
         <View style={styles.cards}>
           <ChoiceCard
             icon="account-heart-outline"
-            title="Sou Paciente"
-            subtitle="Acesse sua jornada, preferências e rotas."
+            title={t('start.patient')}
+            subtitle={t('start.patientSub')}
             onPress={() => chooseProfile('patient')}
           />
           <ChoiceCard
             icon="account-arrow-right-outline"
-            title="Sou Visitante"
-            subtitle="Cadastre sua visita e acompanhe a autorizacao."
+            title={t('start.visitor')}
+            subtitle={t('start.visitorSub')}
             onPress={() => chooseProfile('visitor')}
           />
         </View>
 
         <Pressable onPress={() => navigate('ExternalRoute', { area: 'unknown' })} style={({ pressed }) => [styles.secondary, pressed && styles.pressed]}>
           <MaterialCommunityIcons name="directions" size={18} color={colors.primary} />
-          <Text style={styles.secondaryText}>Como chegar ao hospital</Text>
+          <Text style={styles.secondaryText}>{t('start.howToGet')}</Text>
         </Pressable>
       </View>
     </Screen>
