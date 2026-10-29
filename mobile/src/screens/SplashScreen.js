@@ -84,9 +84,10 @@ const MAX_DURATION = 4000; // termina aqui mesmo se a API ainda não respondeu
 // carregava rápido). Mesma velocidade de quem vinha andando, desacelerando.
 const FINISH_BASE = 500;
 const FINISH_PER_ROUTE = 2600; // ms pra percorrer o caminho inteiro
-const PULSE_DURATION = 600;
-const FADE_DELAY = 250;
-const FADE_DURATION = 400;
+// Igual ao protótipo aprovado: o pulso em volta do pino toca inteiro e só depois a tela esmaece.
+const PULSE_DURATION = 700;
+const FADE_DELAY = 700;
+const FADE_DURATION = 500;
 
 const AHEAD_OPACITY = 0.2;
 
