@@ -123,6 +123,9 @@ export default function App() {
 
   const [navigationSource, setNavigationSource] = useState('fallback');
   const [navigationLoaded, setNavigationLoaded] = useState(false);
+  // Sessão/visita salva já conferida ao abrir o app (com ou sem sucesso).
+  // Junto com navigationLoaded, diz ao splash que ele pode terminar.
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   const [hospitalDetection, setHospitalDetection] = useState(() =>
     hospitalDetectionService.getSnapshot()
@@ -233,7 +236,11 @@ export default function App() {
       }
     };
 
-    restoreSession();
+    restoreSession()
+      .catch(() => {})
+      .finally(() => {
+        if (active) setSessionChecked(true);
+      });
 
     return () => {
       active = false;
@@ -2495,6 +2502,7 @@ export default function App() {
       <AppProvider>
         <SafeAreaProvider>
           <SplashScreen
+            ready={navigationLoaded && sessionChecked}
             onSplashFinish={() => {
               splashDoneRef.current = true;
               setScreenStack([

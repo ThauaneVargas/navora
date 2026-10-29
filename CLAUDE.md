@@ -160,6 +160,13 @@ Plano da usuária: piloto pago no hospital (HMC), Android **e** iOS, pacientes b
 - **Invasão de contas de serviço:** 2FA em GitHub, Render, banco, Google Cloud, Play Console e Apple; trocar `JWT_SECRET` e senha do banco (vazaram em conversa); contas individuais da equipe (sem senha compartilhada), desativar quem sair.
 - Ainda pendentes do `docs/lgpd.md`: registro de auditoria, plano de resposta a incidente.
 
+**24. Abertura com pino percorrendo o caminho (28/10) — branch `feat/splash-pino` (a partir da `chore/expo-sdk-58`), falta testar no celular**
+- `SplashScreen.js`: saiu a barrinha de progresso; o pino sai do começo do caminho, sobe pelas curvas crescendo de 40% até o tamanho do pino original do desenho, com pulso no chão ao chegar e esmaecimento para a cor de fundo do tema (`appColors.background`) antes do Login/Home. O trecho já percorrido fica bordô forte e o que falta fica a 20%. Texto "Carregando..." mantido.
+- Imagens novas geradas a partir de `camimho2.png`: `splash_fundo.jpg` (sem pino e sem caminho) e `splash_caminho.png` (só o caminho, com transparência). O recorte do trecho percorrido é uma máscara do `react-native-svg` com a linha central medida no desenho (tela de referência 390×844, esticada como o fundo). `camimho2.png` não é mais importado (ficou no repositório, fora do bundle).
+- Termina pelo carregamento real: `App.js` passa `ready={navigationLoaded && sessionChecked}` (`sessionChecked` novo, marcado no fim do `restoreSession`). Mínimo 1,5 s, máximo 4 s (o Render pode levar 30–50 s para acordar — não esperar por ele).
+- "Reduzir movimento" do celular (`AccessibilityInfo.isReduceMotionEnabled`): pino já aparece no fim, sem percorrer nem pulsar.
+- Protótipo aprovado pela usuária no canvas de design "Navora — Home atual".
+
 ## Nota de versão
 - Projeto está no **Expo SDK 58** (desde 24/10, branch `chore/expo-sdk-58`): React Native 0.88, React 19.3. O campo `android.edgeToEdge` saiu do `app.json` (no SDK 58 é sempre ligado).
 - **Compilar APK no Windows:** com RN 0.88 os arquivos C++ gerados passam de 260 caracteres. O plugin `mobile/plugins/withShortCmakeStaging.js` manda a pasta de trabalho do C++ pra `C:/cx`, mas com o projeto dentro de `C:\Users\thaua\OneDrive\Desktop\...` ainda estoura. Hoje o APK é compilado de uma cópia em `C:\nv\mobile` (robocopy da pasta `mobile`, **sem** excluir pastas `build` de dentro de `node_modules`). Solução definitiva sugerida: mover o projeto pra uma pasta curta fora do OneDrive (decisão da usuária).
