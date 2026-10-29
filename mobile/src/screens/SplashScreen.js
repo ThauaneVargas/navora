@@ -131,7 +131,7 @@ export const SplashScreen = ({
 }) => {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const { appColors } = useApp();
+  const { appColors, t } = useApp();
 
   const layout = useMemo(() => {
     const stageWidth = Math.min(width, 430);
@@ -396,7 +396,7 @@ export const SplashScreen = ({
         </View>
 
         <View style={styles.loadingArea}>
-          <Text style={styles.loadingText}>Carregando...</Text>
+          <Text style={styles.loadingText}>{t('common.loading')}</Text>
         </View>
 
         {/* Transição: esmaece para a cor de fundo da próxima tela (Login/Home), no tema atual. */}

@@ -14,7 +14,7 @@ import CenteredFormScreen from '../components/CenteredFormScreen';
 import { navoraApi, isNetworkError } from '../services/api';
 
 export default function ForgotPasswordScreen({ navigate, goBack }) {
-  const { appColors: colors } = useApp();
+  const { appColors: colors, t } = useApp();
   const styles = useThemeStyles();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
@@ -23,7 +23,7 @@ export default function ForgotPasswordScreen({ navigate, goBack }) {
   const handleSend = async () => {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !trimmed.includes('@')) {
-      Alert.alert('Atenção', 'Digite um e-mail válido.');
+      Alert.alert(t('common.attention'), t('forgot.invalidEmail'));
       return;
     }
 
@@ -33,7 +33,7 @@ export default function ForgotPasswordScreen({ navigate, goBack }) {
       setSent(true);
     } catch (error) {
       if (isNetworkError(error)) {
-        Alert.alert('Sem conexão', 'Verifique sua internet e tente novamente.');
+        Alert.alert(t('common.noConnection'), t('common.checkInternet'));
         return;
       }
       setSent(true); // silently succeed to avoid email enumeration
@@ -49,20 +49,19 @@ export default function ForgotPasswordScreen({ navigate, goBack }) {
           <View style={styles.iconRing}>
             <MaterialCommunityIcons name="email-check-outline" size={38} color={colors.primary} />
           </View>
-          <Text style={styles.title}>Verifique seu e-mail</Text>
+          <Text style={styles.title}>{t('forgot.checkEmail')}</Text>
           <Text style={styles.body}>
-            Se o endereço <Text style={styles.bold}>{email.trim()}</Text> estiver cadastrado,
-            você receberá as instruções de recuperação em breve.
+            {t('forgot.sentBefore')} <Text style={styles.bold}>{email.trim()}</Text> {t('forgot.sentAfter')}
           </Text>
-          <Text style={styles.hint}>Não recebeu? Verifique a pasta de spam ou entre em contato com a recepção.</Text>
+          <Text style={styles.hint}>{t('forgot.notReceived')}</Text>
           <Pressable onPress={() => goBack?.()} style={({ pressed }) => [styles.btn, pressed && styles.pressed]}>
-            <Text style={styles.btnText}>Voltar ao login</Text>
+            <Text style={styles.btnText}>{t('forgot.backToLogin')}</Text>
           </Pressable>
           <Pressable
             onPress={() => navigate('ResetPassword')}
             style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
           >
-            <Text style={styles.secondaryText}>Já tenho o código de recuperação</Text>
+            <Text style={styles.secondaryText}>{t('forgot.haveCode')}</Text>
           </Pressable>
         </View>
       </CenteredFormScreen>
@@ -74,23 +73,23 @@ export default function ForgotPasswordScreen({ navigate, goBack }) {
       <View style={styles.card}>
         <Pressable onPress={() => goBack?.()} style={styles.back}>
           <MaterialCommunityIcons name="arrow-left" size={22} color={colors.primary} />
-          <Text style={styles.backText}>Voltar</Text>
+          <Text style={styles.backText}>{t('forgot.back')}</Text>
         </Pressable>
 
         <View style={styles.iconRing}>
           <MaterialCommunityIcons name="lock-reset" size={38} color={colors.primary} />
         </View>
 
-        <Text style={styles.title}>Recuperar senha</Text>
+        <Text style={styles.title}>{t('forgot.title')}</Text>
         <Text style={styles.body}>
-          Digite o e-mail cadastrado na sua conta. Enviaremos um código para você criar uma nova senha.
+          {t('forgot.intro')}
         </Text>
 
         <View style={styles.inputBox}>
           <MaterialCommunityIcons name="email-outline" size={19} color={colors.primary} />
           <TextInput
             style={styles.input}
-            placeholder="Seu e-mail"
+            placeholder={t('forgot.emailPlaceholder')}
             placeholderTextColor={colors.lightText}
             value={email}
             onChangeText={setEmail}
@@ -108,7 +107,7 @@ export default function ForgotPasswordScreen({ navigate, goBack }) {
         >
           {loading
             ? <ActivityIndicator color="#FFFFFF" size="small" />
-            : <Text style={styles.btnText}>Enviar instruções</Text>
+            : <Text style={styles.btnText}>{t('forgot.send')}</Text>
           }
         </Pressable>
 
@@ -116,7 +115,7 @@ export default function ForgotPasswordScreen({ navigate, goBack }) {
           onPress={() => navigate('ResetPassword')}
           style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
         >
-          <Text style={styles.secondaryText}>Já tenho o código de recuperação</Text>
+          <Text style={styles.secondaryText}>{t('forgot.haveCode')}</Text>
         </Pressable>
       </View>
     </CenteredFormScreen>

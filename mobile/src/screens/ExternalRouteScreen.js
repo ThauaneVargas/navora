@@ -66,7 +66,7 @@ const HOSPITAL_ENTRANCES = {
 const MAP_HEIGHT = 196;
 
 export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}, activeHospital }) {
-  const { appColors: colors } = useApp();
+  const { appColors: colors, t } = useApp();
   const styles = useThemeStyles();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -99,18 +99,18 @@ export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}
           </View>
 
           <View style={styles.hero}>
-            <Text style={styles.kicker}>COMO CHEGAR</Text>
+            <Text style={styles.kicker}>{t('externalRoute.kicker')}</Text>
             <Text style={styles.title}>
-              Como chegar{'\n'}
-              <Text style={styles.titleAccent}>ao hospital</Text>
+              {t('externalRoute.titleA')}{'\n'}
+              <Text style={styles.titleAccent}>{t('externalRoute.titleB')}</Text>
             </Text>
             <Text style={styles.subtitle}>
-              Escolha sua entrada e seu app de navegação.{'\n'}
-              Ao chegar, o Navora continua sua rota dentro do hospital.
+              {t('externalRoute.subtitleA')}{'\n'}
+              {t('externalRoute.subtitleB')}
             </Text>
           </View>
 
-          <Text style={styles.selectorTitle}>Escolha a entrada</Text>
+          <Text style={styles.selectorTitle}>{t('externalRoute.chooseEntrance')}</Text>
           <View style={styles.entranceSelector}>
             {Object.values(HOSPITAL_ENTRANCES).map((option) => (
               <EntranceCard
@@ -131,11 +131,11 @@ export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}
               <MaterialCommunityIcons name="map-marker" size={25} color={colors.primary} />
             </View>
             <View style={styles.addressCopy}>
-              <Text style={styles.addressLabel}>ENDEREÇO</Text>
+              <Text style={styles.addressLabel}>{t('externalRoute.address')}</Text>
               <Text style={styles.hospitalName}>{entrance.hospitalName}</Text>
               <Text style={styles.address}>{entrance.address}</Text>
               <View style={styles.confirmedRow}>
-                <Text style={styles.confirmedText}>{entrance.label}</Text>
+                <Text style={styles.confirmedText}>{t(`externalRoute.entrance_${entrance.id}`)}</Text>
                 <MaterialCommunityIcons name="information-outline" size={14} color={colors.primary} />
               </View>
             </View>
@@ -144,16 +144,16 @@ export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}
           <RouteButton
             icon="google-maps"
             iconBackground={colors.surfaceAlt}
-            title="Abrir no Google Maps"
-            subtitle="Traçar rota até o hospital"
+            title={t('externalRoute.openGoogle')}
+            subtitle={t('externalRoute.routeToHospital')}
             onPress={() => Linking.openURL(mapsUrl)}
           />
 
           <RouteButton
             icon="waze"
             iconBackground="#EAF7FF"
-            title="Abrir no Waze"
-            subtitle="Traçar rota até o hospital"
+            title={t('externalRoute.openWaze')}
+            subtitle={t('externalRoute.routeToHospital')}
             onPress={() => Linking.openURL(wazeUrl)}
           />
 
@@ -163,8 +163,8 @@ export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}
           >
             <MaterialCommunityIcons name="map-marker" size={28} color="#FFFFFF" />
             <View style={styles.arrivalCopy}>
-              <Text style={styles.arrivalTitle}>Cheguei ao hospital</Text>
-              <Text style={styles.arrivalSubtitle}>Confirmar minha localização</Text>
+              <Text style={styles.arrivalTitle}>{t('externalRoute.arrived')}</Text>
+              <Text style={styles.arrivalSubtitle}>{t('externalRoute.confirmLocation')}</Text>
             </View>
           </Pressable>
         </View>
@@ -174,7 +174,7 @@ export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}
 }
 
 function EntranceCard({ entrance, selected, onPress }) {
-  const { appColors: colors } = useApp();
+  const { appColors: colors, t } = useApp();
   const styles = useThemeStyles();
   return (
     <Pressable
@@ -191,7 +191,7 @@ function EntranceCard({ entrance, selected, onPress }) {
         color={selected ? colors.primary : colors.muted}
       />
       <View style={styles.entranceCopy}>
-        <Text style={[styles.entranceText, selected && styles.entranceTextSelected]}>{entrance.shortName}</Text>
+        <Text style={[styles.entranceText, selected && styles.entranceTextSelected]}>{t(`externalRoute.short_${entrance.id}`)}</Text>
         <Text style={styles.entranceSubtitle} numberOfLines={1}>{entrance.hospitalName}</Text>
       </View>
       <MaterialCommunityIcons
@@ -214,7 +214,7 @@ function IconButton({ icon, onPress }) {
 }
 
 function MapPreview({ entrance }) {
-  const { appColors: colors } = useApp();
+  const { appColors: colors, t } = useApp();
   const styles = useThemeStyles();
   const { coordinates } = entrance;
   const mapRef = useRef(null);
@@ -255,11 +255,11 @@ function MapPreview({ entrance }) {
         showsMyLocationButton={false}
         toolbarEnabled={false}
       >
-        <Marker coordinate={coordinates} title={entrance.hospitalName} description={entrance.label} />
+        <Marker coordinate={coordinates} title={entrance.hospitalName} description={t(`externalRoute.entrance_${entrance.id}`)} />
       </MapView>
 
       <View style={styles.entranceMapTag}>
-        <Text style={styles.entranceMapText} numberOfLines={1}>{entrance.label}</Text>
+        <Text style={styles.entranceMapText} numberOfLines={1}>{t(`externalRoute.entrance_${entrance.id}`)}</Text>
       </View>
 
       <Pressable onPress={recenter} style={({ pressed }) => [styles.locateButton, pressed && styles.pressed]}>

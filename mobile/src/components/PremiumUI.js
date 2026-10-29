@@ -141,12 +141,12 @@ export function EmptyState({ icon = 'information-outline', title, text, action }
   );
 }
 
-export function LoadingState({ title = 'Carregando', text }) {
-  const { appColors } = useApp();
+export function LoadingState({ title, text }) {
+  const { appColors, t } = useApp();
   return (
     <View style={styles.loading}>
       <ActivityIndicator color={appColors.primary} />
-      <Text style={[styles.loadingTitle, { color: appColors.text }]}>{title}</Text>
+      <Text style={[styles.loadingTitle, { color: appColors.text }]}>{title || t('common.loading')}</Text>
       {text ? <Text style={[styles.loadingText, { color: appColors.muted }]}>{text}</Text> : null}
     </View>
   );

@@ -14,7 +14,7 @@ import CenteredFormScreen from '../components/CenteredFormScreen';
 import { navoraApi, isNetworkError } from '../services/api';
 
 export default function ResetPasswordScreen({ navigate, goBack }) {
-  const { appColors: colors } = useApp();
+  const { appColors: colors, t } = useApp();
   const styles = useThemeStyles();
   const [token, setToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -25,15 +25,15 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
 
   const handleReset = async () => {
     if (!token.trim()) {
-      Alert.alert('Atenção', 'Digite o código de recuperação recebido por e-mail.');
+      Alert.alert(t('common.attention'), t('reset.codeRequired'));
       return;
     }
     if (newPassword.length < 6) {
-      Alert.alert('Atenção', 'A nova senha deve ter pelo menos 6 caracteres.');
+      Alert.alert(t('common.attention'), t('reset.tooShort'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Atenção', 'As senhas não coincidem.');
+      Alert.alert(t('common.attention'), t('reset.mismatch'));
       return;
     }
 
@@ -43,10 +43,10 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
       setDone(true);
     } catch (error) {
       if (isNetworkError(error)) {
-        Alert.alert('Sem conexão', 'Verifique sua internet e tente novamente.');
+        Alert.alert(t('common.noConnection'), t('common.checkInternet'));
         return;
       }
-      Alert.alert('Código inválido', 'O código informado é inválido ou já expirou. Solicite um novo link de recuperação.');
+      Alert.alert(t('reset.invalidCodeTitle'), t('reset.invalidCode'));
     } finally {
       setLoading(false);
     }
@@ -59,10 +59,10 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
           <View style={styles.iconRing}>
             <MaterialCommunityIcons name="check-circle-outline" size={44} color={colors.primary} />
           </View>
-          <Text style={styles.title}>Senha atualizada!</Text>
-          <Text style={styles.body}>Sua senha foi redefinida com sucesso. Faça login com a nova senha.</Text>
+          <Text style={styles.title}>{t('reset.doneTitle')}</Text>
+          <Text style={styles.body}>{t('reset.done')}</Text>
           <Pressable onPress={() => goBack?.()} style={({ pressed }) => [styles.btn, pressed && styles.pressed]}>
-            <Text style={styles.btnText}>Ir para o login</Text>
+            <Text style={styles.btnText}>{t('reset.goToLogin')}</Text>
           </Pressable>
         </View>
       </CenteredFormScreen>
@@ -74,23 +74,23 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
       <View style={styles.card}>
         <Pressable onPress={() => goBack?.()} style={styles.back}>
           <MaterialCommunityIcons name="arrow-left" size={22} color={colors.primary} />
-          <Text style={styles.backText}>Voltar</Text>
+          <Text style={styles.backText}>{t('reset.back')}</Text>
         </Pressable>
 
         <View style={styles.iconRing}>
           <MaterialCommunityIcons name="lock-open-outline" size={38} color={colors.primary} />
         </View>
 
-        <Text style={styles.title}>Nova senha</Text>
+        <Text style={styles.title}>{t('reset.title')}</Text>
         <Text style={styles.body}>
-          Digite o código de recuperação recebido por e-mail e escolha uma nova senha.
+          {t('reset.intro')}
         </Text>
 
         <View style={styles.inputBox}>
           <MaterialCommunityIcons name="key-outline" size={19} color={colors.primary} />
           <TextInput
             style={styles.input}
-            placeholder="Código de recuperação"
+            placeholder={t('reset.codePlaceholder')}
             placeholderTextColor={colors.lightText}
             value={token}
             onChangeText={setToken}
@@ -104,7 +104,7 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
           <MaterialCommunityIcons name="lock-outline" size={19} color={colors.primary} />
           <TextInput
             style={styles.input}
-            placeholder="Nova senha"
+            placeholder={t('reset.newPassword')}
             placeholderTextColor={colors.lightText}
             value={newPassword}
             onChangeText={setNewPassword}
@@ -120,7 +120,7 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
           <MaterialCommunityIcons name="lock-check-outline" size={19} color={colors.primary} />
           <TextInput
             style={styles.input}
-            placeholder="Confirmar nova senha"
+            placeholder={t('reset.confirmPassword')}
             placeholderTextColor={colors.lightText}
             value={confirmPassword}
             onChangeText={setConfirmPassword}
@@ -129,7 +129,7 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
           />
         </View>
         {confirmPassword && newPassword !== confirmPassword ? (
-          <Text style={styles.errorText}>As senhas não coincidem.</Text>
+          <Text style={styles.errorText}>{t('reset.mismatch')}</Text>
         ) : null}
 
         <Pressable
@@ -139,7 +139,7 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
         >
           {loading
             ? <ActivityIndicator color="#FFFFFF" size="small" />
-            : <Text style={styles.btnText}>Redefinir senha</Text>
+            : <Text style={styles.btnText}>{t('reset.submit')}</Text>
           }
         </Pressable>
       </View>

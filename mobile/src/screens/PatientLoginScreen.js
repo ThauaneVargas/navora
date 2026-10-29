@@ -27,7 +27,7 @@ export const mockPatient = (area = 'private') => ({
 });
 
 export default function PatientLoginScreen({ navigate, goBack, routeParams = {}, onPatientReady }) {
-  const { appColors } = useApp();
+  const { appColors, t } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
   const area = routeParams.area || 'private';
   const [login, setLogin] = useState('');
@@ -42,7 +42,7 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
 
   const submit = async () => {
     if (!login.trim() || !password.trim()) {
-      Alert.alert('Atenção', 'Preencha CPF, e-mail ou telefone e senha.');
+      Alert.alert(t('common.attention'), t('patientLogin.fillFields'));
       return;
     }
     setLoading(true);
@@ -54,7 +54,7 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
       }
       const user = auth?.user;
       if (user?.role !== 'PATIENT') {
-        Alert.alert('Acesso negado', 'Use uma conta de paciente para entrar no app mobile.');
+        Alert.alert(t('common.accessDenied'), t('patientLogin.patientsOnly'));
         return;
       }
       await saveAuthToken(auth.access_token);
@@ -64,10 +64,10 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
       navigate('PatientHome');
     } catch (error) {
       if (isAuthError(error)) {
-        Alert.alert('Credenciais invalidas', 'Confira seu e-mail e senha para continuar.');
+        Alert.alert(t('patientLogin.invalidTitle'), t('patientLogin.invalid'));
         return;
       }
-      Alert.alert('Não foi possível entrar', 'Tente novamente em instantes.');
+      Alert.alert(t('patientLogin.failTitle'), t('patientLogin.fail'));
     } finally {
       setLoading(false);
     }
@@ -75,21 +75,21 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
 
   return (
     <Screen>
-      <Header title="Login do paciente" subtitle="Acesse sua conta para continuar." onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title={t('patientLogin.title')} subtitle={t('patientLogin.subtitle')} onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
       <View style={[styles.card, shadows.card]}>
         <View style={styles.loginHero}>
           <View style={styles.fingerprint}>
             <MaterialCommunityIcons name="fingerprint" size={42} color={appColors.primary} />
           </View>
           <View style={styles.copy}>
-            <Text style={styles.title}>Bem-vinda de volta</Text>
-            <Text style={styles.subtitle}>Use sua conta de paciente. Biometria e login social serão conectados somente quando houver suporte real.</Text>
+            <Text style={styles.title}>{t('patientLogin.welcome')}</Text>
+            <Text style={styles.subtitle}>{t('patientLogin.welcomeSub')}</Text>
           </View>
         </View>
-        <Input icon="account-outline" placeholder="CPF, e-mail ou telefone" value={login} onChangeText={setLogin} />
-        <Input icon="lock-outline" placeholder="Senha" value={password} onChangeText={setPassword} secureTextEntry />
+        <Input icon="account-outline" placeholder={t('patientLogin.loginPlaceholder')} value={login} onChangeText={setLogin} />
+        <Input icon="lock-outline" placeholder={t('patientLogin.password')} value={password} onChangeText={setPassword} secureTextEntry />
         <Pressable onPress={submit} disabled={loading} style={({ pressed }) => [styles.primary, pressed && styles.pressed, loading && styles.disabled]}>
-          {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>Entrar</Text>}
+          {loading ? <ActivityIndicator color="#FFFFFF" /> : <Text style={styles.primaryText}>{t('patientLogin.enter')}</Text>}
         </Pressable>
         <Pressable
           disabled
@@ -97,17 +97,17 @@ export default function PatientLoginScreen({ navigate, goBack, routeParams = {},
           style={[styles.bio, styles.disabledFuture]}
         >
           <MaterialCommunityIcons name="fingerprint" size={30} color={appColors.primary} />
-          <Text style={styles.bioText}>Biometria em preparacao</Text>
+          <Text style={styles.bioText}>{t('patientLogin.biometricSoon')}</Text>
         </Pressable>
         <View style={styles.futureRow}>
           <FutureProvider icon="google" label="Google" />
           <FutureProvider icon="apple" label="Apple" />
         </View>
-        <Pressable onPress={() => Alert.alert('Recuperar senha', 'Recuperacao de senha sera enviada para o contato cadastrado.')} style={styles.link}>
-          <Text style={styles.linkText}>Esqueci minha senha</Text>
+        <Pressable onPress={() => Alert.alert(t('patientLogin.forgotTitle'), t('patientLogin.forgotText'))} style={styles.link}>
+          <Text style={styles.linkText}>{t('patientLogin.forgot')}</Text>
         </Pressable>
         <Pressable onPress={finishFallback} style={styles.link}>
-          <Text style={styles.linkText}>Continuar com reconhecimento do hospital</Text>
+          <Text style={styles.linkText}>{t('patientLogin.hospitalRecognition')}</Text>
         </Pressable>
       </View>
     </Screen>

@@ -17,21 +17,21 @@ import { useRouteBarSpace } from '../components/ActiveRouteBar';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
 import { shadows } from '../theme/colors';
-import { assistantProvider, assistantSuggestions, getNavoraAssistantResponse } from '../services/navoraAssistant';
+import { assistantSuggestions, getNavoraAssistantResponse } from '../services/navoraAssistant';
 import { destinations as fallbackDestinations } from '../data/routes';
 import { useApp } from '../context/AppContext';
 
 // O app ainda não tem reconhecimento de voz (expo-speech só FALA, não escuta).
 // Antes, o microfone gravava o áudio e respondia sempre "Me leve até Tomografia",
 // fosse o que fosse dito. Ler as respostas em voz alta ("Ouvir") continua funcionando.
-const VOICE_UNAVAILABLE_TEXT =
-  'O reconhecimento de voz ainda não está disponível. Digite sua mensagem ou toque em um dos atalhos. Você pode ouvir minhas respostas tocando em "Ouvir".';
-
-const initialMessages = [
+// As respostas do assistente (navoraAssistant.js) ainda são só em português;
+// em inglês/espanhol a tela avisa isso. Os atalhos mostram o texto traduzido
+// mas mandam a frase em português pro assistente.
+const initialMessages = (t) => [
   {
     id: 'assistant-welcome',
     role: 'assistant',
-    text: 'Olá, sou o Assistente Navora. Posso ajudar com destinos, acessibilidade, ajuda e SOS.',
+    text: t('assistant.welcome'),
   },
 ];
 
@@ -45,11 +45,11 @@ export default function AssistantScreen({
   hospitalDetection,
 }) {
   const insets = useSafeAreaInsets();
-  const { appColors, toggleTheme } = useApp();
+  const { appColors, toggleTheme, t, language } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
-  const [messages, setMessages] = useState(initialMessages);
+  const [messages, setMessages] = useState(() => initialMessages(t));
   const [input, setInput] = useState('');
-  const [status, setStatus] = useState('Pronta para ajudar');
+  const [status, setStatus] = useState('ready');
   const scrollRef = useRef(null);
   // Mesma fonte da tela de busca: destinos da API quando ela respondeu, senão os locais.
   const availableDestinations =
@@ -82,12 +82,12 @@ export default function AssistantScreen({
     ]);
   };
 
-  const processMessage = (rawText) => {
+  const processMessage = (rawText, shownText) => {
     const text = rawText.trim();
     if (!text) return;
 
-    appendMessage({ role: 'user', text });
-    setStatus('Processando...');
+    appendMessage({ role: 'user', text: shownText || text });
+    setStatus('processing');
 
     const assistantResponse = getNavoraAssistantResponse(text, {
       userProfile,
@@ -97,7 +97,7 @@ export default function AssistantScreen({
     });
     setTimeout(() => {
       appendMessage({ role: 'assistant', ...assistantResponse });
-      setStatus('Pronta para ajudar');
+      setStatus('ready');
     }, 250);
   };
 
@@ -121,7 +121,7 @@ export default function AssistantScreen({
   };
 
   const handleMicrophonePress = () => {
-    appendMessage({ role: 'assistant', text: VOICE_UNAVAILABLE_TEXT });
+    appendMessage({ role: 'assistant', text: t('assistant.voiceUnavailable') });
   };
 
   const runAction = (message) => {
@@ -129,7 +129,7 @@ export default function AssistantScreen({
       toggleTheme();
       appendMessage({
         role: 'assistant',
-        text: 'Pronto. Ajustei o modo de exibição do app.',
+        text: t('assistant.themeChanged'),
       });
       return;
     }
@@ -141,14 +141,14 @@ export default function AssistantScreen({
 
   const clearConversation = () => {
     Speech.stop();
-    setMessages(initialMessages);
-    setStatus('Pronta para ajudar');
+    setMessages(initialMessages(t));
+    setStatus('ready');
   };
 
   return (
     <Screen scroll={false} padded={false} withBottomTabs>
       <View style={styles.screen}>
-        <Header fullBleed title="Assistente Navora" subtitle="Orientação guiada" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+        <Header fullBleed title={t('assistant.title')} subtitle={t('assistant.subtitle')} centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
         <View style={styles.keyboardArea}>
           <ScrollView
@@ -160,17 +160,20 @@ export default function AssistantScreen({
             <View style={[styles.aiCard, shadows.card]}>
               <Pressable
                 onPress={handleMicrophonePress}
+                accessibilityRole="button"
+                accessibilityLabel={t('assistant.voiceA11y')}
                 style={({ pressed }) => [styles.aiIcon, pressed && styles.pressed]}
               >
                 <MaterialCommunityIcons name="microphone" size={25} color="#FFFFFF" />
               </Pressable>
               <View style={styles.aiCopy}>
-                <Text style={styles.aiTitle}>Assistente Navora</Text>
-                <Text style={styles.aiText}>Busca destinos e orienta próximos passos. Não usa IA generativa neste app.</Text>
-                <Text style={styles.providerText}>{assistantProvider.label}</Text>
-                <Text style={styles.statusText}>{status}</Text>
+                <Text style={styles.aiTitle}>{t('assistant.title')}</Text>
+                <Text style={styles.aiText}>{t('assistant.intro')}</Text>
+                {language !== 'pt' ? <Text style={styles.aiText}>{t('assistant.ptOnly')}</Text> : null}
+                <Text style={styles.providerText}>{t('assistant.provider')}</Text>
+                <Text style={styles.statusText}>{t(`assistant.status_${status}`)}</Text>
               </View>
-              <Pressable onPress={stopSpeech} style={styles.stopVoiceButton}>
+              <Pressable onPress={stopSpeech} accessibilityRole="button" accessibilityLabel={t('assistant.stopVoiceA11y')} style={styles.stopVoiceButton}>
                 <MaterialCommunityIcons name="volume-off" size={18} color={appColors.primary} />
               </Pressable>
             </View>
@@ -179,11 +182,11 @@ export default function AssistantScreen({
               {assistantSuggestions.map((item) => (
                 <Pressable
                   key={item.label}
-                  onPress={() => processMessage(item.label)}
+                  onPress={() => processMessage(item.label, t(`assistant.sug_${item.key}`))}
                   style={({ pressed }) => [styles.suggestion, pressed && styles.pressed]}
                 >
                   <MaterialCommunityIcons name={item.icon} size={13} color={appColors.primary} />
-                  <Text numberOfLines={1} style={styles.suggestionText}>{item.label}</Text>
+                  <Text numberOfLines={1} style={styles.suggestionText}>{t(`assistant.sug_${item.key}`)}</Text>
                 </Pressable>
               ))}
             </View>
@@ -210,7 +213,7 @@ export default function AssistantScreen({
                           style={({ pressed }) => [styles.listenButton, pressed && styles.pressed]}
                         >
                           <MaterialCommunityIcons name="volume-high" size={15} color={appColors.primary} />
-                          <Text style={styles.listenText}>Ouvir</Text>
+                          <Text style={styles.listenText}>{t('assistant.listen')}</Text>
                         </Pressable>
 
                         {message.actionLabel ? (
@@ -230,22 +233,22 @@ export default function AssistantScreen({
           </ScrollView>
 
           <View style={[styles.composer, { bottom: composerBottom }, shadows.card]}>
-            <Pressable onPress={clearConversation} style={styles.smallIconButton}>
+            <Pressable onPress={clearConversation} accessibilityRole="button" accessibilityLabel={t('assistant.clearA11y')} style={styles.smallIconButton}>
               <MaterialCommunityIcons name="trash-can-outline" size={19} color={appColors.muted} />
             </Pressable>
             <TextInput
               value={input}
               onChangeText={setInput}
-              placeholder="Digite sua mensagem..."
+              placeholder={t('assistant.placeholder')}
               placeholderTextColor={appColors.lightText}
               style={styles.input}
               returnKeyType="send"
               onSubmitEditing={sendMessage}
             />
-            <Pressable onPress={sendMessage} style={styles.sendButton}>
+            <Pressable onPress={sendMessage} accessibilityRole="button" accessibilityLabel={t('assistant.sendA11y')} style={styles.sendButton}>
               <MaterialCommunityIcons name="send" size={18} color="#FFFFFF" />
             </Pressable>
-            <Pressable onPress={handleMicrophonePress} style={styles.micButton}>
+            <Pressable onPress={handleMicrophonePress} accessibilityRole="button" accessibilityLabel={t('assistant.voiceA11y')} style={styles.micButton}>
               <MaterialCommunityIcons name="microphone" size={19} color="#FFFFFF" />
             </Pressable>
           </View>

@@ -6,7 +6,7 @@ import Header from '../components/Header';
 import { PrimaryButton, SecondaryButton, StatusPill } from '../components/PremiumUI';
 import { radii, shadows, spacing, typography } from '../theme/colors';
 import { useApp } from '../context/AppContext';
-import { entrances } from '../data/routes';
+import { entrances, getAreaById } from '../data/routes';
 import { BLE_BLOCKED_STATES, indoorLocationService } from '../services/indoorLocationService';
 
 // Sem BLE, a escolha manual aparece logo. Com BLE, dá um tempo pra ouvir os beacons.
@@ -19,7 +19,7 @@ export default function ArrivalPreparationScreen({
   hospitalDetection,
   onAreaDetected,
 }) {
-  const { appColors } = useApp();
+  const { appColors, t } = useApp();
   const pulse = useRef(new Animated.Value(0)).current;
   const [status, setStatus] = useState('searching');
   const detectedEntrance = hospitalDetection?.detectedEntrance;
@@ -58,9 +58,9 @@ export default function ArrivalPreparationScreen({
 
   const notFoundMessage = bleEnabled
     ? bleBlocked
-      ? bleStatus.message
-      : 'Não encontrei nenhum ponto de referência do hospital por perto.'
-    : 'Não foi possível identificar sua localização automaticamente neste aparelho.';
+      ? t(`arrival.ble_${bleStatus.state}`)
+      : t('arrival.noReference')
+    : t('arrival.noAutomatic');
   const chooseEntrance = (entrance) => onAreaDetected?.(entrance.areaId, { source: 'manual-entrance', detectedEntrance: entrance });
 
   const pulseStyle = {
@@ -77,8 +77,8 @@ export default function ArrivalPreparationScreen({
   return (
     <Screen>
       <Header
-        title="Localização inicial"
-        subtitle="Vamos localizar o melhor ponto de partida."
+        title={t('arrival.title')}
+        subtitle={t('arrival.subtitle')}
         onBack={() => goBack?.()}
         onMenu={() => navigate('Menu')}
       />
@@ -97,41 +97,41 @@ export default function ArrivalPreparationScreen({
 
         {hasConfirmedLocation ? (
           <>
-            <StatusPill label="Localização identificada" tone="success" icon="check-circle-outline" />
-            <Text style={[styles.title, { color: appColors.text }]}>Localização identificada</Text>
+            <StatusPill label={t('arrival.identified')} tone="success" icon="check-circle-outline" />
+            <Text style={[styles.title, { color: appColors.text }]}>{t('arrival.identified')}</Text>
             <View style={[styles.locationBox, { backgroundColor: appColors.surfaceAlt, borderColor: appColors.border }]}>
-              <Info label="Hospital" value="Hospital Marco Capute" />
-              <Info label="Area" value={detectedEntrance.hospitalArea || 'Area identificada'} />
-              <Info label="Entrada" value={detectedEntrance.fullName || detectedEntrance.name || 'Entrada identificada'} />
+              <Info label={t('arrival.hospital')} value={getAreaById(detectedEntrance.areaId).name} />
+              <Info label={t('arrival.area')} value={detectedEntrance.hospitalArea || t('arrival.areaFallback')} />
+              <Info label={t('arrival.entrance')} value={detectedEntrance.fullName || detectedEntrance.name || t('arrival.entranceFallback')} />
             </View>
-            <Text style={[styles.text, { color: appColors.muted }]}>Esta localização está correta?</Text>
-            <PrimaryButton title="Sim, continuar" onPress={continueAfterLocation} />
-            <SecondaryButton title="Pedir correção na recepção" icon="desk" onPress={useReception} />
+            <Text style={[styles.text, { color: appColors.muted }]}>{t('arrival.isCorrect')}</Text>
+            <PrimaryButton title={t('arrival.yesContinue')} onPress={continueAfterLocation} />
+            <SecondaryButton title={t('arrival.askReception')} icon="desk" onPress={useReception} />
           </>
         ) : showManualChoice ? (
           <>
-            <StatusPill label="Escolha manual" tone="warning" icon="alert-circle-outline" />
-            <Text style={[styles.title, { color: appColors.text }]}>Por onde você entrou?</Text>
+            <StatusPill label={t('arrival.manualChoice')} tone="warning" icon="alert-circle-outline" />
+            <Text style={[styles.title, { color: appColors.text }]}>{t('arrival.whichEntrance')}</Text>
             <Text accessibilityLiveRegion="polite" style={[styles.text, { color: appColors.muted }]}>
-              {notFoundMessage} Escolha sua entrada abaixo, ou procure a recepção.
+              {notFoundMessage} {t('arrival.chooseBelow')}
             </Text>
             {entrances.map((entrance) => (
               <PrimaryButton
                 key={entrance.code}
-                title={`Estou na ${entrance.fullName}`}
+                title={t('arrival.imAt', { entrance: entrance.fullName })}
                 icon="door-open"
                 onPress={() => chooseEntrance(entrance)}
               />
             ))}
-            <SecondaryButton title="Ver rota até a recepção" icon="desk" onPress={useReception} />
+            <SecondaryButton title={t('arrival.routeToReception')} icon="desk" onPress={useReception} />
           </>
         ) : (
           <>
-            <StatusPill label="Identificando" icon="radar" />
-            <Text style={[styles.title, { color: appColors.text }]}>Buscando localização</Text>
+            <StatusPill label={t('arrival.identifying')} icon="radar" />
+            <Text style={[styles.title, { color: appColors.text }]}>{t('arrival.searching')}</Text>
             <Text accessibilityLiveRegion="polite" style={[styles.text, { color: appColors.muted }]}>
-              {bleEnabled && bleStatus.state === 'scanning' ? `${bleStatus.message} ` : ''}
-              Mantenha o aplicativo aberto por alguns instantes. Se a localização não aparecer, você poderá escolher sua entrada.
+              {bleEnabled && bleStatus.state === 'scanning' ? `${t('arrival.ble_scanning')} ` : ''}
+              {t('arrival.keepOpen')}
             </Text>
           </>
         )}

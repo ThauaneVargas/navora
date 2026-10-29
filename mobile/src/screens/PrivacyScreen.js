@@ -6,11 +6,12 @@ import Header from '../components/Header';
 import { FormField, SecondaryButton } from '../components/PremiumUI';
 import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
-import { PRIVACY_POLICY_UPDATED_LABEL, PRIVACY_SECTIONS } from '../data/privacyPolicy';
+import { getPrivacyPolicy } from '../data/privacyPolicy';
 import { isAuthError, isNetworkError, navoraApi } from '../services/api';
 
 export default function PrivacyScreen({ navigate, goBack, userProfile, onLogout }) {
-  const { appColors } = useApp();
+  const { appColors, t, language } = useApp();
+  const policy = useMemo(() => getPrivacyPolicy(language), [language]);
   const styles = useMemo(() => createStyles(appColors), [appColors]);
   const [password, setPassword] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -21,16 +22,16 @@ export default function PrivacyScreen({ navigate, goBack, userProfile, onLogout 
     try {
       await navoraApi.deleteMyAccount(password);
       setPassword('');
-      Alert.alert('Conta excluída', 'Seu cadastro e seus dados de saúde foram apagados.', [
+      Alert.alert(t('privacy.deletedTitle'), t('privacy.deleted'), [
         { text: 'OK', onPress: () => onLogout?.() },
       ]);
     } catch (error) {
       if (isAuthError(error)) {
-        Alert.alert('Senha incorreta', 'Confira a senha e tente de novo.');
+        Alert.alert(t('privacy.wrongPasswordTitle'), t('privacy.wrongPassword'));
       } else if (isNetworkError(error)) {
-        Alert.alert('Sem conexão', 'Não foi possível falar com o servidor. Nada foi apagado. Tente de novo.');
+        Alert.alert(t('common.noConnection'), t('privacy.offline'));
       } else {
-        Alert.alert('Não foi possível excluir', 'Nada foi apagado. Tente de novo em instantes.');
+        Alert.alert(t('privacy.failTitle'), t('privacy.fail'));
       }
     } finally {
       setDeleting(false);
@@ -39,36 +40,36 @@ export default function PrivacyScreen({ navigate, goBack, userProfile, onLogout 
 
   const confirmDelete = () => {
     if (!password) {
-      Alert.alert('Digite sua senha', 'Para sua segurança, confirme com a senha da conta.');
+      Alert.alert(t('privacy.typePasswordTitle'), t('privacy.typePassword'));
       return;
     }
     Alert.alert(
-      'Excluir sua conta?',
-      'Isso apaga seu cadastro, acessibilidade, observações e contato de emergência. Não dá para desfazer.',
+      t('privacy.confirmTitle'),
+      t('privacy.confirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir', style: 'destructive', onPress: deleteAccount },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('privacy.delete'), style: 'destructive', onPress: deleteAccount },
       ]
     );
   };
 
   return (
     <Screen>
-      <Header title="Privacidade" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title={t('privacy.title')} centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.headerCard, shadows.card]}>
         <View style={styles.headerIcon}>
           <MaterialCommunityIcons name="shield-lock-outline" size={30} color={appColors.primary} />
         </View>
         <View style={styles.headerCopy}>
-          <Text style={styles.headerTitle}>Seus dados, sua privacidade</Text>
+          <Text style={styles.headerTitle}>{t('privacy.headerTitle')}</Text>
           <Text style={styles.headerSub}>
-            O que o Navora guarda, para quê, e como você controla isso.
+            {t('privacy.headerSub')}
           </Text>
         </View>
       </View>
 
-      {PRIVACY_SECTIONS.map((section) => (
+      {policy.sections.map((section) => (
         <View key={section.title} style={[styles.card, shadows.card]}>
           <View style={styles.cardHeader}>
             <View style={styles.cardIcon}>
@@ -86,24 +87,24 @@ export default function PrivacyScreen({ navigate, goBack, userProfile, onLogout 
             <View style={[styles.cardIcon, styles.dangerIcon]}>
               <MaterialCommunityIcons name="delete-outline" size={20} color={appColors.danger} />
             </View>
-            <Text style={styles.cardTitle}>Excluir minha conta</Text>
+            <Text style={styles.cardTitle}>{t('privacy.deleteTitle')}</Text>
           </View>
           <Text style={styles.cardBody}>
-            Apaga seu cadastro e seus dados de saúde e retira o seu consentimento. Confirme com a sua senha.
+            {t('privacy.deleteText')}
           </Text>
           <FormField
-            label="Senha"
+            label={t('privacy.password')}
             icon="lock-outline"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
             autoCapitalize="none"
-            placeholder="Sua senha"
-            accessibilityLabel="Senha para excluir a conta"
+            placeholder={t('privacy.passwordPlaceholder')}
+            accessibilityLabel={t('privacy.passwordA11y')}
             style={styles.passwordField}
           />
           <SecondaryButton
-            title={deleting ? 'Excluindo…' : 'Excluir minha conta'}
+            title={deleting ? t('privacy.deleting') : t('privacy.deleteTitle')}
             icon="delete-outline"
             danger
             disabled={deleting}
@@ -115,7 +116,8 @@ export default function PrivacyScreen({ navigate, goBack, userProfile, onLogout 
       <View style={[styles.footerCard, shadows.card]}>
         <MaterialCommunityIcons name="information-outline" size={18} color={appColors.muted} />
         <Text style={styles.footerText}>
-          Política atualizada em {PRIVACY_POLICY_UPDATED_LABEL}. Dúvidas sobre seus dados: fale com a recepção do hospital.
+          {t('privacy.footer', { date: policy.updatedLabel })}
+          {policy.translationNote ? `\n${policy.translationNote}` : ''}
         </Text>
       </View>
     </Screen>
