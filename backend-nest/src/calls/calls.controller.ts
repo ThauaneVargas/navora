@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Headers, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
 import { UserRole } from '@prisma/client';
 import { AuthenticatedUser } from '../auth/auth.types';
@@ -9,6 +9,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { CallsService } from './calls.service';
 import { CreateCallDto } from './dto/create-call.dto';
+import { UpdateCallDetailsDto } from './dto/update-call-details.dto';
 import { UpdateCallStatusDto } from './dto/update-call-status.dto';
 
 @Controller('calls')
@@ -38,11 +39,37 @@ export class CallsController {
     return this.callsService.createSos(payload, user);
   }
 
+  // O painel consulta a cada ~2 s com updated_since; sem limite de requisicoes
+  // (a recepcao sai pelo mesmo IP do Wi-Fi do hospital que os pacientes).
   @Get()
+  @SkipThrottle()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.RECEPTION)
-  list() {
-    return this.callsService.list();
+  list(@Query('updated_since') updatedSince?: string) {
+    let since: Date | undefined;
+    if (updatedSince) {
+      since = new Date(updatedSince);
+      if (Number.isNaN(since.getTime())) throw new BadRequestException('updated_since invalido');
+    }
+    return this.callsService.list(since);
+  }
+
+  // Celular de quem pediu: acompanha o andamento com o codigo secreto
+  // (header X-Call-Token) devolvido ao criar o chamado.
+  @Get(':callId/status')
+  @SkipThrottle()
+  status(@Param('callId', ParseIntPipe) callId: number, @Headers('x-call-token') token?: string) {
+    return this.callsService.status(callId, token);
+  }
+
+  @Patch(':callId/details')
+  @SkipThrottle()
+  updateDetails(
+    @Param('callId', ParseIntPipe) callId: number,
+    @Body() payload: UpdateCallDetailsDto,
+    @Headers('x-call-token') token?: string,
+  ) {
+    return this.callsService.updateDetails(callId, token, payload);
   }
 
   @Patch(':callId/status')

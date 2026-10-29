@@ -240,11 +240,22 @@ model CallRequest {
   createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime   @updatedAt @map("updated_at")
 
+  // Telefone de quem pediu (do perfil, quando tem conta).
+  callerPhone String?    @map("caller_phone")
+  // Necessidades de acessibilidade: codigos em CALL_NEEDS (calls/call-codes.ts).
+  needs       Json       @default("[]")
+  // Problemas marcados depois do envio: codigos em CALL_PROBLEMS.
+  problems    Json       @default("[]")
+  problemNote String?    @map("problem_note")
+  // Hash do codigo secreto com que o celular acompanha o chamado (sem conta).
+  accessTokenHash String? @map("access_token_hash")
+
   // Paciente logado que abriu o chamado; nulo = sem conta.
   userId      Int?       @map("user_id")
   user        User?      @relation("CallRequestUser", fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([userId])
+  @@index([updatedAt])
   @@map("call_requests")
 }
 

@@ -3,7 +3,7 @@ import { UserRole, VisitorAccessRequest, VisitorAccessStatus } from '@prisma/cli
 import { randomBytes } from 'crypto';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { mapVisitorAccessToApi } from '../common/api-mappers';
-import { hashVisitorToken, visitorTokenMatches } from '../common/visitor-token';
+import { hashSecretToken, secretTokenMatches } from '../common/secret-token';
 import { PrismaService } from '../database/prisma.service';
 import { AuthorizeVisitorAccessDto } from './dto/authorize-visitor-access.dto';
 import { CreateVisitorAccessDto } from './dto/create-visitor-access.dto';
@@ -40,7 +40,7 @@ export class VisitorAccessService {
     const accessToken = randomBytes(24).toString('hex');
     const request = await this.prisma.visitorAccessRequest.create({
       data: {
-        accessTokenHash: hashVisitorToken(accessToken),
+        accessTokenHash: hashSecretToken(accessToken),
         visitorName: payload.visitor_name ?? 'Visitante Navora',
         areaId: area.areaId,
         area: area.areaName,
@@ -187,7 +187,7 @@ export class VisitorAccessService {
   }
 
   private tokenMatches(storedHash: string | null, token?: string) {
-    return visitorTokenMatches(storedHash, token);
+    return secretTokenMatches(storedHash, token);
   }
 
   private async find(requestId: number) {

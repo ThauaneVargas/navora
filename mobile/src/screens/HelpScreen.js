@@ -1,11 +1,15 @@
 import React, {
+  useCallback,
+  useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,6 +29,14 @@ import Screen from '../components/Screen';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
 import HelpRequestSheet from '../components/HelpRequestSheet';
+import SosStatusSheet from '../components/SosStatusSheet';
+import {
+  getActiveCall,
+  isTerminalCallStatus,
+  saveActiveCall,
+  updateActiveCall,
+} from '../services/activeCallStorage';
+import { getReceptionPhone } from '../data/hospitalContacts';
 import { useRouteBarSpace } from '../components/ActiveRouteBar';
 
 import {
@@ -44,8 +56,28 @@ import {
 } from '../data/routes';
 
 import {
+  isNetworkError,
   navoraApi,
 } from '../services/api';
+
+
+// Acessibilidade do perfil -> o que a equipe precisa levar no SOS
+// (codigos em backend-nest/src/calls/call-codes.ts).
+const NEED_BY_ACCESSIBILITY_KEY = {
+  wheelchair: 'wheelchair',
+  needsStretcher: 'stretcher',
+  mobilityDifficulty: 'mobility',
+  visualImpairment: 'visual',
+  hearingImpairment: 'hearing',
+  needsCompanion: 'companion',
+};
+
+// SOS tenta 3 vezes antes de desistir (rede instavel no hospital); o resto, 2.
+const SEND_ATTEMPTS = { sos: 3, default: 2 };
+const RETRY_DELAYS_MS = [2000, 4000];
+const STATUS_POLL_MS = 5000;
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 
 export default function HelpScreen({
@@ -93,6 +125,79 @@ export default function HelpScreen({
     setRequestSheetVisible,
   ] = useState(false);
 
+  // Chamado em andamento (sobrevive a troca de tela: activeCallStorage).
+  const [activeCall, setActiveCall] = useState(null);
+  const [statusSheetVisible, setStatusSheetVisible] = useState(false);
+  const [savingProblems, setSavingProblems] = useState(false);
+  const [problemsError, setProblemsError] = useState(false);
+  const problemsSeq = useRef(0);
+
+  const areaId = userProfile?.area || 'private';
+  const receptionPhone = getReceptionPhone(areaId);
+
+  useEffect(() => {
+    let alive = true;
+    getActiveCall().then((call) => {
+      if (alive && call) setActiveCall(call);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Acompanha o andamento enquanto a tela esta aberta e o chamado nao acabou.
+  const activeCallId = activeCall?.id;
+  const activeCallToken = activeCall?.token;
+  const activeCallDone = isTerminalCallStatus(activeCall?.status);
+  useEffect(() => {
+    if (!activeCallId || !activeCallToken || activeCallDone) return undefined;
+    let alive = true;
+    const poll = async () => {
+      try {
+        const remote = await navoraApi.getCallStatus(activeCallId, activeCallToken);
+        if (!alive || !remote) return;
+        const next = await updateActiveCall({ status: remote.status });
+        if (alive && next) setActiveCall(next);
+      } catch (error) {
+        // 404: chamado nao existe mais (ou codigo invalido) -> para de acompanhar.
+        if (alive && error?.status === 404) {
+          const next = await updateActiveCall({ status: 'CANCELED' });
+          setActiveCall(next);
+        }
+      }
+    };
+    poll();
+    const timer = setInterval(poll, STATUS_POLL_MS);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [activeCallId, activeCallToken, activeCallDone]);
+
+  const toggleProblem = useCallback(
+    async (code) => {
+      if (!activeCall) return;
+      const current = activeCall.problems || [];
+      const problems = current.includes(code) ? current.filter((item) => item !== code) : [...current, code];
+      const optimistic = { ...activeCall, problems };
+      setActiveCall(optimistic);
+      setSavingProblems(true);
+      setProblemsError(false);
+      const seq = ++problemsSeq.current;
+      try {
+        await navoraApi.updateCallDetails(activeCall.id, activeCall.token, { problems });
+        await updateActiveCall({ problems });
+        if (seq === problemsSeq.current) setSavingProblems(false);
+      } catch {
+        if (seq === problemsSeq.current) {
+          setSavingProblems(false);
+          setProblemsError(true);
+        }
+      }
+    },
+    [activeCall]
+  );
+
 
   const currentLocation = {
     ...fallbackLocation,
@@ -119,6 +224,10 @@ export default function HelpScreen({
   // Sem pedido ainda: antes mostrava "Aguardando atendimento – Solicitada
   // há 2 min", um pedido que não existia.
   const latestRequest =
+    (activeCall && {
+      title: t(`help.status_${activeCall.status || 'PENDING'}`),
+      subtitle: t('help.protocol', { id: activeCall.id }),
+    }) ||
     lastRequest || (
       routeParams.type === 'sos'
         ? {
@@ -236,18 +345,55 @@ export default function HelpScreen({
         isSos
           ? 'CRITICAL'
           : 'MEDIUM',
+
+      caller_phone:
+        userProfile?.phone ||
+        undefined,
+
+      needs:
+        Object.entries(NEED_BY_ACCESSIBILITY_KEY)
+          .filter(([key]) => userProfile?.accessibility?.[key])
+          .map(([, code]) => code),
     };
 
 
+    const send = () =>
+      isSos
+        ? navoraApi.createSos(payload)
+        : navoraApi.createHelpRequest(payload);
+
+    // Rede instavel: tenta de novo sozinho antes de desistir. So repete erro
+    // de conexao (erro do servidor nao melhora repetindo).
+    const sendWithRetry = async () => {
+      const attempts = SEND_ATTEMPTS[kind] || SEND_ATTEMPTS.default;
+      for (let attempt = 1; ; attempt += 1) {
+        try {
+          return await send();
+        } catch (error) {
+          if (!isNetworkError(error) || attempt >= attempts) throw error;
+          await wait(RETRY_DELAYS_MS[attempt - 1] || 4000);
+        }
+      }
+    };
+
     try {
       const apiResponse =
-        isSos
-          ? await navoraApi.createSos(
-              payload
-            )
-          : await navoraApi.createHelpRequest(
-              payload
-            );
+        await sendWithRetry();
+
+      if (apiResponse?.id && apiResponse?.access_token) {
+        const tracked = {
+          id: apiResponse.id,
+          token: apiResponse.access_token,
+          kind: isSos ? 'sos' : 'help',
+          status: apiResponse.status || 'PENDING',
+          problems: [],
+        };
+        await saveActiveCall(tracked);
+        setActiveCall((await getActiveCall()) || tracked);
+        setProblemsError(false);
+        // SOS: abre direto o "O que esta acontecendo?" + andamento.
+        if (isSos) setStatusSheetVisible(true);
+      }
 
 
       const request =
@@ -272,7 +418,14 @@ export default function HelpScreen({
     } catch {
       Alert.alert(
         t('help.sendFailedTitle'),
-        t('help.sendFailed')
+        t('help.sendFailed'),
+        [
+          ...(receptionPhone
+            ? [{ text: t('help.callReception'), onPress: () => Linking.openURL(`tel:${receptionPhone}`).catch(() => {}) }]
+            : []),
+          { text: t('help.tryAgain'), onPress: () => submit(kind, reason) },
+          { text: t('common.close'), style: 'cancel' },
+        ]
       );
     } finally {
       setSubmittingKind(
@@ -332,10 +485,13 @@ export default function HelpScreen({
         'Contato com recepção'
       ),
 
+    // Com chamado em andamento, abre o acompanhamento; sem, as notificacoes.
     request: () =>
-      navigate(
-        'Notifications'
-      ),
+      activeCall
+        ? setStatusSheetVisible(true)
+        : navigate(
+            'Notifications'
+          ),
   };
 
 
@@ -625,6 +781,19 @@ export default function HelpScreen({
         <BottomTabs
           active="Help"
           navigate={navigate}
+        />
+
+        <SosStatusSheet
+          visible={statusSheetVisible}
+          call={activeCall}
+          problems={activeCall?.problems || []}
+          savingProblems={savingProblems}
+          problemsError={problemsError}
+          receptionPhone={receptionPhone}
+          onToggleProblem={toggleProblem}
+          onClose={() =>
+            setStatusSheetVisible(false)
+          }
         />
 
         <HelpRequestSheet

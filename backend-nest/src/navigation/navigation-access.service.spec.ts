@@ -5,7 +5,7 @@ import {
   AccessSubject,
   VisitorAccessStatus,
 } from '@prisma/client';
-import { hashVisitorToken } from '../common/visitor-token';
+import { hashSecretToken } from '../common/secret-token';
 import { NavigationAccessService } from './navigation-access.service';
 
 const areaPrivate = { id: 1, code: 'private', name: 'HMC Private' };
@@ -177,7 +177,7 @@ async function run() {
 function visitor(status: VisitorAccessStatus, overrides: Record<string, any> = {}) {
   return {
     id: 99,
-    accessTokenHash: hashVisitorToken('segredo-99'),
+    accessTokenHash: hashSecretToken('segredo-99'),
     status,
     destinationId: null,
     requestedDestination: 'Visita / Internacao Private',

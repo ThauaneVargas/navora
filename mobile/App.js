@@ -55,6 +55,7 @@ import { deriveNavigationProgress } from './src/services/navigationAdapter';
 import { hospitalDetectionService } from './src/services/hospitalDetectionService';
 import { startVisitorAccessMonitor, stopVisitorAccessMonitor } from './src/services/visitorAccessMonitor';
 import { clearActiveVisit, loadActiveVisit, saveActiveVisit } from './src/services/visitorStorage';
+import { clearActiveCall } from './src/services/activeCallStorage';
 import { clearRouteHistory, recordRoute } from './src/services/routeHistoryStorage';
 import { clearFavorites } from './src/services/favoritesStorage';
 import { isRoutePreview } from './src/components/ActiveRouteBar';
@@ -930,6 +931,8 @@ export default function App() {
     // continuam — esses a pessoa apaga no próprio formulário).
     stopVisitorAccessMonitor();
     clearActiveVisit();
+    // Chamado em andamento tambem e deste usuario: nao fica para o proximo.
+    clearActiveCall();
     restoredVisitRef.current = false;
     // Histórico e favoritos podem revelar dado de saúde: saem junto com a pessoa.
     clearRouteHistory();

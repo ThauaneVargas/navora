@@ -3976,3 +3976,55 @@ button:disabled[title] { opacity: 0.5; cursor: not-allowed; }
   background: var(--card-soft);
   color: var(--ink);
 }
+
+/* SOS em tempo quase real: faixa que fica até alguém abrir ou dispensar */
+.sos-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin: 0 0 16px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: #b42332;
+  color: #fff;
+  box-shadow: 0 14px 34px rgba(180, 35, 50, 0.32);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sos-banner { animation: sos-pulse 1.4s ease-in-out infinite; }
+  @keyframes sos-pulse { 50% { box-shadow: 0 14px 44px rgba(180, 35, 50, 0.6); } }
+}
+.sos-banner-copy { display: grid; gap: 2px; min-width: 0; }
+.sos-banner-copy b { font-size: 18px; font-weight: 900; }
+.sos-banner-copy span { font-size: 14px; font-weight: 700; opacity: 0.95; overflow-wrap: anywhere; }
+.sos-banner-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.sos-banner-open,
+.sos-banner-dismiss {
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+.sos-banner-open { background: #fff; color: #b42332; border: 0; }
+.sos-banner-dismiss { background: transparent; color: #fff; border: 1.5px solid rgba(255, 255, 255, 0.7); }
+.sos-banner-open:focus-visible,
+.sos-banner-dismiss:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.sos-sound-row { display: flex; justify-content: flex-end; margin: -6px 0 10px; }
+.sos-sound-toggle {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.sos-sound-toggle[aria-pressed="true"] { color: var(--primary); border-color: var(--primary-soft); }
+.call-extra { display: block; font-size: 13px; color: var(--ink); margin-top: 4px; overflow-wrap: anywhere; }
+.call-extra b { color: var(--muted); font-weight: 800; }
+.call-problems { color: var(--danger); font-weight: 800; }

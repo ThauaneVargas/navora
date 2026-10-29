@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Activity,
@@ -98,6 +98,78 @@ const pathPages = Object.fromEntries(Object.entries(pagePaths).map(([page, path]
 
 // Intervalo da atualização automática do painel (chamados/SOS, visitantes, resumo).
 const OPERATIONAL_REFRESH_MS = 15000;
+// SOS precisa aparecer quase na hora: busca so os chamados novos/alterados.
+const CALLS_FAST_REFRESH_MS = 2500;
+const SOS_SOUND_KEY = 'navora.admin.sos_sound';
+
+// Codigos do app -> texto do painel (backend-nest/src/calls/call-codes.ts).
+const callNeedLabels = {
+  wheelchair: 'Cadeira de rodas',
+  stretcher: 'Maca',
+  mobility: 'Dificuldade de locomoção',
+  visual: 'Deficiência visual',
+  hearing: 'Deficiência auditiva',
+  companion: 'Precisa de acompanhante',
+};
+const callProblemLabels = {
+  chest_pain: 'Dor no peito',
+  breathing: 'Falta de ar',
+  fainting: 'Desmaio ou tontura',
+  fall: 'Queda ou machucado',
+  bleeding: 'Sangramento',
+  seizure: 'Convulsão',
+  unwell: 'Mal-estar',
+  other: 'Outro',
+};
+
+// Alerta sonoro do SOS sem arquivo de audio: tres bipes com Web Audio. O
+// navegador so libera som depois de um clique na pagina; o login ja conta.
+let sosAudioContext = null;
+function unlockSosAudio() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!sosAudioContext) sosAudioContext = new AudioCtx();
+    if (sosAudioContext.state === 'suspended') sosAudioContext.resume();
+  } catch {
+    // sem audio: o alerta visual continua
+  }
+}
+function playSosSound() {
+  try {
+    unlockSosAudio();
+    if (!sosAudioContext) return;
+    const start = sosAudioContext.currentTime;
+    [0, 0.35, 0.7].forEach((offset) => {
+      const osc = sosAudioContext.createOscillator();
+      const gain = sosAudioContext.createGain();
+      osc.type = 'square';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, start + offset);
+      gain.gain.exponentialRampToValueAtTime(0.25, start + offset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + offset + 0.25);
+      osc.connect(gain).connect(sosAudioContext.destination);
+      osc.start(start + offset);
+      osc.stop(start + offset + 0.27);
+    });
+  } catch {
+    // sem audio: o alerta visual continua
+  }
+}
+function readSosSoundPref() {
+  try {
+    return window.localStorage.getItem(SOS_SOUND_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+function saveSosSoundPref(enabled) {
+  try {
+    window.localStorage.setItem(SOS_SOUND_KEY, enabled ? 'on' : 'off');
+  } catch {
+    // preferencia so desta sessao
+  }
+}
 const profileOverrideKey = 'navora.admin.profile_overrides';
 
 const statusOrder = {
@@ -202,6 +274,13 @@ function mapCallFromApi(call) {
     priority: callApiPriorityToLabel[call.priority] || call.priority,
     status: callApiStatusToLabel[call.status] || call.status,
     emergencyContact: call.emergency_contact || '',
+    callerPhone: call.caller_phone || '',
+    needs: (call.needs || []).map((code) => callNeedLabels[code] || code),
+    problems: (call.problems || []).map((code) => callProblemLabels[code] || code),
+    problemNote: call.problem_note || '',
+    callType: call.call_type,
+    apiStatus: call.status,
+    updatedAtRaw: call.updated_at || call.created_at || null,
     // false = sem conta (Acesso rápido/visitante). undefined = backend antigo.
     registeredPatient: call.registered_patient,
     createdAt: created
@@ -410,6 +489,11 @@ function App() {
   const [settings, setSettings] = useState(initialSettings);
   const [dashboardSummary, setDashboardSummary] = useState(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
+  // SOS em tempo quase real: ids ja vistos, ultima alteracao conhecida e o alerta na tela.
+  const knownCallIdsRef = useRef(null);
+  const lastCallSyncRef = useRef(null);
+  const [sosAlert, setSosAlert] = useState(null);
+  const [sosSoundEnabled, setSosSoundEnabled] = useState(readSosSoundPref);
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState(null);
   const [filters, setFilters] = useState({});
@@ -488,7 +572,9 @@ function App() {
   const loadCalls = async ({ silent = false } = {}) => {
     try {
       const requests = await adminApi.getCalls();
-      setCalls(requests.map(mapCallFromApi));
+      const mapped = requests.map(mapCallFromApi);
+      setCalls(mapped);
+      rememberCalls(mapped);
       return true;
     } catch (error) {
       if (silent) return handleSilentRefreshFailure(error);
@@ -641,6 +727,89 @@ function App() {
       if (currentRole === 'admin') loadStaff();
     }
   }, [currentRole]);
+
+  // Guarda o que ja foi visto. Na primeira carga nao alerta (sao chamados antigos).
+  const rememberCalls = (mapped) => {
+    if (!knownCallIdsRef.current) knownCallIdsRef.current = new Set();
+    mapped.forEach((call) => {
+      knownCallIdsRef.current.add(call.id);
+      if (call.updatedAtRaw && (!lastCallSyncRef.current || call.updatedAtRaw > lastCallSyncRef.current)) {
+        lastCallSyncRef.current = call.updatedAtRaw;
+      }
+    });
+  };
+
+  // Busca rapida: so chamados novos/alterados. Chamado novo de SOS toca o alerta.
+  const syncNewCalls = async () => {
+    if (!knownCallIdsRef.current || !lastCallSyncRef.current) return;
+    try {
+      const changed = (await adminApi.getCalls(lastCallSyncRef.current)).map(mapCallFromApi);
+      if (!changed.length) return;
+      const fresh = changed.filter((call) => !knownCallIdsRef.current.has(call.id));
+      setCalls((items) => {
+        const byId = new Map(items.map((item) => [item.id, item]));
+        changed.forEach((call) => byId.set(call.id, { ...byId.get(call.id), ...call, history: byId.get(call.id)?.history || call.history }));
+        return [...byId.values()].sort((a, b) => String(b.updatedAtRaw).localeCompare(String(a.updatedAtRaw)));
+      });
+      rememberCalls(changed);
+      const newSos = fresh.find((call) => call.callType === 'SOS');
+      if (newSos) {
+        setSosAlert(newSos);
+        if (sosSoundEnabled) playSosSound();
+      } else if (fresh.length) {
+        showToast(`Novo chamado: ${fresh[0].type} - ${fresh[0].patient}`, 'warning');
+      }
+      // Problemas informados depois (ex.: "Dor no peito") atualizam o alerta aberto.
+      setSosAlert((current) => (current ? changed.find((call) => call.id === current.id) || current : current));
+    } catch (error) {
+      if (isUnauthorizedError(error)) handleAuthFailure(error);
+    }
+  };
+
+  useEffect(() => {
+    if (!currentRole) return undefined;
+    const unlock = () => unlockSosAudio();
+    window.addEventListener('pointerdown', unlock);
+    const timer = window.setInterval(syncNewCalls, CALLS_FAST_REFRESH_MS);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('pointerdown', unlock);
+    };
+    // syncNewCalls le refs e setters; o som segue a preferencia atual.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentRole, sosSoundEnabled]);
+
+  // Titulo da aba pisca enquanto houver SOS sem resposta (aba em segundo plano).
+  useEffect(() => {
+    const base = 'Navora Web Admin';
+    if (!sosAlert) {
+      document.title = base;
+      return undefined;
+    }
+    let on = false;
+    const timer = window.setInterval(() => {
+      on = !on;
+      document.title = on ? '🔴 SOS — Navora' : base;
+    }, 1000);
+    return () => {
+      window.clearInterval(timer);
+      document.title = base;
+    };
+  }, [sosAlert]);
+
+  const toggleSosSound = () => {
+    setSosSoundEnabled((current) => {
+      const next = !current;
+      saveSosSoundPref(next);
+      if (next) playSosSound();
+      return next;
+    });
+  };
+
+  const openSosAlert = () => {
+    setSosAlert(null);
+    navigatePage(currentRole === 'admin' ? 'admin-alerts' : 'reception-calls');
+  };
 
   // Sem isto, um SOS criado no celular só aparecia no painel depois de recarregar a
   // página — a lista de chamados só era buscada no login. Pula quando a aba está
@@ -1129,6 +1298,25 @@ function App() {
           notificationCount={calls.filter((call) => call.status !== 'Encerrado').length + messages.length}
           onEditProfile={() => openProfileEditor(app)}
         />
+        {sosAlert ? (
+          <div className="sos-banner" role="alert">
+            <div className="sos-banner-copy">
+              <b>SOS — {sosAlert.patient}</b>
+              <span>{sosAlert.location}{sosAlert.beacon ? ` - ${sosAlert.beacon}` : ''}</span>
+              {sosAlert.problems?.length ? <span>Informou: {sosAlert.problems.join(', ')}</span> : null}
+              {sosAlert.needs?.length ? <span>Precisa: {sosAlert.needs.join(', ')}</span> : null}
+            </div>
+            <div className="sos-banner-actions">
+              <button type="button" className="sos-banner-open" onClick={openSosAlert}>Ver chamado</button>
+              <button type="button" className="sos-banner-dismiss" onClick={() => setSosAlert(null)}>Dispensar</button>
+            </div>
+          </div>
+        ) : null}
+        <div className="sos-sound-row">
+          <button type="button" className="sos-sound-toggle" onClick={toggleSosSound} aria-pressed={sosSoundEnabled}>
+            {sosSoundEnabled ? 'Som do SOS: ligado' : 'Som do SOS: desligado'}
+          </button>
+        </div>
         <PageRouter role={currentRole} page={currentPage} app={app} />
       </section>
       <Toast toast={toast} />
@@ -2175,6 +2363,9 @@ function CallCard({ call, app, reception = false, adminView = false }) {
         {call.emergencyContact ? (
           <span className="call-emergency-contact"><HeartPulse size={14} aria-hidden="true" />Contato de emergência: {call.emergencyContact}</span>
         ) : null}
+        {call.problems?.length ? <span className="call-extra call-problems"><b>Informou:</b> {call.problems.join(', ')}</span> : null}
+        {call.needs?.length ? <span className="call-extra"><b>Precisa:</b> {call.needs.join(', ')}</span> : null}
+        {call.callerPhone ? <span className="call-extra"><b>Telefone:</b> {call.callerPhone}</span> : null}
 
         <div className="badges call-badges">
           <em className={`call-badge ${getPriorityBadgeTone(call.priority)}`}>{call.priority}</em>
@@ -2220,6 +2411,9 @@ function CallCard({ call, app, reception = false, adminView = false }) {
       {call.emergencyContact ? (
         <span className="call-emergency-contact"><HeartPulse size={14} aria-hidden="true" />Contato de emergência: {call.emergencyContact}</span>
       ) : null}
+      {call.problems?.length ? <span className="call-extra call-problems"><b>Informou:</b> {call.problems.join(', ')}</span> : null}
+      {call.needs?.length ? <span className="call-extra"><b>Precisa:</b> {call.needs.join(', ')}</span> : null}
+      {call.callerPhone ? <span className="call-extra"><b>Telefone:</b> {call.callerPhone}</span> : null}
 
       <div className="badges call-badges">
         <em className={`call-badge ${getPriorityBadgeTone(call.priority)}`}>{call.priority}</em>

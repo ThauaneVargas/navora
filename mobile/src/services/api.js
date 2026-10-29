@@ -185,6 +185,12 @@ export const navoraApi = {
     request('/calls/help', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }),
   createSos: (payload) =>
     request('/calls/sos', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }),
+  // Andamento do proprio chamado (codigo secreto devolvido ao criar).
+  getCallStatus: (id, token) =>
+    request(`/calls/${id}/status`, { headers: { 'X-Call-Token': token } }),
+  // "O que esta acontecendo?" depois do SOS enviado.
+  updateCallDetails: (id, token, details) =>
+    request(`/calls/${id}/details`, { method: 'PATCH', headers: { 'X-Call-Token': token }, body: JSON.stringify(details) }),
   getCalls: () => request('/calls', {}, []),
   createVisitorAccessRequest: (payload) =>
     request('/visitor-access', { method: 'POST', body: JSON.stringify(payload) }),

@@ -171,4 +171,11 @@ Testado contra um backend local de verdade (Postgres + seed + todas as migration
   - **Chamado sem conta marcado no painel:** SOS/ajuda de paciente logado guarda o usuário (`call_requests.user_id`); os outros aparecem com o selo "Sem conta" (confirmar no local antes de mobilizar equipe — proteção contra trote sem nunca bloquear o SOS). Token vencido não bloqueia mais rota pública (vira anônimo). Migration `20261029150000_add_call_user`.
   - Avisos novos do `App.js` traduzidos (`translateWithSavedLanguage` no `AppContext`, chaves `visitorRequest.*`).
   - **Não feito por aqui (de propósito):** trocar `JWT_SECRET`/senha do banco — o segredo novo ficaria escrito na conversa, que é justamente como o anterior vazou. Fazer no painel do Render (botão "Generate").
+  - **SOS completo (29/10, pedido da usuária):**
+    - Sai na hora (um toque + confirmação), e **depois** a tela pergunta "O que está acontecendo?" com opções de um toque (dor no peito, falta de ar, desmaio, queda, sangramento, convulsão, mal-estar, outro). Informar nunca atrasa o SOS. `PATCH /calls/:id/details` com o código secreto do chamado.
+    - Vai junto, automaticamente: telefone do perfil e necessidades de acessibilidade (cadeira de rodas, maca, locomoção, visual, auditiva, acompanhante). Códigos em `backend-nest/src/calls/call-codes.ts`.
+    - Sem conexão: tenta 3 vezes sozinho (SOS) antes de avisar; o aviso oferece "Tentar de novo" e "Ligar para a recepção" (`mobile/src/data/hospitalContacts.js`, números via `EXPO_PUBLIC_RECEPTION_PHONE_PRIVATE`/`_SUS` — **faltam os números do hospital**; sem número o botão some).
+    - O celular acompanha o andamento ("Enviado → Recebido pela recepção → Equipe a caminho → Em atendimento") via `GET /calls/:id/status` a cada 5 s; o chamado fica guardado no aparelho (`activeCallStorage`), "Sair" apaga.
+    - Painel: busca rápida (`GET /calls?updated_since=`) a cada 2,5 s — SOS apareceu em 1,4 s no teste —, faixa vermelha fixa até alguém abrir/dispensar, alerta sonoro (botão "Som do SOS" no topo) e título da aba piscando. Card mostra "Informou", "Precisa" e telefone.
+    - Migration `20261029160000_add_call_details`. Testado: unit, e2e e painel no navegador. **Falta testar a tela nova no celular.**
 

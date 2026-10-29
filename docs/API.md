@@ -173,6 +173,14 @@ Todos os endpoints sao exclusivos de `ADMIN`.
 - `POST /calls`, `/calls/help`, `/calls/sos`: continuam públicos; com `Authorization` de paciente, o chamado fica ligado à conta. Resposta traz `registered_patient` (false = "Sem conta" no painel). Token inválido é ignorado (nunca bloqueia SOS).
 - `GET/PATCH /staff...` (só ADMIN): equipe, histórico, desativar/reativar. `DELETE /staff/:id` → 405.
 
+### SOS completo (29/10)
+
+- `POST /calls/sos` (e `/calls`, `/calls/help`) aceita `caller_phone` e `needs` (`wheelchair`, `stretcher`, `mobility`, `visual`, `hearing`, `companion`) e devolve `access_token` (código secreto do chamado, só nessa resposta).
+- `PATCH /calls/:id/details` + header `X-Call-Token`: `{ problems: [...], problem_note }` — problemas: `chest_pain`, `breathing`, `fainting`, `fall`, `bleeding`, `seizure`, `unwell`, `other`. Recusado se o chamado já foi encerrado.
+- `GET /calls/:id/status` + `X-Call-Token`: `{ id, status, call_type, problems, updated_at }` — sem dados pessoais.
+- `GET /calls?updated_since=<ISO>` (equipe): só chamados criados/alterados depois da data (busca rápida do painel).
+- Esses três e o `POST /calls/sos` não têm limite de requisições (Wi-Fi do hospital = mesmo IP para todos).
+
 ## Check-ins
 
 `GET /check-ins`, `GET /check-ins/:checkInId`, `POST /check-ins`, `PATCH /check-ins/:checkInId/status`

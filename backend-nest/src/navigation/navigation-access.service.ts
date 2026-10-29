@@ -5,7 +5,7 @@ import {
   AccessSubject,
   VisitorAccessStatus,
 } from '@prisma/client';
-import { visitorTokenMatches } from '../common/visitor-token';
+import { secretTokenMatches } from '../common/secret-token';
 import { PrismaService } from '../database/prisma.service';
 import { AccessCheckDto } from './dto/access-check.dto';
 
@@ -254,7 +254,7 @@ export class NavigationAccessService {
     // Sem o codigo secreto do proprio pedido, a autorizacao nao vale: os ids
     // sao sequenciais e qualquer um poderia usar a liberacao de outra pessoa.
     // Mesma resposta de "nao encontrado" para nao confirmar quais ids existem.
-    if (!request || !visitorTokenMatches(request.accessTokenHash, accessToken)) {
+    if (!request || !secretTokenMatches(request.accessTokenHash, accessToken)) {
       return { status: null, valid: false, reason: 'Autorizacao de visitante nao encontrada.' };
     }
 

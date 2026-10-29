@@ -5,7 +5,7 @@
 // Escreva só o que o app faz de fato (ver docs/lgpd.md). Depois de mudar, rode
 // `npm run privacidade` no web-admin: gera a página pública exigida pelas lojas.
 
-export const PRIVACY_POLICY_VERSION = '2026-10-23';
+export const PRIVACY_POLICY_VERSION = '2026-10-29';
 
 const ICONS = ['account-outline', 'target', 'bluetooth', 'account-group-outline', 'server-outline', 'clock-outline', 'scale-balance'];
 
@@ -28,7 +28,7 @@ const POLICY = {
         'A lista de rotas que você iniciou (em "Histórico de rotas") fica só no seu celular e é apagada quando você toca em Sair. ' +
         'Visitantes podem, se quiserem, deixar nome e telefone salvos só no próprio celular.'],
       ['Quem vê',
-        'A equipe da recepção e a administração do hospital, com login próprio, veem os pedidos de ajuda e SOS (seu nome, onde você está e o contato de emergência) e os pedidos de visita. ' +
+        'A equipe da recepção e a administração do hospital, com login próprio, veem os pedidos de ajuda e SOS (seu nome, onde você está, telefone, contato de emergência, se precisa de cadeira de rodas ou maca e o que você informar que está sentindo) e os pedidos de visita. ' +
         'Não compartilhamos com outras empresas.'],
       ['Onde ficam',
         'Em um servidor na nuvem (Render), localizado nos Estados Unidos. ' +
@@ -62,7 +62,7 @@ const POLICY = {
         'The list of routes you started (in "Route history") stays only on your phone and is erased when you tap Sign out. ' +
         'Visitors can, if they want, keep their name and phone saved only on their own phone.'],
       ['Who sees it',
-        'The reception staff and the hospital administration, with their own login, see help and SOS requests (your name, where you are and your emergency contact) and visit requests. ' +
+        'The reception staff and the hospital administration, with their own login, see help and SOS requests (your name, where you are, phone, emergency contact, whether you need a wheelchair or stretcher and what you say you are feeling) and visit requests. ' +
         'We do not share it with other companies.'],
       ['Where it is stored',
         'On a cloud server (Render) located in the United States. ' +
@@ -96,7 +96,7 @@ const POLICY = {
         'La lista de rutas que iniciaste (en "Historial de rutas") queda solo en tu celular y se borra cuando tocas Salir. ' +
         'Los visitantes pueden, si quieren, dejar su nombre y teléfono guardados solo en su propio celular.'],
       ['Quién los ve',
-        'El equipo de recepción y la administración del hospital, con su propio acceso, ven los pedidos de ayuda y SOS (tu nombre, dónde estás y el contacto de emergencia) y los pedidos de visita. ' +
+        'El equipo de recepción y la administración del hospital, con su propio acceso, ven los pedidos de ayuda y SOS (tu nombre, dónde estás, teléfono, contacto de emergencia, si necesitas silla de ruedas o camilla y lo que informes que sientes) y los pedidos de visita. ' +
         'No los compartimos con otras empresas.'],
       ['Dónde se guardan',
         'En un servidor en la nube (Render), ubicado en Estados Unidos. ' +

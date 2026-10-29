@@ -113,7 +113,9 @@ export const adminApi = {
   healthCheck: () => request('/health', {}, { status: 'offline', demoMode: true }),
   login: (payload) => request('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
   getAuthMe: () => request('/auth/me', { authenticated: true }),
-  getCalls: () => request('/calls', { authenticated: true }, []),
+  // updatedSince: so os chamados criados/alterados depois (busca rapida do SOS).
+  getCalls: (updatedSince) =>
+    request(updatedSince ? `/calls?updated_since=${encodeURIComponent(updatedSince)}` : '/calls', { authenticated: true }, []),
   updateCallStatus: (id, status) =>
     request(`/calls/${id}/status`, { method: 'PATCH', authenticated: true, body: JSON.stringify({ status }) }, { id, status, demoMode: true }),
   getVisitorAccessRequests: (status) =>
