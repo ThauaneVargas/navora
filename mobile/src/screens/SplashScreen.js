@@ -79,7 +79,11 @@ const PIN_COLOR = '#A9162B';
 // Tempos (ms).
 const MIN_DURATION = 1500; // nunca termina antes disso (a animação não fica corrida)
 const MAX_DURATION = 4000; // termina aqui mesmo se a API ainda não respondeu
-const FINISH_DURATION = 500; // trecho final depois que o app ficou pronto
+// Trecho final depois que o app ficou pronto: o tempo depende de quanto falta
+// (antes era fixo em 0,5 s e o pino "voava" o resto do caminho quando o app
+// carregava rápido). Mesma velocidade de quem vinha andando, desacelerando.
+const FINISH_BASE = 500;
+const FINISH_PER_ROUTE = 2600; // ms pra percorrer o caminho inteiro
 const PULSE_DURATION = 600;
 const FADE_DELAY = 250;
 const FADE_DURATION = 400;
@@ -88,7 +92,8 @@ const AHEAD_OPACITY = 0.2;
 
 const clamp01 = (value) => Math.max(0, Math.min(1, value));
 const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2);
-const easeOut = (t) => 1 - (1 - t) ** 3;
+// Desaceleração leve: começa perto da velocidade que o pino já tinha.
+const easeOutSoft = (t) => 1 - (1 - t) ** 2;
 
 const pointAt = (fraction) => {
   const d = clamp01(fraction) * ROUTE_TOTAL;
@@ -230,12 +235,16 @@ export const SplashScreen = ({
         const natural = Math.min(0.9, easeInOut(clamp01(elapsed / MAX_DURATION)));
 
         if (canFinish && finishingFrom === null) {
-          finishingFrom = { at: now, progress: natural };
+          finishingFrom = {
+            at: now,
+            progress: natural,
+            duration: FINISH_BASE + (1 - natural) * FINISH_PER_ROUTE,
+          };
         }
 
         if (finishingFrom) {
-          const t = clamp01((now - finishingFrom.at) / FINISH_DURATION);
-          progress = finishingFrom.progress + (1 - finishingFrom.progress) * easeOut(t);
+          const t = clamp01((now - finishingFrom.at) / finishingFrom.duration);
+          progress = finishingFrom.progress + (1 - finishingFrom.progress) * easeOutSoft(t);
           if (t >= 1) arrivedAt = now;
         } else {
           progress = natural;

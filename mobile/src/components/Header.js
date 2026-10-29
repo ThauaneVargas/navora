@@ -2,8 +2,6 @@ import React from 'react';
 
 import {
   Image,
-  Platform,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -12,12 +10,10 @@ import {
 
 
 import {
-  MaterialCommunityIcons,
-} from '@expo/vector-icons';
-
-import {
   useApp,
 } from '../context/AppContext';
+
+import HeaderIconButton from './HeaderIconButton';
 
 import {
   APP_MAX_WIDTH,
@@ -45,6 +41,10 @@ export default function Header({
   // pra "compensar", e o cabeçalho não pode esticar além da borda do celular
   // (o ☰ e o 🔔 ficavam colados/cortados na ponta da tela).
   fullBleed = false,
+
+  // Tela de uma das 5 abas (Início, Navegar, IA, Ajuda, Perfil): sem "voltar",
+  // a pessoa troca de tela pelo rodapé.
+  tabRoot = false,
 }) {
   const { width } =
     useWindowDimensions();
@@ -68,15 +68,12 @@ export default function Header({
     );
 
   /*
-   * Não mostra seta nas páginas
-   * principais que usam centerTitle.
-   *
-   * Em Android o usuário pode usar
-   * o botão voltar do próprio celular.
+   * Telas internas: "voltar" sempre visível, no iPhone e no Android.
+   * O iPhone não tem botão voltar do sistema, e pra idosos um botão
+   * na tela é mais claro que gesto. Com ele, o ☰ vai pra direita.
    */
   const showBackButton =
-    !centerTitle &&
-    Platform.OS === 'ios' &&
+    !tabRoot &&
     Boolean(onBack);
 
   const openNotifications =
@@ -113,10 +110,10 @@ export default function Header({
               horizontalPadding,
 
             backgroundColor:
-              appColors.surface,
+              appColors.bar,
 
             borderBottomColor:
-              appColors.border,
+              appColors.barBorder,
           },
         ]}
       >
@@ -125,38 +122,22 @@ export default function Header({
             styles.row
           }
         >
-          {/* MENU */}
+          {/* ESQUERDA: voltar (telas internas) ou menu (abas) */}
 
-          <Pressable
-            onPress={onMenu}
-            disabled={!onMenu}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={t('header.openMenu')}
-            style={({ pressed }) => [
-              styles.iconButton,
-
-              {
-                backgroundColor:
-                  appColors.surface,
-
-                borderColor:
-                  appColors.border,
-              },
-
-              pressed &&
-                onMenu &&
-                styles.pressed,
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="menu"
-              size={23}
-              color={
-                appColors.text
-              }
+          {showBackButton ? (
+            <HeaderIconButton
+              icon="back"
+              onPress={onBack}
+              accessibilityLabel={t('header.back')}
             />
-          </Pressable>
+          ) : (
+            <HeaderIconButton
+              icon="menu"
+              onPress={onMenu}
+              disabled={!onMenu}
+              accessibilityLabel={t('header.openMenu')}
+            />
+          )}
 
 
           {/* CENTRO */}
@@ -208,69 +189,30 @@ export default function Header({
           </View>
 
 
-          {/* NOTIFICAÇÕES */}
+          {/* DIREITA: menu (telas internas) ou notificações (abas) */}
 
-          <Pressable
-            onPress={
-              openNotifications
-            }
-            disabled={
-              !onNotifications &&
-              !onRightPress
-            }
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={t('header.openNotifications')}
-            style={({ pressed }) => [
-              styles.iconButton,
-
-              {
-                backgroundColor:
-                  appColors.surface,
-
-                borderColor:
-                  appColors.border,
-              },
-
-              pressed &&
-                (onNotifications ||
-                  onRightPress) &&
-                styles.pressed,
-            ]}
-          >
-            <MaterialCommunityIcons
-              name="bell-outline"
-              size={22}
-              color={
-                appColors.text
-              }
+          {showBackButton && onMenu ? (
+            <HeaderIconButton
+              icon="menu"
+              onPress={onMenu}
+              accessibilityLabel={t('header.openMenu')}
             />
-
-            {notificationCount >
-            0 ? (
-              <View
-                style={[
-                  styles.badge,
-
-                  {
-                    backgroundColor:
-                      appColors.primary,
-                  },
-                ]}
-              >
-                <Text
-                  style={
-                    styles.badgeText
-                  }
-                >
-                  {notificationCount >
-                  9
-                    ? '9+'
-                    : notificationCount}
-                </Text>
-              </View>
-            ) : null}
-          </Pressable>
+          ) : showBackButton && !onNotifications && !onRightPress ? (
+            // Tela interna sem menu (ex.: esqueci a senha, antes de entrar):
+            // nada à direita em vez de um sino que não faz nada.
+            <View style={styles.sideSpacer} />
+          ) : (
+            <HeaderIconButton
+              icon="bell"
+              badge={notificationCount}
+              onPress={openNotifications}
+              disabled={
+                !onNotifications &&
+                !onRightPress
+              }
+              accessibilityLabel={t('header.openNotifications')}
+            />
+          )}
         </View>
       </View>
 
@@ -279,8 +221,7 @@ export default function Header({
 
       {!centerTitle &&
       (title ||
-        subtitle ||
-        showBackButton) ? (
+        subtitle) ? (
         <View
           style={[
             styles.pageHeader,
@@ -291,37 +232,6 @@ export default function Header({
             },
           ]}
         >
-          {showBackButton ? (
-            <Pressable
-              onPress={onBack}
-              hitSlop={8}
-              accessibilityRole="button"
-              accessibilityLabel={t('header.back')}
-              style={({ pressed }) => [
-                styles.backButton,
-
-                {
-                  backgroundColor:
-                    appColors.surface,
-
-                  borderColor:
-                    appColors.border,
-                },
-
-                pressed &&
-                  styles.pressed,
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="chevron-left"
-                size={23}
-                color={
-                  appColors.text
-                }
-              />
-            </Pressable>
-          ) : null}
-
 
           <View
             style={
@@ -379,7 +289,7 @@ const styles =
     },
 
     row: {
-      height: 46,
+      height: 48,
 
       flexDirection: 'row',
       alignItems: 'center',
@@ -388,26 +298,18 @@ const styles =
         'space-between',
     },
 
-    iconButton: {
-      width: 40,
-      height: 40,
-
-      borderRadius: 20,
-      borderWidth: 1,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-
-      position: 'relative',
+    sideSpacer: {
+      width: 42,
+      height: 42,
     },
 
     centerArea: {
       position: 'absolute',
 
-      left: 54,
-      right: 54,
+      left: 56,
+      right: 56,
 
-      height: 46,
+      height: 48,
 
       alignItems: 'center',
       justifyContent: 'center',
@@ -449,30 +351,6 @@ const styles =
       textAlign: 'center',
     },
 
-    badge: {
-      position: 'absolute',
-
-      top: -3,
-      right: -3,
-
-      minWidth: 17,
-      height: 17,
-
-      borderRadius: 9,
-
-      paddingHorizontal: 4,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    badgeText: {
-      color: '#FFFFFF',
-
-      fontSize: 9,
-      fontWeight: '900',
-    },
-
     pageHeader: {
       minHeight: 62,
 
@@ -483,17 +361,6 @@ const styles =
       paddingBottom: 8,
 
       gap: 10,
-    },
-
-    backButton: {
-      width: 36,
-      height: 36,
-
-      borderRadius: 18,
-      borderWidth: 1,
-
-      alignItems: 'center',
-      justifyContent: 'center',
     },
 
     titleCopy: {
@@ -517,15 +384,5 @@ const styles =
       lineHeight: 17,
 
       fontWeight: '600',
-    },
-
-    pressed: {
-      opacity: 0.72,
-
-      transform: [
-        {
-          scale: 0.97,
-        },
-      ],
     },
   });

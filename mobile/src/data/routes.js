@@ -156,7 +156,7 @@ export const destinations = [
   { id: 'sus-waiting', icon: 'seat-outline', name: 'Sala de espera SUS', area: 'sus', category: 'Servicos', floor: 'Piso Terreo', distance: '80 m', time: '1 min', accessLevel: 'visitor_allowed' },
   { id: 'sus-exit', icon: 'exit-run', name: 'Saida SUS', area: 'sus', category: 'Servicos', floor: 'Piso Terreo', distance: '95 m', time: '2 min', accessLevel: 'public' },
   { id: 'sus-visita', icon: 'account-heart-outline', name: 'Visita / Internacao Hospital Marco Capute', area: 'sus', category: 'Visita', floor: '1o Andar', distance: '220 m', time: '4 min', accessLevel: 'visitor_authorization' },
-  { id: 'shared-lost', icon: 'map-marker-question-outline', name: 'Recepcao mais proxima', area: 'shared', category: 'Servicos', floor: 'Piso Terreo', distance: '50 m', time: '1 min', accessLevel: 'public' },
+  { id: 'shared-lost', icon: 'compass-outline', name: 'Recepcao mais proxima', area: 'shared', category: 'Servicos', floor: 'Piso Terreo', distance: '50 m', time: '1 min', accessLevel: 'public' },
   { id: 'centro-cirurgico', icon: 'lock-alert-outline', name: 'Centro Cirurgico', area: 'restricted', category: 'Restrito', floor: '1o Andar', distance: '240 m', time: '5 min', accessLevel: 'restricted' },
 ];
 

@@ -4,6 +4,7 @@ import React, {
 } from 'react';
 
 import {
+  Alert,
   Image,
   Modal,
   Platform,
@@ -368,6 +369,43 @@ export default function ProfileScreen({
    * CONTA
    */
 
+  const hasAccount =
+    userProfile?.authSource === 'api' ||
+    Boolean(userProfile?.hasAccount);
+
+  const openAccountHelp = () => {
+    Alert.alert(
+      t('profile.accountHelp'),
+      hasAccount
+        ? t('profile.accountHelpText')
+        : t('profile.accountHelpNoAccount'),
+      [
+        hasAccount
+          ? {
+              text: t('profile.accountHelpForgot'),
+              onPress: () => navigate('ForgotPassword'),
+            }
+          : {
+              text: t('profile.createAccount'),
+              onPress: () =>
+                navigate('PatientRegister', {
+                  initialValues: buildEditInitialValues(userProfile),
+                  from: 'Profile',
+                }),
+            },
+        ...(hasAccount
+          ? [
+              {
+                text: t('profile.security'),
+                onPress: () => navigate('Settings', { section: 'security' }),
+              },
+            ]
+          : []),
+        { text: t('common.close'), style: 'cancel' },
+      ]
+    );
+  };
+
   const accountItems = [
     {
       icon:
@@ -407,9 +445,34 @@ export default function ProfileScreen({
           : () =>
               navigate(
                 'PatientRegister',
-                { mode: 'edit', initialValues: buildEditInitialValues(userProfile) }
+                { mode: 'edit', initialValues: buildEditInitialValues(userProfile), focus: 'emergencyContact' }
               ),
     },
+
+    // Sem conta (acesso rápido): os dados valem só neste acesso; criando a
+    // conta eles ficam guardados. O formulário já vem preenchido.
+    ...(!isVisitor && !hasAccount
+      ? [
+          {
+            icon:
+              'account-plus-outline',
+
+            title:
+              t('profile.createAccount'),
+
+            subtitle:
+              t('profile.createAccountSub'),
+
+            highlight: true,
+
+            onPress: () =>
+              navigate(
+                'PatientRegister',
+                { initialValues: buildEditInitialValues(userProfile), from: 'Profile' }
+              ),
+          },
+        ]
+      : []),
 
     {
       icon:
@@ -441,8 +504,9 @@ export default function ProfileScreen({
       subtitle:
         t('profile.accountHelpSub'),
 
-      onPress: () =>
-        navigate('Help'),
+      // Antes levava pra própria tela de Ajuda (pedido de socorro), sem nada
+      // sobre conta. Agora oferece o que resolve: senha ou criar conta.
+      onPress: openAccountHelp,
     },
   ];
 

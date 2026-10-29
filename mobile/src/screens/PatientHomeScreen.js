@@ -318,6 +318,9 @@ export default function PatientHomeScreen({
                 ?.id,
 
             visitorAccessRequest,
+
+            // O botão já é "Iniciar rota": não pede de novo no mapa.
+            startNow: true,
           }
         );
 
@@ -495,6 +498,7 @@ export default function PatientHomeScreen({
       scroll={false}
       padded={false}
       withBottomTabs
+      topInset={false}
     >
       <View
         style={[
@@ -602,7 +606,7 @@ export default function PatientHomeScreen({
             ]}
           >
             <View style={[styles.tile40, { backgroundColor: appColors.iconBg }]}>
-              <MaterialCommunityIcons name="map-marker-distance" size={21} color={appColors.primary} />
+              <MaterialCommunityIcons name="sign-direction" size={22} color={appColors.primary} />
             </View>
 
             <Text numberOfLines={2} style={[styles.rowTitle, { color: appColors.text }]}>
@@ -1051,7 +1055,7 @@ export default function PatientHomeScreen({
 
           <View style={styles.supportRow}>
             <SupportCard
-              icon="map-marker-question-outline"
+              icon="compass-outline"
               title={t('help.lost')}
               subtitle={t('home.lostSub')}
               onPress={() => navigate('Lost')}
@@ -1059,7 +1063,7 @@ export default function PatientHomeScreen({
             />
 
             <SupportCard
-              icon="alarm-light-outline"
+              icon="hand-heart-outline"
               title={t('home.helpSos')}
               subtitle={t('home.sosSub')}
               emergency

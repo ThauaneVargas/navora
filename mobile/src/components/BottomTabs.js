@@ -72,14 +72,14 @@ export default function BottomTabs({
           {
             height: TAB_BAR_HEIGHT + bottomPadding,
             paddingBottom: bottomPadding,
-            backgroundColor: appColors.surface,
-            borderTopColor: appColors.border,
+            backgroundColor: appColors.bar,
+            borderTopColor: appColors.barBorder,
           },
         ]}
       >
         {tabs.map((tab) => {
           const isActive = active === tab.key;
-          const color = isActive ? appColors.primary : appColors.tabInactive;
+          const color = isActive ? appColors.primary : appColors.barInactive;
           const label = t(tab.labelKey);
 
           return (
@@ -98,14 +98,15 @@ export default function BottomTabs({
               <View
                 style={[
                   styles.iconWrap,
-                  isActive && { backgroundColor: appColors.iconBg },
+                  // Aba ativa: pílula branca sobre o rosado do rodapé.
+                  isActive && { backgroundColor: appColors.surface },
                 ]}
               >
                 <TabIcon
                   name={tab.icon}
                   active={isActive}
                   color={color}
-                  detailColor={appColors.iconBg}
+                  detailColor={appColors.surface}
                 />
               </View>
 

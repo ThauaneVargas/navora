@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, Pressable, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
+import HeaderIconButton from '../components/HeaderIconButton';
 
 import { useApp } from '../context/AppContext';
 import { isBeaconDiagnosticsEnabled } from '../services/indoorLocationService';
@@ -12,7 +12,7 @@ const menuItems = [
   // Só na versão de desenvolvimento ou no APK de teste (calibração dos beacons físicos).
   ...(isBeaconDiagnosticsEnabled() ? [{ titleKey: 'menu.beaconDiagnostics', subtitleKey: 'menu.beaconDiagnosticsSub', icon: 'access-point', screen: 'BeaconDiagnostics', tone: 'blue' }] : []),
   { titleKey: 'menu.profile', subtitleKey: 'menu.profileSub', icon: 'account-circle-outline', screen: 'Profile' },
-  { titleKey: 'menu.howToGet', subtitleKey: 'menu.howToGetSub', icon: 'map-marker-distance', screen: 'ExternalRoute', tone: 'teal' },
+  { titleKey: 'menu.howToGet', subtitleKey: 'menu.howToGetSub', icon: 'sign-direction', screen: 'ExternalRoute', tone: 'teal' },
   { titleKey: 'menu.accessibility', subtitleKey: 'menu.accessibilitySub', icon: 'wheelchair-accessibility', screen: 'Accessibility', tone: 'blue' },
   { titleKey: 'menu.emergencyRoutes', subtitleKey: 'menu.emergencyRoutesSub', icon: 'exit-run', screen: 'EmergencyRoutes', tone: 'green' },
   { titleKey: 'menu.routeHistory', subtitleKey: 'menu.routeHistorySub', icon: 'history', screen: 'RouteHistory', tone: 'violet' },
@@ -95,7 +95,6 @@ function MenuItem({
 
 export default function MenuScreen({ navigate, goBack, onLogout }) {
   const styles = useThemeStyles();
-  const insets = useSafeAreaInsets();
   const { isDark, toggleTheme, appColors, t } = useApp();
 
   const handlePress = (item) => {
@@ -110,36 +109,13 @@ export default function MenuScreen({ navigate, goBack, onLogout }) {
 
   return (
     <Screen scroll={false} padded={false}>
-      <View style={[styles.container, { backgroundColor: appColors.background, paddingTop: insets.top }]}>
-        <View style={[styles.header, { borderBottomColor: appColors.border }]}>
-          <Pressable
-            onPress={() => goBack?.()}
-            style={({ pressed }) => [
-              styles.headerButton,
-              { backgroundColor: appColors.surface, borderColor: appColors.border },
-              menuShadow(appColors, isDark),
-              pressed && styles.pressed,
-            ]}
-          >
-            <MaterialCommunityIcons name="chevron-left" size={27} color={isDark ? appColors.text : appColors.primaryDark} />
-          </Pressable>
+      <View style={[styles.container, { backgroundColor: appColors.background }]}>
+        <View style={[styles.header, { backgroundColor: appColors.bar, borderBottomColor: appColors.barBorder }]}>
+          <HeaderIconButton icon="back" onPress={() => goBack?.()} accessibilityLabel={t('header.back')} />
 
           <Text style={[styles.headerTitle, { color: appColors.text }]}>{t('menu.title')}</Text>
 
-          <Pressable
-            onPress={() => navigate('Notifications')}
-            style={({ pressed }) => [
-              styles.headerButton,
-              { backgroundColor: appColors.surface, borderColor: appColors.border },
-              menuShadow(appColors, isDark),
-              pressed && styles.pressed,
-            ]}
-          >
-            <MaterialCommunityIcons name="bell-outline" size={22} color={isDark ? appColors.text : appColors.primaryDark} />
-            <View style={[styles.badge, { backgroundColor: appColors.primary }]}>
-              <Text style={styles.badgeText}>2</Text>
-            </View>
-          </Pressable>
+          <HeaderIconButton icon="bell" onPress={() => navigate('Notifications')} accessibilityLabel={t('header.openNotifications')} />
         </View>
 
         <ScrollView
@@ -147,7 +123,7 @@ export default function MenuScreen({ navigate, goBack, onLogout }) {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingBottom: insets.bottom + 36 },
+            { paddingBottom: 36 },
           ]}
         >
           <MenuItem
@@ -211,45 +187,27 @@ const createStyles = (colors) => StyleSheet.create({
     flex: 1,
     backgroundColor: colors.background,
   },
+  // Mesmas medidas do cabeçalho das outras telas (Header/AppHeader).
   header: {
-    minHeight: 58,
-    paddingHorizontal: 20,
+    minHeight: 64,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
   },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
   headerTitle: {
     position: 'absolute',
-    left: 74,
-    right: 74,
-    bottom: 19,
+    left: 72,
+    right: 72,
+    top: 8,
+    bottom: 8,
     textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  badge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
+    textAlignVertical: 'center',
+    lineHeight: 48,
+    fontSize: 17,
     fontWeight: '900',
   },
   scrollContent: {

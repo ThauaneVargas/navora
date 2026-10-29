@@ -24,6 +24,7 @@ import {
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
+import HelpRequestSheet from '../components/HelpRequestSheet';
 import { useRouteBarSpace } from '../components/ActiveRouteBar';
 
 import {
@@ -86,6 +87,11 @@ export default function HelpScreen({
     submittingKind,
     setSubmittingKind,
   ] = useState(null);
+
+  const [
+    requestSheetVisible,
+    setRequestSheetVisible,
+  ] = useState(false);
 
 
   const currentLocation = {
@@ -305,11 +311,9 @@ export default function HelpScreen({
 
 
   const actions = {
+    // Pergunta o motivo e confirma antes de enviar (HelpRequestSheet).
     help: () =>
-      submit(
-        'help',
-        'Preciso de ajuda'
-      ),
+      setRequestSheetVisible(true),
 
     sos:
       confirmSos,
@@ -476,7 +480,7 @@ export default function HelpScreen({
             }
           >
             <SmallTile
-              icon="map-marker-question-outline"
+              icon="compass-outline"
               title={t('help.lost')}
               tone="amber"
               onPress={
@@ -621,6 +625,17 @@ export default function HelpScreen({
         <BottomTabs
           active="Help"
           navigate={navigate}
+        />
+
+        <HelpRequestSheet
+          visible={requestSheetVisible}
+          locationName={currentLocation.name}
+          onClose={() =>
+            setRequestSheetVisible(false)
+          }
+          onSend={(reason) =>
+            submit('help', reason)
+          }
         />
       </View>
     </Screen>

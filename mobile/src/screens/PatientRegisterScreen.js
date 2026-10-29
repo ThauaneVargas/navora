@@ -9,15 +9,18 @@ import { isAuthError, navoraApi } from '../services/api';
 import { saveAuthToken } from '../services/authToken';
 import { PRIVACY_POLICY_VERSION, getPrivacyPolicy } from '../data/privacyPolicy';
 import {
+  isStrongPassword,
   isValidBirthDate,
   isValidCPF,
   isValidEmail,
+  isValidPhone,
   maskBirthDate,
   maskCPF,
   maskPhone,
-  passwordStrength,
   sanitizeName,
+  stripSpaces,
 } from '../utils/masks';
+import PasswordRules from '../components/PasswordRules';
 
 const personalFields = [
   { key: 'name', label: 'Nome completo', icon: 'account-outline', mask: sanitizeName, autoCapitalize: 'words' },
@@ -25,8 +28,8 @@ const personalFields = [
   { key: 'document', label: 'CPF', icon: 'card-account-details-outline', mask: maskCPF, keyboardType: 'number-pad', maxLength: 14 },
   { key: 'phone', label: 'Telefone', icon: 'phone-outline', mask: maskPhone, keyboardType: 'phone-pad', maxLength: 15 },
   { key: 'email', label: 'E-mail', icon: 'email-outline', keyboardType: 'email-address', autoCapitalize: 'none', autoCorrect: false },
-  { key: 'password', label: 'Senha', icon: 'lock-outline', secure: true },
-  { key: 'confirmPassword', label: 'Confirmar senha', icon: 'lock-check-outline', secure: true },
+  { key: 'password', label: 'Senha', icon: 'lock-outline', secure: true, mask: stripSpaces, maxLength: 72 },
+  { key: 'confirmPassword', label: 'Confirmar senha', icon: 'lock-check-outline', secure: true, mask: stripSpaces, maxLength: 72 },
   { key: 'emergencyContact', label: 'Contato de emergência (telefone)', icon: 'account-alert-outline', mask: maskPhone, keyboardType: 'phone-pad', maxLength: 15 },
 ];
 
@@ -90,7 +93,7 @@ const buildSelectedFromAccessibility = (accessibility = {}) =>
       .map(([key]) => [accessibilityKeyToLabel[key], true])
   );
 
-export default function PatientRegisterScreen({ navigate, onPatientReady, routeParams = {} }) {
+export default function PatientRegisterScreen({ navigate, onPatientReady, onProfileUpdate, userProfile, routeParams = {} }) {
   const { appColors, t, language } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
   const policy = useMemo(() => getPrivacyPolicy(language), [language]);
@@ -132,13 +135,13 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, routeP
     document: form.document && !isValidCPF(form.document) ? t('register.errCpf') : null,
     email: form.email && !isValidEmail(form.email) ? t('register.errEmail') : null,
     birth: form.birth && !isValidBirthDate(form.birth) ? t('register.errBirth') : null,
+    phone: form.phone && !isValidPhone(form.phone) ? t('register.errPhone') : null,
+    emergencyContact: form.emergencyContact && !isValidPhone(form.emergencyContact) ? t('register.errPhone') : null,
     confirmPassword:
       form.confirmPassword && form.confirmPassword !== form.password
         ? t('register.errMismatch')
         : null,
-  }), [form.document, form.email, form.birth, form.confirmPassword, form.password, t]);
-
-  const strength = useMemo(() => passwordStrength(form.password), [form.password]);
+  }), [form.document, form.email, form.birth, form.phone, form.emergencyContact, form.confirmPassword, form.password, t]);
 
   const handleSubmit = async () => {
     if (isEditMode) {
@@ -164,6 +167,26 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, routeP
         notes: notes.trim(),
       };
 
+      // Sem conta (acesso rápido / modo demonstração) não há PATCH no servidor:
+      // salva no perfil desta sessão. Antes caía em "sessão expirada" e voltava
+      // pro login, e a pessoa não conseguia mudar nada.
+      if (userProfile?.authSource !== 'api') {
+        onProfileUpdate?.({
+          name: editPayload.name.split(' ')[0],
+          fullName: editPayload.name,
+          phone: editPayload.phone,
+          patientCode: editPayload.patientCode,
+          birthDate: editPayload.birthDate,
+          accessibility: editPayload.accessibility,
+          emergencyContact: editPayload.emergencyContact,
+          notes: editPayload.notes,
+        });
+        setLoading(false);
+        Alert.alert(t('register.updatedTitle'), t('register.updatedNoAccount'));
+        navigate('Profile');
+        return;
+      }
+
       try {
         // PATCH/PUT real em /patients/me — ao contrário do fluxo de criação abaixo,
         // nunca chama registerPatient (evita o 409 "E-mail ja cadastrado"/duplicata).
@@ -188,6 +211,11 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, routeP
 
     if (!form.name?.trim() || !form.email?.trim() || !form.password?.trim()) {
       Alert.alert(t('register.incompleteTitle'), t('register.incomplete'));
+      return;
+    }
+
+    if (!isStrongPassword(form.password)) {
+      Alert.alert(t('password.weakTitle'), t('password.weak'));
       return;
     }
 
@@ -268,7 +296,7 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, routeP
       <Header
         title={isEditMode ? t('register.titleEdit') : t('register.titleNew')}
         centerTitle
-        onBack={() => navigate(isEditMode ? 'Profile' : 'Login')}
+        onBack={() => navigate(isEditMode || routeParams.from === 'Profile' ? 'Profile' : 'Login')}
       />
 
       <Text style={styles.sectionTitle}>{t('register.personalData')}</Text>
@@ -291,6 +319,8 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, routeP
                   autoCapitalize={field.autoCapitalize}
                   autoCorrect={field.autoCorrect}
                   maxLength={field.maxLength}
+                  // Vindo de "Contato de emergência" no Perfil: abre direto nesse campo.
+                  autoFocus={routeParams.focus === field.key}
                   style={styles.input}
                 />
                 {field.secure ? (
@@ -308,11 +338,7 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, routeP
                   </Pressable>
                 ) : null}
               </View>
-              {field.key === 'password' && strength.label ? (
-                <Text style={[styles.hintText, { color: appColors.muted }]}>
-                  {t('register.strength', { level: t(`register.strength_${strength.label}`) })}
-                </Text>
-              ) : null}
+              {field.key === 'password' ? <PasswordRules value={form.password} /> : null}
               {error ? <Text style={styles.errorText}>{error}</Text> : null}
             </View>
           );

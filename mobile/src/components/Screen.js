@@ -36,6 +36,9 @@ export default function Screen({
   dark = false,
   padded = true,
   withBottomTabs = false,
+  // false quando a própria tela pinta a área da barra de status (ex.: AppHeader
+  // branco da Início) — senão o inset do topo é aplicado duas vezes.
+  topInset = true,
 }) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -73,9 +76,12 @@ export default function Screen({
   // Para telas com BottomTabs, não incluir 'bottom' nas edges do SafeAreaView
   // — o BottomTabs gerencia o inset inferior via useSafeAreaInsets próprio.
   // Isso evita dupla contagem do inset (SafeAreaView + paddingBottom do BottomTabs).
-  const safeAreaEdges = withBottomTabs
-    ? ['top', 'left', 'right']
-    : ['top', 'left', 'right', 'bottom'];
+  const safeAreaEdges = [
+    ...(topInset ? ['top'] : []),
+    'left',
+    'right',
+    ...(withBottomTabs ? [] : ['bottom']),
+  ];
 
   // Padding inferior do conteúdo scrollável:
   // withBottomTabs: altura do BottomTabs (62) + inset inferior do dispositivo + folga
@@ -101,6 +107,8 @@ export default function Screen({
     },
   ];
 
+  // A área segura (faixa da hora/bateria e barra de gestos) leva a cor do
+  // cabeçalho/rodapé (bar); o conteúdo fica no fundo cinza-gelo (bg).
   if (!scroll) {
     return (
       <SafeAreaView
@@ -110,7 +118,7 @@ export default function Screen({
 
           {
             backgroundColor:
-              appColors.bg,
+              appColors.bar,
           },
         ]}
       >
@@ -123,6 +131,9 @@ export default function Screen({
             styles.inner,
 
             {
+              backgroundColor:
+                appColors.bg,
+
               maxWidth:
                 IS_WEB
                   ? APP_MAX_WIDTH
@@ -155,7 +166,7 @@ export default function Screen({
 
         {
           backgroundColor:
-            appColors.bg,
+            appColors.bar,
         },
       ]}
     >
@@ -168,6 +179,9 @@ export default function Screen({
           styles.inner,
 
           {
+            backgroundColor:
+              appColors.bg,
+
             maxWidth:
               IS_WEB
                 ? APP_MAX_WIDTH

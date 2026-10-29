@@ -2,7 +2,6 @@ import React from 'react';
 
 import {
   Image,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -16,7 +15,7 @@ import {
   useApp,
 } from '../context/AppContext';
 
-import { BellIcon, MenuIcon } from './NavIcons';
+import HeaderIconButton from './HeaderIconButton';
 
 const logo =
   require('../../assets/images/navora_symbol.png');
@@ -48,25 +47,17 @@ export default function AppHeader({
         styles.header,
         {
           paddingTop: topPadding,
-          backgroundColor: appColors.surface,
-          borderBottomColor: appColors.border,
+          backgroundColor: appColors.bar,
+          borderBottomColor: appColors.barBorder,
         },
       ]}
     >
       <View style={styles.row}>
-        <Pressable
+        <HeaderIconButton
+          icon="menu"
           onPress={() => navigate('Menu')}
-          accessibilityRole="button"
           accessibilityLabel={t('header.openMenu')}
-          hitSlop={4}
-          style={({ pressed }) => [
-            styles.iconButton,
-            { backgroundColor: appColors.iconBg },
-            pressed && styles.pressed,
-          ]}
-        >
-          <MenuIcon color={appColors.primary} />
-        </Pressable>
+        />
 
         <View
           pointerEvents="none"
@@ -86,40 +77,16 @@ export default function AppHeader({
           </Text>
         </View>
 
-        <Pressable
+        <HeaderIconButton
+          icon="bell"
+          badge={notificationCount}
           onPress={() => navigate('Notifications')}
-          accessibilityRole="button"
           accessibilityLabel={
             notificationCount > 0
               ? t('header.openNotificationsCount', { count: badgeLabel })
               : t('header.openNotifications')
           }
-          hitSlop={4}
-          style={({ pressed }) => [
-            styles.iconButton,
-            { backgroundColor: appColors.iconBg },
-            pressed && styles.pressed,
-          ]}
-        >
-          <BellIcon color={appColors.primary} />
-
-          {notificationCount > 0 ? (
-            <View
-              style={[
-                styles.badge,
-                {
-                  backgroundColor: appColors.primaryStrong,
-                  // Borda na cor do cabeçalho: "branca" no claro, escura no modo noturno.
-                  borderColor: appColors.surface,
-                },
-              ]}
-            >
-              <Text style={styles.badgeText} maxFontSizeMultiplier={1.2}>
-                {badgeLabel}
-              </Text>
-            </View>
-          ) : null}
-        </Pressable>
+        />
       </View>
     </View>
   );
@@ -140,16 +107,6 @@ const styles =
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
-    },
-
-    // 42x42 visível; o hitSlop={4} leva a área de toque a 50 px (mínimo 44).
-    iconButton: {
-      width: 42,
-      height: 42,
-      borderRadius: 14,
-      alignItems: 'center',
-      justifyContent: 'center',
-      position: 'relative',
     },
 
     brand: {
@@ -173,29 +130,5 @@ const styles =
       lineHeight: 20,
       fontWeight: '900',
       letterSpacing: -0.2,
-    },
-
-    badge: {
-      position: 'absolute',
-      top: -4,
-      right: -4,
-      minWidth: 20,
-      height: 20,
-      borderRadius: 10,
-      borderWidth: 2,
-      paddingHorizontal: 4,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    badgeText: {
-      color: '#FFFFFF',
-      fontSize: 10,
-      fontWeight: '900',
-    },
-
-    pressed: {
-      opacity: 0.72,
-      transform: [{ scale: 0.97 }],
     },
   });

@@ -11,7 +11,9 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import CenteredFormScreen from '../components/CenteredFormScreen';
+import PasswordRules from '../components/PasswordRules';
 import { navoraApi, isNetworkError } from '../services/api';
+import { isStrongPassword, stripSpaces } from '../utils/masks';
 
 export default function ResetPasswordScreen({ navigate, goBack }) {
   const { appColors: colors, t } = useApp();
@@ -28,8 +30,8 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
       Alert.alert(t('common.attention'), t('reset.codeRequired'));
       return;
     }
-    if (newPassword.length < 6) {
-      Alert.alert(t('common.attention'), t('reset.tooShort'));
+    if (!isStrongPassword(newPassword)) {
+      Alert.alert(t('password.weakTitle'), t('password.weak'));
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -54,34 +56,25 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
 
   if (done) {
     return (
-      <CenteredFormScreen>
-        <View style={styles.card}>
-          <View style={styles.iconRing}>
-            <MaterialCommunityIcons name="check-circle-outline" size={44} color={colors.primary} />
-          </View>
-          <Text style={styles.title}>{t('reset.doneTitle')}</Text>
-          <Text style={styles.body}>{t('reset.done')}</Text>
-          <Pressable onPress={() => goBack?.()} style={({ pressed }) => [styles.btn, pressed && styles.pressed]}>
-            <Text style={styles.btnText}>{t('reset.goToLogin')}</Text>
-          </Pressable>
+      <CenteredFormScreen title={t('reset.title')} onBack={() => goBack?.()}>
+        <View style={styles.iconTile}>
+          <MaterialCommunityIcons name="check-circle-outline" size={36} color={colors.primary} />
         </View>
+        <Text style={styles.title}>{t('reset.doneTitle')}</Text>
+        <Text style={styles.body}>{t('reset.done')}</Text>
+        <Pressable onPress={() => goBack?.()} style={({ pressed }) => [styles.btn, pressed && styles.pressed]}>
+          <Text style={styles.btnText}>{t('reset.goToLogin')}</Text>
+        </Pressable>
       </CenteredFormScreen>
     );
   }
 
   return (
-    <CenteredFormScreen>
-      <View style={styles.card}>
-        <Pressable onPress={() => goBack?.()} style={styles.back}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color={colors.primary} />
-          <Text style={styles.backText}>{t('reset.back')}</Text>
-        </Pressable>
-
-        <View style={styles.iconRing}>
-          <MaterialCommunityIcons name="lock-open-outline" size={38} color={colors.primary} />
+    <CenteredFormScreen title={t('reset.title')} onBack={() => goBack?.()}>
+        <View style={styles.iconTile}>
+          <MaterialCommunityIcons name="lock-open-outline" size={34} color={colors.primary} />
         </View>
 
-        <Text style={styles.title}>{t('reset.title')}</Text>
         <Text style={styles.body}>
           {t('reset.intro')}
         </Text>
@@ -107,14 +100,16 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
             placeholder={t('reset.newPassword')}
             placeholderTextColor={colors.lightText}
             value={newPassword}
-            onChangeText={setNewPassword}
+            onChangeText={(value) => setNewPassword(stripSpaces(value))}
             secureTextEntry={!showPass}
+            maxLength={72}
             editable={!loading}
           />
           <Pressable onPress={() => setShowPass((v) => !v)} hitSlop={8}>
             <MaterialCommunityIcons name={showPass ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.lightText} />
           </Pressable>
         </View>
+        <PasswordRules value={newPassword} />
 
         <View style={[styles.inputBox, confirmPassword && newPassword !== confirmPassword && styles.inputBoxError]}>
           <MaterialCommunityIcons name="lock-check-outline" size={19} color={colors.primary} />
@@ -123,7 +118,8 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
             placeholder={t('reset.confirmPassword')}
             placeholderTextColor={colors.lightText}
             value={confirmPassword}
-            onChangeText={setConfirmPassword}
+            onChangeText={(value) => setConfirmPassword(stripSpaces(value))}
+            maxLength={72}
             secureTextEntry={!showPass}
             editable={!loading}
           />
@@ -142,7 +138,6 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
             : <Text style={styles.btnText}>{t('reset.submit')}</Text>
           }
         </Pressable>
-      </View>
     </CenteredFormScreen>
   );
 }
@@ -154,29 +149,28 @@ function useThemeStyles() {
   return useMemo(() => createStyles(appColors), [appColors]);
 }
 
+// Mesmo visual da Esqueci minha senha (ForgotPasswordScreen).
 const createStyles = (colors) => StyleSheet.create({
-  card: { gap: 14 },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  backText: { color: colors.primary, fontSize: 14, fontWeight: '800' },
-  iconRing: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.borderStrong,
+  iconTile: {
+    width: 68, height: 68, borderRadius: 22,
+    backgroundColor: colors.iconBg,
     alignItems: 'center', justifyContent: 'center', alignSelf: 'center',
   },
-  title: { color: colors.text, fontSize: 24, fontWeight: '900', textAlign: 'center' },
-  body: { color: colors.muted, fontSize: 14, lineHeight: 21, textAlign: 'center' },
+  title: { color: colors.text, fontSize: 22, fontWeight: '900', textAlign: 'center' },
+  body: { color: colors.muted, fontSize: 15, lineHeight: 22, fontWeight: '600', textAlign: 'center' },
   inputBox: {
-    height: 48, borderRadius: 12, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 9,
+    height: 56, borderRadius: 16, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 10,
   },
-  input: { flex: 1, color: colors.text, fontSize: 14, paddingVertical: 0 },
+  input: { flex: 1, color: colors.text, fontSize: 16, paddingVertical: 0 },
   inputBoxError: { borderColor: colors.danger },
-  errorText: { color: colors.danger, fontSize: 12, fontWeight: '700', marginTop: -8 },
+  errorText: { color: colors.danger, fontSize: 13, fontWeight: '700', marginTop: -8 },
   btn: {
-    height: 50, borderRadius: 14, backgroundColor: colors.primary,
+    height: 56, borderRadius: 16, backgroundColor: colors.primaryStrong,
     alignItems: 'center', justifyContent: 'center',
   },
-  btnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
+  btnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
   pressed: { opacity: 0.76 },
   disabled: { opacity: 0.68 },
 });

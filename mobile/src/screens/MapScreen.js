@@ -1,14 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Image, PanResponder, View, Text, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
+import { Alert, Animated, PanResponder, View, Text, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
+import { isRoutePreview } from '../components/ActiveRouteBar';
 import { radii, shadows, spacing, typography } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import { deriveNavigationProgress, normalizeRouteCoordinates } from '../services/navigationAdapter';
-
-const logo = require('../../assets/images/navora_symbol.png');
 
 
 // Ids dos andares; o nome mostrado vem de t('map.floor_<id>').
@@ -18,7 +17,7 @@ const HOSPITAL_FLOORS = ['ground', '2', '3', '4'];
 // routeMap recalcular o mapa inteiro em toda renderização.
 const EMPTY_LIST = [];
 
-export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute, navigationProgress: selectedProgress, onEndRoute }) {
+export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute, navigationProgress: selectedProgress, onEndRoute, onConfirmRoute, onCancelRoutePreview }) {
   const styles = useThemeStyles();
   const { activeRoute: fallbackRoute, appColors, isDark, t } = useApp();
   const { width, height } = useWindowDimensions();
@@ -46,6 +45,8 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
   const currentStep = navigationProgress.currentStep;
   const nextStep = navigationProgress.nextStep;
   const arrived = navigationProgress.arrived;
+  // Prévia: mostra distância/tempo e o caminho; só vira rota com "Iniciar rota".
+  const preview = isRoutePreview(activeRoute);
   const instructionText = arrived
     ? getArrivalInstruction(activeRoute, currentStep, t)
     : currentStep?.instruction || nextStep?.instruction || (activeRoute?.source === 'api' ? t('map.noGuidance') : t('map.offlineGuidance'));
@@ -132,28 +133,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
 
   return (
     <Screen withBottomTabs>
-      <View style={styles.topHeader}>
-        <Pressable
-          onPress={() => goBack?.()}
-          accessibilityRole="button"
-          accessibilityLabel={t('header.back')}
-          style={({ pressed }) => [styles.headerButton, { backgroundColor: appColors.surface, borderColor: appColors.border }, pressed && styles.pressed, shadows.card]}
-        >
-          <MaterialCommunityIcons name="chevron-left" size={25} color={appColors.primary} />
-        </Pressable>
-        <View style={styles.headerBrand}>
-          <Image source={logo} style={styles.headerLogo} resizeMode="contain" />
-          <Text style={[styles.headerBrandText, { color: appColors.primary }]}>NAVORA</Text>
-        </View>
-        <Pressable
-          onPress={() => navigate('Menu')}
-          accessibilityRole="button"
-          accessibilityLabel={t('header.openMenu')}
-          style={({ pressed }) => [styles.headerButton, { backgroundColor: appColors.surface, borderColor: appColors.border }, pressed && styles.pressed, shadows.card]}
-        >
-          <MaterialCommunityIcons name="menu" size={22} color={appColors.text} />
-        </Pressable>
-      </View>
+      <Header title={t('map.title')} subtitle={t('map.subtitle')} centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.routeCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
         <View style={styles.routeCopy}>
@@ -294,6 +274,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
         ) : null}
       </View>
 
+      {preview ? null : (
       <View style={[styles.progressCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
         <View style={styles.progressHeader}>
           <Text style={[styles.progressLabel, { color: appColors.muted }]}>{t('map.progress')}</Text>
@@ -306,8 +287,30 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
           <View style={[styles.progressFill, { backgroundColor: appColors.primary, width: `${progressPercent}%` }]} />
         </View>
       </View>
+      )}
 
-      {arrived ? (
+      {preview ? (
+        <>
+          <Pressable
+            onPress={() => onConfirmRoute?.()}
+            accessibilityRole="button"
+            accessibilityLabel={t('map.startRouteA11y', { destination: activeRoute.destination })}
+            style={({ pressed }) => [styles.finishButton, pressed && styles.pressed, shadows.soft]}
+          >
+            <MaterialCommunityIcons name="navigation-variant" size={19} color="#FFFFFF" />
+            <Text style={styles.finishText}>{t('map.startRoute')}</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => onCancelRoutePreview?.()}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.endButton, { borderColor: appColors.border }, pressed && styles.pressed]}
+          >
+            <MaterialCommunityIcons name="chevron-left" size={18} color={appColors.primary} />
+            <Text style={[styles.endButtonText, { color: appColors.primary }]}>{t('header.back')}</Text>
+          </Pressable>
+        </>
+      ) : arrived ? (
         <Pressable
           onPress={confirmEndRoute}
           style={({ pressed }) => [styles.finishButton, pressed && styles.pressed, shadows.soft]}
@@ -700,39 +703,6 @@ function useThemeStyles() {
 }
 
 const createStyles = (colors) => StyleSheet.create({
-  topHeader: {
-    minHeight: 50,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 2,
-  },
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerBrand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerLogo: {
-    width: 24,
-    height: 24,
-  },
-  headerBrandText: {
-    color: colors.primary,
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: '900',
-    letterSpacing: 4,
-  },
   routeCard: {
     minHeight: 76,
     borderRadius: radii.lg,

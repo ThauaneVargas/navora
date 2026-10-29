@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
 import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import { useFavorites } from '../services/favoritesStorage';
 import {
   canAccessDestination,
   destinations,
@@ -38,6 +39,10 @@ export default function SearchScreen({
   // O ícone de filtro da busca era só desenho: agora mostra/esconde os filtros.
   const [showFilters, setShowFilters] = useState(true);
   const [selectedDestination, setSelectedDestination] = useState(null);
+  // "Destinos favoritos" do Perfil abre já filtrando; a ★ de cada linha
+  // favorita/desfavorita.
+  const [onlyFavorites, setOnlyFavorites] = useState(Boolean(routeParams.favoritesOnly));
+  const { isFavorite, toggleFavorite } = useFavorites();
   const area = getAreaById(userProfile.area);
   const profileLabel = userProfile.type === 'visitor' ? t('common.visitor') : t('common.patient');
   const sourceDestinations = navigationSource === 'api' ? navigationData?.destinations || destinations : destinations;
@@ -71,9 +76,10 @@ export default function SearchScreen({
       const matchesAccess = baseAccess && visitorCanSeeDestination(destination);
       const matchesFilter = filter === 'Todos' || destination.category === filter;
       const matchesQuery = !q || normalize(`${destination.name} ${destination.category}`).includes(q);
-      return matchesAccess && matchesFilter && matchesQuery;
+      const matchesFavorite = !onlyFavorites || isFavorite(destination);
+      return matchesAccess && matchesFilter && matchesQuery && matchesFavorite;
     });
-  }, [filter, navigationSource, query, sourceDestinations, userProfile, visitorApproved, visitorAccessRequest]);
+  }, [filter, isFavorite, navigationSource, onlyFavorites, query, sourceDestinations, userProfile, visitorApproved, visitorAccessRequest]);
 
   const wrongAreaDestination = useMemo(() => {
     if (navigationSource === 'api') return null;
@@ -159,7 +165,7 @@ export default function SearchScreen({
 
   return (
     <Screen withBottomTabs>
-      <Header title={t('search.title')} subtitle={t('search.subtitle')} centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title={t('search.title')} subtitle={t('search.subtitle')} centerTitle tabRoot onMenu={() => navigate('Menu')} onNotifications={() => navigate('Notifications')} />
 
       <View style={[styles.areaCard, shadows.card]}>
         <MaterialCommunityIcons name="map-marker-radius-outline" size={20} color={appColors.primary} />
@@ -227,6 +233,21 @@ export default function SearchScreen({
 
       {showFilters ? (
         <View style={styles.filters}>
+          <Pressable
+            onPress={() => setOnlyFavorites((value) => !value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: onlyFavorites }}
+            style={[styles.filter, styles.favoriteFilter, onlyFavorites && styles.filterActive]}
+          >
+            <MaterialCommunityIcons
+              name={onlyFavorites ? 'star' : 'star-outline'}
+              size={16}
+              color={onlyFavorites ? '#FFFFFF' : appColors.primary}
+            />
+            <Text style={[styles.filterText, onlyFavorites && styles.filterTextActive]}>
+              {t('search.favorites')}
+            </Text>
+          </Pressable>
           {filters.map((item) => (
             <Pressable
               key={item}
@@ -287,15 +308,28 @@ export default function SearchScreen({
                 <Text numberOfLines={1} style={styles.time}>{item.time || t('search.timeUnknown')}</Text>
                 <Text numberOfLines={1} style={[styles.auth, outsideExternalHours && styles.metaMuted]}>{accessLabel}</Text>
               </View>
-              <MaterialCommunityIcons name="chevron-right" size={18} color={appColors.muted} />
+              <Pressable
+                onPress={() => toggleFavorite(item)}
+                accessibilityRole="button"
+                accessibilityLabel={isFavorite(item) ? t('search.unfavoriteA11y', { name: item.name }) : t('search.favoriteA11y', { name: item.name })}
+                accessibilityState={{ selected: isFavorite(item) }}
+                hitSlop={6}
+                style={({ pressed }) => [styles.starButton, pressed && styles.pressed]}
+              >
+                <MaterialCommunityIcons
+                  name={isFavorite(item) ? 'star' : 'star-outline'}
+                  size={24}
+                  color={isFavorite(item) ? appColors.warning : appColors.muted}
+                />
+              </Pressable>
             </Pressable>
           );
         })}
         {!visibleDestinations.length ? (
           <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="map-search-outline" size={32} color={appColors.primary} />
-            <Text style={styles.emptyTitle}>{t('search.notFound')}</Text>
-            <Text style={styles.emptyText}>{t('search.notFoundSub')}</Text>
+            <MaterialCommunityIcons name={onlyFavorites ? 'star-outline' : 'map-search-outline'} size={32} color={appColors.primary} />
+            <Text style={styles.emptyTitle}>{onlyFavorites ? t('search.noFavorites') : t('search.notFound')}</Text>
+            <Text style={styles.emptyText}>{onlyFavorites ? t('search.noFavoritesSub') : t('search.notFoundSub')}</Text>
           </View>
         ) : null}
       </View>
@@ -425,7 +459,10 @@ const createStyles = (colors) => StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
   },
+  favoriteFilter: { flexDirection: 'row', gap: 6 },
   filterActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  // ★ do tamanho de um botão (44 px de toque com o hitSlop).
+  starButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   filterText: { color: colors.muted, fontSize: 13, fontWeight: '900' },
   filterTextActive: { color: '#FFFFFF' },
   list: {

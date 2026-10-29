@@ -148,7 +148,7 @@ export default function AssistantScreen({
   return (
     <Screen scroll={false} padded={false} withBottomTabs>
       <View style={styles.screen}>
-        <Header fullBleed title={t('assistant.title')} subtitle={t('assistant.subtitle')} centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+        <Header fullBleed title={t('assistant.title')} subtitle={t('assistant.subtitle')} centerTitle tabRoot onMenu={() => navigate('Menu')} onNotifications={() => navigate('Notifications')} />
 
         <View style={styles.keyboardArea}>
           <ScrollView

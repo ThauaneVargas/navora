@@ -57,6 +57,13 @@ export function isValidEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
 }
 
+// Telefone BR com DDD: 10 dígitos (fixo) ou 11 (celular, começa com 9).
+export function isValidPhone(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  if (digits.length === 10) return true;
+  return digits.length === 11 && digits[2] === '9';
+}
+
 export function isValidCPF(value) {
   const cpf = String(value || '').replace(/\D/g, '');
   if (cpf.length !== 11) return false;
@@ -100,18 +107,22 @@ export function isValidBirthDate(value) {
   return true;
 }
 
-export function passwordStrength(value) {
+// Senha forte — a MESMA regra do servidor (backend-nest/src/common/strong-password.ts):
+// 8+ caracteres, com letra, número e símbolo, sem espaço. Cada item vira uma
+// linha da lista na tela (components/PasswordRules.js), marcada quando cumprida.
+export function passwordRules(value) {
   const str = String(value || '');
-  let score = 0;
-
-  if (str.length >= 8) score += 1;
-  if (/[a-z]/.test(str) && /[A-Z]/.test(str)) score += 1;
-  if (/\d/.test(str)) score += 1;
-  if (/[^A-Za-z0-9]/.test(str)) score += 1;
-
-  if (!str) return { score: 0, label: '' };
-  if (score <= 1) return { score, label: 'Fraca' };
-  if (score === 2) return { score, label: 'Média' };
-  if (score === 3) return { score, label: 'Boa' };
-  return { score, label: 'Forte' };
+  return [
+    { key: 'length', ok: str.length >= 8 },
+    { key: 'letter', ok: /[A-Za-z]/.test(str) },
+    { key: 'number', ok: /\d/.test(str) },
+    { key: 'symbol', ok: /[^A-Za-z0-9\s]/.test(str) },
+    { key: 'noSpace', ok: str.length > 0 && !/\s/.test(str) },
+  ];
 }
+
+export const isStrongPassword = (value) =>
+  String(value || '').length <= 72 && passwordRules(value).every((rule) => rule.ok);
+
+// Máscara do campo de senha: espaço nem entra.
+export const stripSpaces = (value) => String(value || '').replace(/\s/g, '');

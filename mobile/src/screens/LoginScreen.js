@@ -14,12 +14,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import KeyboardAwareScrollView from '../components/KeyboardAwareScrollView';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { navoraApi, isNetworkError } from '../services/api';
 import { getAuthToken, saveAuthToken } from '../services/authToken';
 import { useApp } from '../context/AppContext';
-import LanguagePicker from '../components/LanguagePicker';
 
 const REMEMBERED_EMAIL_KEY = 'navora.login.remembered_email';
 
@@ -59,7 +58,6 @@ const shadow = {
   elevation: 2,
 };
 
-const GOOGLE_LOGO = require('../../assets/images/logo google.png');
 
 export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, navigate }) => {
   const styles = useThemeStyles();
@@ -174,22 +172,6 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
     navigate?.('ForgotPassword');
   };
 
-  const handleGoogleLogin = () => {
-    Alert.alert(
-      t('login.googleTitle'),
-      t('login.googleSoon'),
-      [{ text: 'OK' }]
-    );
-  };
-
-  const handleSocialLogin = (provider) => {
-    if (provider === 'Google') {
-      handleGoogleLogin();
-    } else {
-      Alert.alert(provider, t('login.appleSoon'));
-    }
-  };
-
   const handleBiometricLogin = async () => {
     if (loading || biometricLoading) return;
 
@@ -261,17 +243,19 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
     <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <KeyboardAwareScrollView
+          // flexGrow (e não minHeight = altura da janela): a tela não "balança"
+          // pra cima e pra baixo à toa; só rola quando o teclado abre ou não cabe.
           contentContainerStyle={[
             styles.scrollContent,
-            { minHeight: height, paddingVertical: compact ? 10 : 16 },
+            { paddingVertical: compact ? 10 : 16 },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          bounces={false}
+          overScrollMode="never"
         >
+          {/* Idioma fica só em Configurações (decisão da usuária, 28/10). */}
           <View style={[styles.stage, { maxWidth: stageMaxWidth }]}>
-            {/* Idioma antes de entrar: quem não lê português troca aqui. */}
-            <LanguagePicker compact style={styles.languagePicker} />
-
             <View style={[styles.brandBlock, compact && styles.brandBlockCompact]}>
               <Image
                 source={require('../../assets/images/navora_symbol.png')}
@@ -397,27 +381,6 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
               </Pressable>
             </View>
 
-            <View style={styles.dividerRow}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>{t('login.orContinue')}</Text>
-              <View style={styles.divider} />
-            </View>
-
-            <View style={styles.socialRow}>
-              <SocialLoginButton
-                icon="google"
-                label="Google"
-                disabled={loading || biometricLoading}
-                onPress={() => handleSocialLogin('Google')}
-              />
-              <SocialLoginButton
-                icon="apple"
-                label="Apple"
-                disabled={loading}
-                onPress={() => handleSocialLogin('Apple')}
-              />
-            </View>
-
             <Pressable
               onPress={onCreateAccount}
               disabled={loading}
@@ -482,28 +445,6 @@ const LoginInput = ({ icon, rightAction, ...inputProps }) => {
   );
 };
 
-const SocialLoginButton = ({ icon, label, disabled, onPress }) => {
-  const styles = useThemeStyles();
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      style={({ pressed }) => [
-        styles.socialButton,
-        pressed && !disabled && styles.socialButtonPressed,
-        disabled && styles.disabled,
-      ]}
-    >
-      {icon === 'google' ? (
-        <Image source={GOOGLE_LOGO} style={styles.socialIconImage} resizeMode="contain" />
-      ) : (
-        <FontAwesome name="apple" size={22} color="#000000" />
-      )}
-      <Text style={styles.socialText}>{label}</Text>
-    </Pressable>
-  );
-};
-
 // Estilos acompanham o tema (claro/escuro); antes a tela tinha uma paleta
 // própria, sempre clara.
 function useThemeStyles() {
@@ -512,25 +453,21 @@ function useThemeStyles() {
 }
 
 const createStyles = (colors) => StyleSheet.create({
-  languagePicker: {
-    alignSelf: 'flex-end',
-    marginBottom: 4,
-  },
-
+  // Fundo rosado suave (o mesmo do cabeçalho/rodapé).
   container: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bar,
   },
 
   safeArea: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bar,
   },
 
   scrollContent: {
     flexGrow: 1,
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.bar,
   },
 
   stage: {
@@ -590,13 +527,16 @@ const createStyles = (colors) => StyleSheet.create({
     marginBottom: 8,
   },
 
+  // Fora do selecionado: branco levemente rosado (branco puro sobre o fundo
+  // rosado ficava "muito branco"). O perfil escolhido ganha fundo rosado
+  // (iconBg) + borda bordô, pra ficar claro qual está marcado.
   profileCard: {
     flex: 1,
     height: 92,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: colors.barBorder,
+    backgroundColor: colors.surfaceAlt,
     paddingHorizontal: 10,
     paddingVertical: 10,
     alignItems: 'center',
@@ -605,9 +545,9 @@ const createStyles = (colors) => StyleSheet.create({
   },
 
   profileCardSelected: {
-    borderWidth: 1.3,
+    borderWidth: 1.5,
     borderColor: colors.primary,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: colors.iconBg,
   },
 
   profileCardPressed: {
@@ -660,8 +600,8 @@ const createStyles = (colors) => StyleSheet.create({
     height: 46,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: colors.barBorder,
+    backgroundColor: colors.surfaceAlt,
     paddingHorizontal: 13,
     flexDirection: 'row',
     alignItems: 'center',
@@ -765,8 +705,8 @@ const createStyles = (colors) => StyleSheet.create({
     height: 46,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderColor: colors.barBorder,
+    backgroundColor: colors.surfaceAlt,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -780,62 +720,6 @@ const createStyles = (colors) => StyleSheet.create({
 
   biometricText: {
     color: colors.primary,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '800',
-  },
-
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 12,
-    marginBottom: 9,
-  },
-
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: colors.border,
-  },
-
-  dividerText: {
-    color: colors.muted,
-    fontSize: 10,
-    lineHeight: 13,
-    fontWeight: '600',
-  },
-
-  socialRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-
-  socialButton: {
-    flex: 1,
-    height: 46,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-
-  socialButtonPressed: {
-    backgroundColor: colors.surfaceAlt,
-    transform: [{ scale: 0.99 }],
-  },
-
-  socialIconImage: {
-    width: 22,
-    height: 22,
-  },
-
-  socialText: {
-    color: colors.text,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '800',

@@ -56,6 +56,8 @@ import { hospitalDetectionService } from './src/services/hospitalDetectionServic
 import { startVisitorAccessMonitor, stopVisitorAccessMonitor } from './src/services/visitorAccessMonitor';
 import { clearActiveVisit, loadActiveVisit, saveActiveVisit } from './src/services/visitorStorage';
 import { clearRouteHistory, recordRoute } from './src/services/routeHistoryStorage';
+import { clearFavorites } from './src/services/favoritesStorage';
+import { isRoutePreview } from './src/components/ActiveRouteBar';
 
 const screens = {
   Splash: SplashScreen,
@@ -255,9 +257,9 @@ export default function App() {
   }, [userProfile, visitorAccessRequest]);
 
   // Histórico de rotas (só no celular): registra a rota iniciada e marca
-  // como concluída quando ela chega ao destino.
+  // como concluída quando ela chega ao destino. Prévia não entra.
   useEffect(() => {
-    if (activeRoute) recordRoute(activeRoute);
+    if (activeRoute && !isRoutePreview(activeRoute)) recordRoute(activeRoute);
   }, [activeRoute]);
 
   const navigate = (
@@ -929,8 +931,9 @@ export default function App() {
     stopVisitorAccessMonitor();
     clearActiveVisit();
     restoredVisitRef.current = false;
-    // O histórico de rotas pode revelar dado de saúde: sai junto com a pessoa.
+    // Histórico e favoritos podem revelar dado de saúde: saem junto com a pessoa.
     clearRouteHistory();
+    clearFavorites();
 
     setIdentificationDrafts({
       patient: {},
@@ -1034,8 +1037,11 @@ export default function App() {
       );
     };
 
+  // startNow: a pessoa já confirmou antes (ex.: "Iniciar rota autorizada");
+  // sem ele a rota abre como prévia e só começa no "Iniciar rota" do mapa.
   const startRouteDirect = (
-    destination
+    destination,
+    { startNow = false } = {}
   ) => {
     const nextDestination =
       destination ||
@@ -1094,6 +1100,8 @@ export default function App() {
         Boolean(nextDestination.timeIsFallback),
 
       status: 'active',
+
+      confirmed: startNow,
 
       area:
         nextDestination.area,
@@ -1219,7 +1227,8 @@ export default function App() {
 
             onPress: () =>
               startRouteDirect(
-                reception
+                reception,
+                { startNow: true }
               ),
           },
 
@@ -1234,7 +1243,8 @@ export default function App() {
     }
 
     startRouteDirect(
-      nextDestination
+      nextDestination,
+      { startNow: Boolean(context.startNow) }
     );
   };
 
@@ -1341,9 +1351,12 @@ export default function App() {
           return;
         }
 
-        setActiveRoute(
-          result.data
-        );
+        setActiveRoute({
+          ...result.data,
+
+          confirmed:
+            Boolean(context.startNow),
+        });
 
         navigate(
           'Navigation',
@@ -1493,7 +1506,8 @@ export default function App() {
       if (
         !activeRoute ||
         activeRoute.status !==
-          'active'
+          'active' ||
+        isRoutePreview(activeRoute)
       ) {
         return {
           recalculated: false,
@@ -2490,6 +2504,30 @@ export default function App() {
     ]);
   };
 
+  // Edição de dados sem conta (acesso rápido): só muda o perfil desta sessão.
+  const handleProfileUpdate = (patch) => {
+    setUserProfile((current) => ({
+      ...(current || {}),
+      ...patch,
+    }));
+  };
+
+  // "Iniciar rota" na prévia do mapa: a partir daqui é rota em andamento.
+  const handleConfirmRoute = () => {
+    setActiveRoute((current) =>
+      current
+        ? { ...current, confirmed: true }
+        : current
+    );
+  };
+
+  // "Voltar" na prévia: descarta a rota e volta pra onde a pessoa estava.
+  const handleCancelRoutePreview = () => {
+    setActiveRoute(null);
+
+    goBack();
+  };
+
   /*
    * SPLASH
    *
@@ -2694,6 +2732,18 @@ export default function App() {
 
             onEndRoute={
               handleEndRoute
+            }
+
+            onConfirmRoute={
+              handleConfirmRoute
+            }
+
+            onProfileUpdate={
+              handleProfileUpdate
+            }
+
+            onCancelRoutePreview={
+              handleCancelRoutePreview
             }
 
             onLogout={

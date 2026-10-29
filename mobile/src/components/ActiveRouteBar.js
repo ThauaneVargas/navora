@@ -22,8 +22,14 @@ export function routeDestinationLabel(route) {
   return '';
 }
 
+// Prévia: a pessoa escolheu o destino só pra ver distância/tempo e ainda não
+// tocou em "Iniciar rota" no mapa. Não conta como rota em andamento.
+export function isRoutePreview(route) {
+  return route?.confirmed === false;
+}
+
 export function isRouteBarVisible(route) {
-  if (!route || INACTIVE_STATUSES.has(route.status)) return false;
+  if (!route || isRoutePreview(route) || INACTIVE_STATUSES.has(route.status)) return false;
   return Boolean(routeDestinationLabel(route));
 }
 

@@ -44,80 +44,69 @@ export default function ForgotPasswordScreen({ navigate, goBack }) {
 
   if (sent) {
     return (
-      <CenteredFormScreen>
-        <View style={styles.card}>
-          <View style={styles.iconRing}>
-            <MaterialCommunityIcons name="email-check-outline" size={38} color={colors.primary} />
-          </View>
-          <Text style={styles.title}>{t('forgot.checkEmail')}</Text>
-          <Text style={styles.body}>
-            {t('forgot.sentBefore')} <Text style={styles.bold}>{email.trim()}</Text> {t('forgot.sentAfter')}
-          </Text>
-          <Text style={styles.hint}>{t('forgot.notReceived')}</Text>
-          <Pressable onPress={() => goBack?.()} style={({ pressed }) => [styles.btn, pressed && styles.pressed]}>
-            <Text style={styles.btnText}>{t('forgot.backToLogin')}</Text>
-          </Pressable>
-          <Pressable
-            onPress={() => navigate('ResetPassword')}
-            style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
-          >
-            <Text style={styles.secondaryText}>{t('forgot.haveCode')}</Text>
-          </Pressable>
+      <CenteredFormScreen title={t('forgot.title')} onBack={() => goBack?.()}>
+        <View style={styles.iconTile}>
+          <MaterialCommunityIcons name="email-check-outline" size={34} color={colors.primary} />
         </View>
-      </CenteredFormScreen>
-    );
-  }
-
-  return (
-    <CenteredFormScreen>
-      <View style={styles.card}>
-        <Pressable onPress={() => goBack?.()} style={styles.back}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color={colors.primary} />
-          <Text style={styles.backText}>{t('forgot.back')}</Text>
-        </Pressable>
-
-        <View style={styles.iconRing}>
-          <MaterialCommunityIcons name="lock-reset" size={38} color={colors.primary} />
-        </View>
-
-        <Text style={styles.title}>{t('forgot.title')}</Text>
+        <Text style={styles.title}>{t('forgot.checkEmail')}</Text>
         <Text style={styles.body}>
-          {t('forgot.intro')}
+          {t('forgot.sentBefore')} <Text style={styles.bold}>{email.trim()}</Text> {t('forgot.sentAfter')}
         </Text>
-
-        <View style={styles.inputBox}>
-          <MaterialCommunityIcons name="email-outline" size={19} color={colors.primary} />
-          <TextInput
-            style={styles.input}
-            placeholder={t('forgot.emailPlaceholder')}
-            placeholderTextColor={colors.lightText}
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!loading}
-          />
-        </View>
-
-        <Pressable
-          onPress={handleSend}
-          disabled={loading}
-          style={({ pressed }) => [styles.btn, pressed && styles.pressed, loading && styles.disabled]}
-        >
-          {loading
-            ? <ActivityIndicator color="#FFFFFF" size="small" />
-            : <Text style={styles.btnText}>{t('forgot.send')}</Text>
-          }
+        <Text style={styles.hint}>{t('forgot.notReceived')}</Text>
+        <Pressable onPress={() => goBack?.()} style={({ pressed }) => [styles.btn, pressed && styles.pressed]}>
+          <Text style={styles.btnText}>{t('forgot.backToLogin')}</Text>
         </Pressable>
-
         <Pressable
           onPress={() => navigate('ResetPassword')}
           style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
         >
           <Text style={styles.secondaryText}>{t('forgot.haveCode')}</Text>
         </Pressable>
+      </CenteredFormScreen>
+    );
+  }
+
+  return (
+    <CenteredFormScreen title={t('forgot.title')} onBack={() => goBack?.()}>
+      <View style={styles.iconTile}>
+        <MaterialCommunityIcons name="lock-reset" size={34} color={colors.primary} />
       </View>
+
+      <Text style={styles.body}>{t('forgot.intro')}</Text>
+
+      <View style={styles.inputBox}>
+        <MaterialCommunityIcons name="email-outline" size={21} color={colors.primary} />
+        <TextInput
+          style={styles.input}
+          placeholder={t('forgot.emailPlaceholder')}
+          placeholderTextColor={colors.lightText}
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
+          editable={!loading}
+        />
+      </View>
+
+      <Pressable
+        onPress={handleSend}
+        disabled={loading}
+        style={({ pressed }) => [styles.btn, pressed && styles.pressed, loading && styles.disabled]}
+      >
+        {loading
+          ? <ActivityIndicator color="#FFFFFF" size="small" />
+          : <Text style={styles.btnText}>{t('forgot.send')}</Text>
+        }
+      </Pressable>
+
+      <Pressable
+        onPress={() => navigate('ResetPassword')}
+        style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
+      >
+        <Text style={styles.secondaryText}>{t('forgot.haveCode')}</Text>
+      </Pressable>
     </CenteredFormScreen>
   );
 }
@@ -129,31 +118,31 @@ function useThemeStyles() {
   return useMemo(() => createStyles(appColors), [appColors]);
 }
 
+// Mesmo visual da Redefinir senha (ResetPasswordScreen): tile rosado com
+// ícone bordô, texto 15+, campo e botão de 56 px (público idoso).
 const createStyles = (colors) => StyleSheet.create({
-  card: { gap: 14 },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  backText: { color: colors.primary, fontSize: 14, fontWeight: '800' },
-  iconRing: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.borderStrong,
+  iconTile: {
+    width: 68, height: 68, borderRadius: 22,
+    backgroundColor: colors.iconBg,
     alignItems: 'center', justifyContent: 'center', alignSelf: 'center',
   },
-  title: { color: colors.text, fontSize: 24, fontWeight: '900', textAlign: 'center' },
-  body: { color: colors.muted, fontSize: 14, lineHeight: 21, textAlign: 'center' },
+  title: { color: colors.text, fontSize: 22, fontWeight: '900', textAlign: 'center' },
+  body: { color: colors.muted, fontSize: 15, lineHeight: 22, fontWeight: '600', textAlign: 'center' },
   bold: { color: colors.text, fontWeight: '800' },
-  hint: { color: colors.lightText, fontSize: 12, lineHeight: 18, textAlign: 'center' },
+  hint: { color: colors.muted, fontSize: 13, lineHeight: 19, textAlign: 'center' },
   inputBox: {
-    height: 48, borderRadius: 12, borderWidth: 1, borderColor: colors.border,
-    paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 9,
+    height: 56, borderRadius: 16, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 10,
   },
-  input: { flex: 1, color: colors.text, fontSize: 14, paddingVertical: 0 },
+  input: { flex: 1, color: colors.text, fontSize: 16, paddingVertical: 0 },
   btn: {
-    height: 50, borderRadius: 14, backgroundColor: colors.primary,
+    height: 56, borderRadius: 16, backgroundColor: colors.primaryStrong,
     alignItems: 'center', justifyContent: 'center',
   },
-  btnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
-  secondaryBtn: { alignItems: 'center', paddingVertical: 6 },
-  secondaryText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
+  btnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
+  secondaryBtn: { minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  secondaryText: { color: colors.primary, fontSize: 15, fontWeight: '800' },
   pressed: { opacity: 0.76 },
   disabled: { opacity: 0.68 },
 });

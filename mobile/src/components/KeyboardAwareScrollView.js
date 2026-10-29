@@ -1,5 +1,6 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Keyboard, Platform, ScrollView, TextInput, useWindowDimensions } from 'react-native';
+import { Dimensions, Keyboard, Platform, ScrollView, TextInput, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Teclado com o edgeToEdge do Android: o sistema NÃO encolhe mais a janela
 // quando o teclado abre (Android 15+), então ele cobria os campos; e os
@@ -14,9 +15,14 @@ const HIDE_EVENT = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide
 // Folga entre o campo e o topo do teclado.
 const FIELD_GAP = 24;
 
-// Altura do teclado aberto (0 com ele fechado).
+// Quanto o teclado cobre, medido da borda de baixo da tela (0 com ele fechado).
+// Use SEMPRE este valor pra posicionar algo acima do teclado (ex.: caixa de
+// mensagem do Assistente). No Android edge-to-edge o RN informa a altura do
+// teclado SEM a barra de navegação, mas o teclado fica em cima dela — por isso
+// somamos o inset de baixo (antes a caixa do Assistente ficava atrás do teclado).
 export function useKeyboardHeight() {
   const [height, setHeight] = useState(0);
+  const { bottom: bottomInset } = useSafeAreaInsets();
 
   useEffect(() => {
     if (Platform.OS === 'web') return undefined;
@@ -28,7 +34,16 @@ export function useKeyboardHeight() {
     };
   }, []);
 
-  return height;
+  if (!height) return 0;
+  return Platform.OS === 'android' ? height + bottomInset : height;
+}
+
+// Altura da área onde as telas desenham. No Android edge-to-edge a tela vai
+// até a borda de baixo (embaixo da barra de navegação), então é a da tela
+// inteira; a "window" do RN pode vir sem a barra e errar a conta.
+function useViewportHeight() {
+  const { height: windowHeight } = useWindowDimensions();
+  return Platform.OS === 'android' ? Dimensions.get('screen').height : windowHeight;
 }
 
 // ScrollView que abre espaço pro teclado e rola até o campo em foco.
@@ -41,7 +56,7 @@ const KeyboardAwareScrollView = forwardRef(function KeyboardAwareScrollView(
   const offsetRef = useRef(0);
   const lastFocusedRef = useRef(null);
   const keyboardHeight = useKeyboardHeight();
-  const { height: windowHeight } = useWindowDimensions();
+  const windowHeight = useViewportHeight();
 
   useImperativeHandle(ref, () => scrollRef.current);
 

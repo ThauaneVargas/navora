@@ -309,6 +309,9 @@ export default function VisitorAccessStatusScreen({
 
           visitorAccessRequest:
             request,
+
+          // O botão já é "Iniciar rota autorizada": não pede de novo no mapa.
+          startNow: true,
         }
       );
 
