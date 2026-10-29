@@ -2,7 +2,8 @@
 // aceite do cadastro leem daqui. Ao mudar o conteúdo de verdade, troque a
 // versão — o backend guarda qual versão cada paciente aceitou — e atualize os
 // TRÊS idiomas juntos (en/es são tradução do pt; o texto em português prevalece).
-// Escreva só o que o app faz de fato (ver docs/lgpd.md).
+// Escreva só o que o app faz de fato (ver docs/lgpd.md). Depois de mudar, rode
+// `npm run privacidade` no web-admin: gera a página pública exigida pelas lojas.
 
 export const PRIVACY_POLICY_VERSION = '2026-10-23';
 

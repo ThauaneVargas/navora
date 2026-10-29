@@ -43,3 +43,6 @@ review-dist/
 mobile/verify-android/
 mobile/verify-web/
 mobile/assets/images/*.zip
+
+# Pacotes/backup locais
+*.zip

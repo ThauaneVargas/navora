@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "privacidade": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/gerar-privacidade.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^5.0.0",
