@@ -5,6 +5,7 @@ App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo 
 Histórico detalhado de cada bug/feature/decisão (itens 1–24): `docs/historico.md`. Consultar antes de mexer em algo já resolvido.
 
 ## Prioridades (28/10)
+0. **Branch `fix/seguranca-entrega` (29/10, item 25 do histórico):** corrige painel web em branco, pedido de visitante que nunca chegava, SOS falso offline e furos de acesso. Precisa entrar antes de qualquer deploy.
 1. **Produção:** falta trocar a senha do banco e o `JWT_SECRET` (`docs/lgpd.md` §3). Push pra `main` = deploy de produção — só a usuária faz (`git push origin <branch>:main`).
 2. **Banco de produção free expira 19/11/2026** — procedimento em `docs/arquitetura.md` §7 (skill `/recriar-banco`). Plano pago adiado até pesquisar custos.
 3. **Beacons:** calibrar no hospital (`measuredPower`, `BEACON_STABILITY`), testar "Localização inicial" (CTM-13/14). Voz (reconhecimento do aparelho) pode entrar no mesmo APK.

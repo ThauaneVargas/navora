@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { UserRole, VisitorAccessRequest, VisitorAccessStatus } from '@prisma/client';
-import { Buffer } from 'buffer';
-import { createHash, randomBytes, timingSafeEqual } from 'crypto';
+import { randomBytes } from 'crypto';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { mapVisitorAccessToApi } from '../common/api-mappers';
+import { hashVisitorToken, visitorTokenMatches } from '../common/visitor-token';
 import { PrismaService } from '../database/prisma.service';
 import { AuthorizeVisitorAccessDto } from './dto/authorize-visitor-access.dto';
 import { CreateVisitorAccessDto } from './dto/create-visitor-access.dto';
@@ -40,7 +40,7 @@ export class VisitorAccessService {
     const accessToken = randomBytes(24).toString('hex');
     const request = await this.prisma.visitorAccessRequest.create({
       data: {
-        accessTokenHash: hashToken(accessToken),
+        accessTokenHash: hashVisitorToken(accessToken),
         visitorName: payload.visitor_name ?? 'Visitante Navora',
         areaId: area.areaId,
         area: area.areaName,
@@ -52,9 +52,16 @@ export class VisitorAccessService {
         requestedDestination: payload.requested_destination,
         reason: payload.reason ?? 'Visita',
         accessibility: payload.accessibility ?? 'Nao',
-        status: this.normalizeStatus(payload.status ?? VisitorAccessStatus.PENDING),
+        // Todo pedido nasce pendente: so a recepcao aprova (PATCH com JWT).
+        // O campo `status` do corpo e ignorado de proposito — antes, mandar
+        // "APPROVED" aqui liberava a area sem ninguem autorizar.
+        status: VisitorAccessStatus.PENDING,
         beacon: payload.beacon || payload.current_beacon || null,
         destinationId: destination?.id,
+        companions: sanitizeCompanions(payload.companions),
+        groupTotal: payload.group_total ?? 1,
+        visitCode: payload.visit_code || null,
+        assistanceRequest: payload.assistance_request || null,
       },
     });
     // O código só sai aqui, uma vez; o banco guarda apenas o hash.
@@ -176,10 +183,7 @@ export class VisitorAccessService {
   }
 
   private tokenMatches(storedHash: string | null, token?: string) {
-    if (!storedHash || !token) return false;
-    const given = Buffer.from(hashToken(token), 'hex');
-    const stored = Buffer.from(storedHash, 'hex');
-    return given.length === stored.length && timingSafeEqual(given, stored);
+    return visitorTokenMatches(storedHash, token);
   }
 
   private async find(requestId: number) {
@@ -249,6 +253,12 @@ export class VisitorAccessService {
   }
 }
 
-function hashToken(token: string) {
-  return createHash('sha256').update(token).digest('hex');
+// Guarda so nome e tipo de cada acompanhante, com tamanho limitado — o resto
+// do objeto vindo do app (ids internos etc.) nao vai para o banco.
+function sanitizeCompanions(companions?: Array<{ name?: unknown; type?: unknown }>) {
+  if (!Array.isArray(companions)) return [];
+  return companions.slice(0, 10).map((companion) => ({
+    name: typeof companion?.name === 'string' ? companion.name.trim().slice(0, 80) : '',
+    type: typeof companion?.type === 'string' ? companion.type.slice(0, 20) : 'adult',
+  }));
 }

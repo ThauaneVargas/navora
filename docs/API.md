@@ -146,6 +146,12 @@ O visitante lê o próprio pedido mandando o header `X-Visitor-Token: <access_to
 
 Protegidos para `ADMIN`/`RECEPTION`.
 
+### Regras de acesso (29/10)
+
+- `POST /visitor-access` sempre cria o pedido como `PENDING` (o campo `status` do corpo é ignorado). Aceita também `companions` ([{name,type}], até 10), `group_total`, `visit_code`, `assistance_request`.
+- `POST /navigation/access-check` e `/navigation/route-preview`: a liberação do visitante só vale com `visitor_access_request_id` **e** `visitor_access_token` (o `access_token` devolvido ao criar o pedido).
+- Sem regra cadastrada que case: visitante só acessa `public`/`visitor_allowed` (o resto pede autorização); paciente em `visitor_authorization` é orientado à recepção; destino de outra unidade (Private ↔ SUS) vira `REDIRECT_TO_RECEPTION`.
+
 ## Check-ins
 
 `GET /check-ins`, `GET /check-ins/:checkInId`, `POST /check-ins`, `PATCH /check-ins/:checkInId/status`

@@ -3919,3 +3919,7 @@ button.danger,
   .login-panel { padding: 26px; }
   .table-head, .table-row { min-width: 760px; }
 }
+
+/* Beacons: como o status e calculado */
+.beacon-health-note { margin: 0 0 14px; }
+.battery-meter-unknown { color: var(--muted); font-size: 12px; font-weight: 750; }

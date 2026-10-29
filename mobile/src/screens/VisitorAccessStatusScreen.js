@@ -307,6 +307,11 @@ export default function VisitorAccessStatusScreen({
           visitorAccessRequestId:
             request?.id,
 
+
+          visitorAccessToken:
+
+            request?.accessToken,
+
           visitorAccessRequest:
             request,
 
@@ -337,6 +342,11 @@ export default function VisitorAccessStatusScreen({
         visitorAccessRequestId:
           request?.id,
 
+
+        visitorAccessToken:
+
+          request?.accessToken,
+
         message:
           'Solicito mais tempo para a visita.',
       });
@@ -351,6 +361,11 @@ export default function VisitorAccessStatusScreen({
 
         visitorAccessRequestId:
           request?.id,
+
+
+        visitorAccessToken:
+
+          request?.accessToken,
 
         message:
           'Preciso falar com a recepção sobre minha visita.',

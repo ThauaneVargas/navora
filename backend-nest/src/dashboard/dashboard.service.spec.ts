@@ -34,6 +34,7 @@ function prismaFor(data: {
   const model = (items: Record<string, any>[]) => ({
     count: ({ where }: { where?: Record<string, any> } = {}) => items.filter((item) => matchesWhere(item, where)).length,
     groupBy: ({ by }: { by: string[] }) => groupBy(items, by[0]),
+    findMany: () => items,
   });
 
   return {
@@ -68,7 +69,12 @@ async function run() {
         { status: VisitorAccessStatus.APPROVED },
         { status: VisitorAccessStatus.DENIED },
       ],
-      beacons: [{ status: 'Online' }, { status: 'Offline' }],
+      beacons: [
+        // fisico visto agora -> Online; fisico sem sinal ha 2 dias -> Sem sinal; simulado nao conta como online
+        { status: 'Online', battery: 100, lastSignalAt: new Date(), ibeaconUuid: 'u', hardwareModel: 'FSC-BP104D' },
+        { status: 'Online', battery: 100, lastSignalAt: new Date(Date.now() - 2 * 86_400_000), ibeaconUuid: 'u2', hardwareModel: 'FSC-BP104D' },
+        { status: 'Online', battery: 100, lastSignalAt: new Date(), ibeaconUuid: null, hardwareModel: null },
+      ],
       sectors: [{ id: 1 }, { id: 2 }],
       destinations: [{ id: 1 }, { id: 2 }, { id: 3 }],
       users: [{ role: UserRole.PATIENT }, { role: UserRole.ADMIN }, { role: UserRole.RECEPTION }],
@@ -84,7 +90,9 @@ async function run() {
   assert.equal(summary.approvedVisitors, 1);
   assert.equal(summary.deniedVisitors, 1);
   assert.equal(summary.beaconsOnline, 1);
-  assert.equal(summary.beaconsOffline, 1);
+  assert.equal(summary.beaconsOffline, 2);
+  assert.equal(summary.beaconStatusCounts['Sem sinal'], 1);
+  assert.equal(summary.beaconStatusCounts['Simulado'], 1);
   assert.equal(summary.sectorsTotal, 2);
   assert.equal(summary.destinationsTotal, 3);
   assert.equal(summary.patientUsers, 1);

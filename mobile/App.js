@@ -48,7 +48,7 @@ import {
   getReceptionDestination,
   hospitalAreas as fallbackAreas,
 } from './src/data/routes';
-import { isAuthError, navoraApi } from './src/services/api';
+import { isAuthError, isNetworkError, navoraApi } from './src/services/api';
 import { getAuthToken, removeAuthToken } from './src/services/authToken';
 import { indoorLocationService, indoorLog, isBeaconDiagnosticsEnabled } from './src/services/indoorLocationService';
 import { deriveNavigationProgress } from './src/services/navigationAdapter';
@@ -1297,6 +1297,12 @@ export default function App() {
             .visitorAccessRequestId ||
           visitorAccessRequest?.id,
 
+        // Codigo secreto do pedido: sem ele o backend nao aceita a liberacao.
+        visitor_access_token:
+          context
+            .visitorAccessToken ||
+          visitorAccessRequest?.accessToken,
+
         accessibility:
           getAccessibilityPayload(
             context
@@ -1654,6 +1660,9 @@ export default function App() {
 
         visitor_access_request_id:
           visitorAccessRequest?.id,
+
+        visitor_access_token:
+          visitorAccessRequest?.accessToken,
 
         accessibility:
           getAccessibilityPayload(),
@@ -2489,8 +2498,20 @@ export default function App() {
         });
 
         return syncedRequest;
-      } catch {
-        return fallbackRequest;
+      } catch (error) {
+        // O pedido NAO chegou a recepcao: nao deixar o visitante esperando uma
+        // liberacao que nunca vai vir.
+        // (a tela de espera ja foi aberta de forma otimista; volta para o inicio)
+        setVisitorAccessRequest(null);
+        setRouteParams({});
+        setScreenStack(['Home']);
+        Alert.alert(
+          'Pedido não enviado',
+          isNetworkError(error)
+            ? 'Sem conexão com o hospital. Confira a internet e tente de novo, ou procure a recepção.'
+            : 'A recepção não recebeu seu pedido. Tente de novo ou procure a recepção.'
+        );
+        return null;
       }
     };
 

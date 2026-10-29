@@ -5,6 +5,7 @@ import {
   AccessSubject,
   VisitorAccessStatus,
 } from '@prisma/client';
+import { hashVisitorToken } from '../common/visitor-token';
 import { NavigationAccessService } from './navigation-access.service';
 
 const areaPrivate = { id: 1, code: 'private', name: 'HMC Private' };
@@ -118,16 +119,16 @@ async function run() {
 
   await assertDecision('APPROVED valida', makeService([
     rule({ code: 'visitor-auth', subject: AccessSubject.VISITOR, scope: AccessRuleScope.ACCESS_LEVEL, accessLevel: 'visitor_authorization', decision: AccessDecision.REQUIRE_AUTHORIZATION }),
-  ], visitor(VisitorAccessStatus.APPROVED, { destinationId: 4, expiresAt: new Date('2026-01-05T13:00:00.000Z') })), { destination_id: 4, subject: AccessSubject.VISITOR, visitor_access_request_id: 99 }, AccessDecision.ALLOW);
+  ], visitor(VisitorAccessStatus.APPROVED, { destinationId: 4, expiresAt: new Date('2026-01-05T13:00:00.000Z') })), { destination_id: 4, subject: AccessSubject.VISITOR, visitor_access_request_id: 99, visitor_access_token: 'segredo-99' }, AccessDecision.ALLOW);
 
   await assertDecision('autorizacao expirada', makeService([
     rule({ code: 'visitor-auth', subject: AccessSubject.VISITOR, scope: AccessRuleScope.ACCESS_LEVEL, accessLevel: 'visitor_authorization', decision: AccessDecision.REQUIRE_AUTHORIZATION }),
-  ], visitor(VisitorAccessStatus.APPROVED, { destinationId: 4, expiresAt: new Date('2026-01-05T11:00:00.000Z') })), { destination_id: 4, subject: AccessSubject.VISITOR, visitor_access_request_id: 99 }, AccessDecision.REQUIRE_AUTHORIZATION);
+  ], visitor(VisitorAccessStatus.APPROVED, { destinationId: 4, expiresAt: new Date('2026-01-05T11:00:00.000Z') })), { destination_id: 4, subject: AccessSubject.VISITOR, visitor_access_request_id: 99, visitor_access_token: 'segredo-99' }, AccessDecision.REQUIRE_AUTHORIZATION);
 
   for (const status of [VisitorAccessStatus.DENIED, VisitorAccessStatus.FINISHED, VisitorAccessStatus.EXPIRED, VisitorAccessStatus.CANCELED]) {
     await assertDecision(status, makeService([
       rule({ code: 'visitor-auth', subject: AccessSubject.VISITOR, scope: AccessRuleScope.ACCESS_LEVEL, accessLevel: 'visitor_authorization', decision: AccessDecision.REQUIRE_AUTHORIZATION }),
-    ], visitor(status, { destinationId: 4 })), { destination_id: 4, subject: AccessSubject.VISITOR, visitor_access_request_id: 99 }, AccessDecision.REQUIRE_AUTHORIZATION);
+    ], visitor(status, { destinationId: 4 })), { destination_id: 4, subject: AccessSubject.VISITOR, visitor_access_request_id: 99, visitor_access_token: 'segredo-99' }, AccessDecision.REQUIRE_AUTHORIZATION);
   }
 
   await assertDecision('exame externo dentro de 07:00-17:00 America/Sao_Paulo', makeService([
@@ -141,7 +142,7 @@ async function run() {
   await assertDecision('prioridade', makeService([
     rule({ code: 'allow-specific', subject: AccessSubject.VISITOR, scope: AccessRuleScope.DESTINATION, destinationId: 5, priority: 100, decision: AccessDecision.ALLOW }),
     rule({ code: 'block-high', subject: AccessSubject.VISITOR, scope: AccessRuleScope.ACCESS_LEVEL, accessLevel: 'restricted', priority: 500, decision: AccessDecision.BLOCK }),
-  ], visitor(VisitorAccessStatus.APPROVED, { destinationId: 5, expiresAt: null })), { destination_id: 5, subject: AccessSubject.VISITOR, visitor_access_request_id: 99 }, AccessDecision.BLOCK);
+  ], visitor(VisitorAccessStatus.APPROVED, { destinationId: 5, expiresAt: null })), { destination_id: 5, subject: AccessSubject.VISITOR, visitor_access_request_id: 99, visitor_access_token: 'segredo-99' }, AccessDecision.BLOCK);
 
   await assertDecision('especificidade', makeService([
     rule({ code: 'block-category', subject: AccessSubject.PATIENT, scope: AccessRuleScope.CATEGORY, category: 'Servicos', priority: 200, decision: AccessDecision.BLOCK }),
@@ -152,12 +153,31 @@ async function run() {
     rule({ code: 'public-patient', subject: AccessSubject.PATIENT, scope: AccessRuleScope.ACCESS_LEVEL, accessLevel: 'public', decision: AccessDecision.ALLOW }),
   ]), { destination_code: 'public-dest', subject: AccessSubject.PATIENT }, AccessDecision.ALLOW);
 
+  // Autorizacao de outra pessoa (sem o codigo secreto dela) nao vale.
+  await assertDecision('autorizacao sem codigo secreto', makeService([
+    rule({ code: 'visitor-auth', subject: AccessSubject.VISITOR, scope: AccessRuleScope.ACCESS_LEVEL, accessLevel: 'visitor_authorization', decision: AccessDecision.REQUIRE_AUTHORIZATION }),
+  ], visitor(VisitorAccessStatus.APPROVED, { destinationId: 4 })), { destination_id: 4, subject: AccessSubject.VISITOR, visitor_access_request_id: 99 }, AccessDecision.REQUIRE_AUTHORIZATION);
+  await assertDecision('autorizacao com codigo errado', makeService([
+    rule({ code: 'visitor-auth', subject: AccessSubject.VISITOR, scope: AccessRuleScope.ACCESS_LEVEL, accessLevel: 'visitor_authorization', decision: AccessDecision.REQUIRE_AUTHORIZATION }),
+  ], visitor(VisitorAccessStatus.APPROVED, { destinationId: 4 })), { destination_id: 4, subject: AccessSubject.VISITOR, visitor_access_request_id: 99, visitor_access_token: 'chute' }, AccessDecision.REQUIRE_AUTHORIZATION);
+
+  // Sem regra cadastrada, fecha por padrao.
+  await assertDecision('visitante em exame sem liberacao', makeService([]), { destination_id: 6, subject: AccessSubject.VISITOR }, AccessDecision.REQUIRE_AUTHORIZATION);
+  await assertDecision('paciente em visita/internacao', makeService([]), { destination_id: 4, subject: AccessSubject.PATIENT }, AccessDecision.REDIRECT_TO_RECEPTION);
+  await assertDecision('paciente em exame', makeService([]), { destination_id: 6, subject: AccessSubject.PATIENT }, AccessDecision.ALLOW);
+  await assertDecision('paciente em area restrita', makeService([]), { destination_id: 5, subject: AccessSubject.PATIENT }, AccessDecision.BLOCK);
+
+  // Private e SUS separados.
+  await assertDecision('paciente na SUS indo para destino da Private', makeService([]), { destination_id: 6, subject: AccessSubject.PATIENT, current_area_code: 'sus' }, AccessDecision.REDIRECT_TO_RECEPTION);
+  await assertDecision('paciente na Private indo para destino da Private', makeService([]), { destination_id: 6, subject: AccessSubject.PATIENT, current_area_code: 'private' }, AccessDecision.ALLOW);
+
   console.log('navigation access tests passed');
 }
 
 function visitor(status: VisitorAccessStatus, overrides: Record<string, any> = {}) {
   return {
     id: 99,
+    accessTokenHash: hashVisitorToken('segredo-99'),
     status,
     destinationId: null,
     requestedDestination: 'Visita / Internacao Private',

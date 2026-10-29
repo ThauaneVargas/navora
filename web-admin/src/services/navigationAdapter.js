@@ -93,10 +93,12 @@ export function normalizeBeaconFromApi(beacon) {
     sector: beacon.sector || beacon.location || UNKNOWN_VALUE,
     location: beacon.location || beacon.sector || UNKNOWN_VALUE,
     floor: beacon.floor || navigationNode?.floor || UNKNOWN_VALUE,
-    battery: beacon.battery ?? 0,
+    // null = o aparelho nao informa bateria (iBeacon fisico). Nao virar 0%.
+    battery: Number.isFinite(beacon.battery) ? beacon.battery : null,
     status: beacon.status || 'Offline',
+    physical: Boolean(beacon.physical ?? beacon.hardware_model ?? beacon.ibeacon_uuid),
     lastSignal: lastSignal
-      ? lastSignal.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+      ? lastSignal.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
       : UNKNOWN_VALUE,
     lastSignalAt: beacon.last_signal_at,
     last_signal_at: beacon.last_signal_at,

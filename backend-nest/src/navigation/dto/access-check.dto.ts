@@ -24,4 +24,10 @@ export class AccessCheckDto {
   @IsOptional()
   @IsInt()
   visitor_access_request_id?: number;
+
+  // Codigo secreto devolvido ao criar o pedido. Sem ele, a autorizacao de
+  // outro visitante (ids sao sequenciais) nao vale.
+  @IsOptional()
+  @IsString()
+  visitor_access_token?: string;
 }

@@ -262,6 +262,12 @@ function mapVisitorAccessFromApi(request) {
     allowedTime: request.permission_minutes ? `${request.permission_minutes} minutos` : request.allowed_time || '',
     releaseType: request.release_type,
     denialReason: request.denial_reason,
+    groupTotal: request.group_total ?? 1,
+    companions: (Array.isArray(request.companions) ? request.companions : [])
+      .map((companion) => `${companion?.name || 'Sem nome'}${companion?.type === 'child' ? ' (criança)' : companion?.type === 'elderly' ? ' (idoso)' : ''}`)
+      .join(', ') || 'Nenhum',
+    visitCode: request.visit_code || '',
+    assistanceRequest: request.assistance_request || 'Não solicitado',
   };
 }
 
@@ -844,15 +850,6 @@ function App() {
     setBeacons((items) => items.map((item) => (item.id === id ? { ...item, ...changes } : item)));
   };
 
-  const restartBeacon = (id) => {
-    updateBeacon(id, { status: 'Reiniciando...' });
-    showToast('Reiniciando beacon', 'info');
-    window.setTimeout(() => {
-      updateBeacon(id, { status: 'Online', battery: Math.max(beacons.find((b) => b.id === id)?.battery || 80, 35), lastSignal: 'Agora' });
-      showToast('Beacon online novamente');
-    }, 900);
-  };
-
   const createMessage = async (data) => {
     try {
       const created = await adminApi.createOperationalMessage(data);
@@ -959,7 +956,7 @@ function App() {
     const help = calls.filter((call) => call.type.includes('Ajuda')).length;
     const doctor = calls.filter((call) => call.type === 'Solicitar Medico').length;
     const busiestSector = [...sectors].sort((a, b) => b.peopleCount - a.peopleCount)[0];
-    const lowBeacon = beacons.find((beacon) => beacon.battery < 30);
+    const lowBeacon = beacons.find((beacon) => Number.isFinite(beacon.battery) && beacon.battery < 30);
     return {
       period,
       monitoredPeople: users.length,
@@ -1014,7 +1011,7 @@ function App() {
     messages, visitors, settings, filters, dashboardSummary, lastRefreshedAt, refreshOperationalData,
     setCurrentPage: navigatePage, setFilters, showToast, openModal, closeModal,
     updateCallStatus, assignTeam, closeCall, createCheckin, updateCheckinStatus,
-    updateBeacon, restartBeacon, createMessage, saveSettings, generateReport, exportToCSV,
+    updateBeacon, createMessage, saveSettings, generateReport, exportToCSV,
     setSectors, setMessages, setCalls, setUsers, setVisitors, updateVisitor, updateVisitorAccessStatus, authorizeVisitor, denyVisitor,
     createStaffAccount, toggleStaffStatus, updateCurrentUserProfile,
   };
@@ -1396,7 +1393,7 @@ function BeaconsPage({ app }) {
   const [filter, setFilter] = useState('Todos');
   const [query, setQuery] = useState('');
   const visible = app.beacons.filter((beacon) => {
-    const matchesFilter = filter === 'Todos' || beacon.status === filter || (filter === 'Bateria baixa' && beacon.battery < 30);
+    const matchesFilter = filter === 'Todos' || beacon.status === filter;
     const matchesQuery = `${beacon.id} ${beacon.name} ${beacon.sector} ${beacon.area}`.toLowerCase().includes(query.toLowerCase());
     return matchesFilter && matchesQuery;
   });
@@ -1409,16 +1406,19 @@ function BeaconsPage({ app }) {
     <div className="page-view premium-page">
       <PageHeading title="Beacons" subtitle="Monitoramento dos dispositivos de localização indoor" />
       <section className="kpi-grid">
-        <KpiCard icon={RadioTower} tone="info" label="Total de beacons" value={app.beacons.length} helper="Dispositivos cadastrados" />
-        <KpiCard icon={CheckCircle2} tone="success" label="Online" value={app.beacons.filter((b) => b.status === 'Online').length} helper="Transmitindo sinal" />
-        <KpiCard icon={Clock3} tone="warning" label="Bateria baixa" value={app.beacons.filter((b) => b.battery < 30).length} helper="Requer atenção" />
-        <KpiCard icon={ShieldCheck} tone="danger" label="Offline" value={app.beacons.filter((b) => b.status === 'Offline').length} helper="Sem comunicação" />
+        <KpiCard icon={RadioTower} tone="info" label="Beacons físicos" value={app.beacons.filter((b) => b.physical).length} helper="Aparelhos instalados" />
+        <KpiCard icon={CheckCircle2} tone="success" label="Online" value={app.beacons.filter((b) => b.status === 'Online').length} helper="Vistos por um celular nas últimas 24 h" />
+        <KpiCard icon={ShieldCheck} tone="danger" label="Sem sinal" value={app.beacons.filter((b) => b.status === 'Sem sinal').length} helper="Conferir no local (pilha ou posição)" />
+        <KpiCard icon={Clock3} tone="warning" label="Simulados" value={app.beacons.filter((b) => b.status === 'Simulado').length} helper="Só para teste, sem aparelho" />
       </section>
+      <p className="form-note beacon-health-note">
+        Os beacons só transmitem; não avisam o servidor nem informam bateria. Um beacon aparece como Online quando o celular de algum paciente ou visitante, com o Bluetooth ligado, o detecta. Sem sinal há mais de 24 h, vale conferir no local.
+      </p>
       <div className="page-toolbar">
         <div className="page-search"><Search size={16} /><input placeholder="Buscar por codigo, nome ou setor" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
         <button className="btn btn-secondary" onClick={() => app.exportToCSV('beacons.csv', rows)}><Download size={16} />Exportar</button>
       </div>
-      <FilterChips items={['Todos', 'Online', 'Atenção', 'Offline', 'Sem sinal', 'Bateria baixa', 'Manutenção']} active={filter} onChange={setFilter} />
+      <FilterChips items={['Todos', 'Online', 'Sem sinal', 'Simulado']} active={filter} onChange={setFilter} />
       <SectionCard title="Dispositivos monitorados" subtitle="Status operacional dos beacons no ambiente.">
         <PremiumTable
           rows={rows}
@@ -1435,10 +1435,6 @@ function BeaconsPage({ app }) {
               <RowActions>
                 <button className="btn btn-secondary" onClick={() => app.openModal('Detalhes do beacon', <Details data={beacon} />)}>Ver detalhes</button>
                 <button className="btn btn-info" onClick={() => { app.setFilters({ sector: beacon.sector }); app.setCurrentPage('admin-heatmap'); }}>Localizar</button>
-                <ActionMenu>
-                  <button onClick={() => app.restartBeacon(beacon.id)}>Reiniciar</button>
-                  <button onClick={() => { app.updateBeacon(beacon.id, { status: 'Manutenção' }); app.showToast('Beacon marcado para manutenção', 'warning'); }}>Manutenção</button>
-                </ActionMenu>
               </RowActions>
             ) },
           ]}
@@ -1608,9 +1604,9 @@ function NvBadge({ value }) {
   const tone =
     normalized.includes('bloqueado') || normalized.includes('offline') || normalized.includes('negado')
       ? 'danger'
-      : normalized.includes('aguardando') || normalized.includes('aten') || normalized.includes('manuten') || normalized.includes('bateria')
+      : normalized.includes('aguardando') || normalized.includes('aten') || normalized.includes('manuten') || normalized.includes('bateria') || normalized.includes('sem sinal')
         ? 'warning'
-        : normalized.includes('em rota') || normalized.includes('sem sinal')
+        : normalized.includes('em rota')
           ? 'info'
           : normalized.includes('ativo') || normalized.includes('online') || normalized.includes('autorizado') || normalized.includes('finalizado') || normalized.includes('encerrado')
             ? 'success'
@@ -1638,6 +1634,7 @@ function ActionMenu({ children }) {
 }
 
 function BatteryMeter({ value }) {
+  if (value === null || value === undefined) return <span className="battery-meter-unknown">Não informado</span>;
   const safeValue = Number.isFinite(Number(value)) ? Number(value) : 0;
   const tone = safeValue < 15 ? 'danger' : safeValue < 30 ? 'warning' : 'success';
   return <span className="battery-meter"><span><i className={tone} style={{ width: `${Math.max(0, Math.min(100, safeValue))}%` }} /></span><b>{safeValue}%</b></span>;

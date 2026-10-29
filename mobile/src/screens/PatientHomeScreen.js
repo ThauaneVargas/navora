@@ -317,6 +317,11 @@ export default function PatientHomeScreen({
               visitorAccessRequest
                 ?.id,
 
+
+            visitorAccessToken:
+
+              visitorAccessRequest?.accessToken,
+
             visitorAccessRequest,
 
             // O botão já é "Iniciar rota": não pede de novo no mapa.

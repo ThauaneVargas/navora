@@ -66,6 +66,16 @@ async function run() {
   assert.equal(created.status, VisitorAccessStatus.PENDING);
   assert.equal(created.destination_id, 10);
 
+  // O visitante nao pode criar o proprio pedido ja aprovado.
+  const selfApproved = await service.create({
+    visitor_name: 'Invasor',
+    area_id: 'private',
+    requested_destination: 'Visita / Internacao Private',
+    status: VisitorAccessStatus.APPROVED,
+  } as any);
+  assert.equal(selfApproved.status, VisitorAccessStatus.PENDING, 'pedido sempre nasce pendente');
+  prisma.requests.splice(prisma.requests.findIndex((r: any) => r.id === selfApproved.id), 1);
+
   const pending = await service.list(VisitorAccessStatus.PENDING);
   assert.equal(pending.length, 1);
 

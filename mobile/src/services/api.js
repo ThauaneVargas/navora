@@ -20,14 +20,6 @@ if (!configuredApiUrl) {
   );
 }
 
-const fallbackCall = (payload = {}) => ({
-  id: `LOCAL-${Date.now()}`,
-  status: 'PENDING',
-  created_at: new Date().toISOString(),
-  demoMode: true,
-  ...payload,
-});
-
 const fallbackVisitorAccess = (payload = {}) => ({
   id: `LOCAL-VIS-${Date.now()}`,
   visitor_name: payload.visitor_name || 'Visitante Navora',
@@ -181,15 +173,18 @@ export const navoraApi = {
     request('/patients/me', { method: 'DELETE', authenticated: true, body: JSON.stringify({ password }) }),
   updateAccessibility: (payload) =>
     request('/patients/me/accessibility', { method: 'PUT', authenticated: true, body: JSON.stringify(payload) }, { accessibility: payload, demoMode: true }),
+  // SOS, ajuda e pedido de visitante NAO tem modo offline: se nao chegou ao
+  // servidor, a recepcao nao sabe — a tela tem que dizer que falhou, nunca
+  // mostrar "enviado" com um protocolo local.
   createCall: (payload) =>
-    request('/calls', { method: 'POST', body: JSON.stringify(payload) }, () => fallbackCall(payload)),
+    request('/calls', { method: 'POST', body: JSON.stringify(payload) }),
   createHelpRequest: (payload) =>
-    request('/calls/help', { method: 'POST', body: JSON.stringify(payload) }, () => fallbackCall(payload)),
+    request('/calls/help', { method: 'POST', body: JSON.stringify(payload) }),
   createSos: (payload) =>
-    request('/calls/sos', { method: 'POST', body: JSON.stringify(payload) }, () => fallbackCall(payload)),
+    request('/calls/sos', { method: 'POST', body: JSON.stringify(payload) }),
   getCalls: () => request('/calls', {}, []),
   createVisitorAccessRequest: (payload) =>
-    request('/visitor-access', { method: 'POST', body: JSON.stringify(payload) }, () => fallbackVisitorAccess(payload)),
+    request('/visitor-access', { method: 'POST', body: JSON.stringify(payload) }),
   // accessToken: código secreto que o backend devolve ao criar o pedido; sem
   // ele o backend não mostra o pedido (os ids são sequenciais).
   getVisitorAccessRequest: (id, accessToken) =>

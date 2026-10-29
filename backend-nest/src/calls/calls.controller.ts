@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -21,7 +22,10 @@ export class CallsController {
     return this.callsService.createHelp(payload);
   }
 
+  // Emergencia nunca pode ser barrada por limite de requisicoes: no Wi-Fi do
+  // hospital muitos celulares saem pelo mesmo IP.
   @Post('sos')
+  @SkipThrottle()
   createSos(@Body() payload: CreateCallDto) {
     return this.callsService.createSos(payload);
   }

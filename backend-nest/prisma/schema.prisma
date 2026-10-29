@@ -232,6 +232,11 @@ model VisitorAccessRequest {
   // Hash (SHA-256) do código secreto devolvido só pro celular que criou o
   // pedido. Sem ele, só a recepção/admin leem o pedido (ids são sequenciais).
   accessTokenHash      String?             @map("access_token_hash")
+  // Grupo informado pelo visitante no app: [{ name, type }] (type: adult/child...).
+  companions           Json                @default("[]")
+  groupTotal           Int                 @default(1) @map("group_total")
+  visitCode            String?             @map("visit_code")
+  assistanceRequest    String?             @map("assistance_request")
   authorizedAt         DateTime?           @map("authorized_at")
   expiresAt            DateTime?           @map("expires_at")
   finishedAt           DateTime?           @map("finished_at")
