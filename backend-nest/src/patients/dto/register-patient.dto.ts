@@ -1,11 +1,11 @@
 import { Equals, IsDateString, IsEmail, IsObject, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { StrongPassword } from '../../common/strong-password';
 
 export class RegisterPatientDto {
   @IsEmail()
   email!: string;
 
-  @IsString()
-  @MinLength(6)
+  @StrongPassword()
   password!: string;
 
   @IsString()
