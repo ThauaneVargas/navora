@@ -17,6 +17,13 @@ async function loadPreferences() {
   }
 }
 
+// Traducao fora dos componentes (ex.: avisos do App.js, que fica fora do
+// AppProvider): usa o idioma salvo nas preferencias.
+export async function translateWithSavedLanguage(key, params) {
+  const saved = await loadPreferences();
+  return translate(isSupportedLanguage(saved?.language) ? saved.language : DEFAULT_LANGUAGE, key, params);
+}
+
 async function savePreferences(preferences) {
   try {
     if (!(await SecureStore.isAvailableAsync())) return;

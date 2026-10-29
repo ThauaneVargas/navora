@@ -17,4 +17,6 @@ export type JwtPayload = {
   sub: number;
   email: string;
   role: UserRole;
+  // Preenchido pelo jsonwebtoken (segundos desde 1970).
+  iat?: number;
 };

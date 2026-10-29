@@ -38,7 +38,7 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import BeaconDiagnosticsScreen from './src/screens/BeaconDiagnosticsScreen';
 import { initialHelpRequests } from './src/data/helpRequests';
-import { AppProvider } from './src/context/AppContext';
+import { AppProvider, translateWithSavedLanguage } from './src/context/AppContext';
 import {
   canAccessDestination,
   destinations as fallbackDestinations,
@@ -2506,10 +2506,10 @@ export default function App() {
         setRouteParams({});
         setScreenStack(['Home']);
         Alert.alert(
-          'Pedido não enviado',
-          isNetworkError(error)
-            ? 'Sem conexão com o hospital. Confira a internet e tente de novo, ou procure a recepção.'
-            : 'A recepção não recebeu seu pedido. Tente de novo ou procure a recepção.'
+          await translateWithSavedLanguage('visitorRequest.notSentTitle'),
+          await translateWithSavedLanguage(
+            isNetworkError(error) ? 'visitorRequest.notSentOffline' : 'visitorRequest.notSent'
+          )
         );
         return null;
       }

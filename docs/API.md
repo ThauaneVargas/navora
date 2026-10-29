@@ -166,6 +166,13 @@ Todos os endpoints sao exclusivos de `ADMIN`.
 - `POST /navigation/access-check` e `/navigation/route-preview`: a liberação do visitante só vale com `visitor_access_request_id` **e** `visitor_access_token` (o `access_token` devolvido ao criar o pedido).
 - Sem regra cadastrada que case: visitante só acessa `public`/`visitor_allowed` (o resto pede autorização); paciente em `visitor_authorization` é orientado à recepção; destino de outra unidade (Private ↔ SUS) vira `REDIRECT_TO_RECEPTION`.
 
+### Senha e chamados (29/10)
+
+- `POST /auth/forgot-password` `{ email }` → `{ ok, delivery }`. `delivery`: `email` (código enviado), `log` (desenvolvimento sem SMTP, código no log), `unavailable` (produção sem SMTP — o app avisa). Resposta igual exista ou não a conta.
+- `POST /auth/reset-password` `{ email, token, newPassword }` — `token` é o código de 6 dígitos (15 min, 5 tentativas). Troca de senha invalida tokens emitidos antes.
+- `POST /calls`, `/calls/help`, `/calls/sos`: continuam públicos; com `Authorization` de paciente, o chamado fica ligado à conta. Resposta traz `registered_patient` (false = "Sem conta" no painel). Token inválido é ignorado (nunca bloqueia SOS).
+- `GET/PATCH /staff...` (só ADMIN): equipe, histórico, desativar/reativar. `DELETE /staff/:id` → 405.
+
 ## Check-ins
 
 `GET /check-ins`, `GET /check-ins/:checkInId`, `POST /check-ins`, `PATCH /check-ins/:checkInId/status`

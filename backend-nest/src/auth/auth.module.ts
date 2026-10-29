@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { MailService } from '../common/mail.service';
 import { DatabaseModule } from '../database/database.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
@@ -10,7 +11,7 @@ import { RolesGuard } from './roles.guard';
 @Module({
   imports: [DatabaseModule, JwtModule.register({})],
   controllers: [AuthController],
-  providers: [AuthService, JwtAuthGuard, OptionalJwtAuthGuard, RolesGuard],
+  providers: [AuthService, MailService, JwtAuthGuard, OptionalJwtAuthGuard, RolesGuard],
   exports: [AuthService, JwtAuthGuard, OptionalJwtAuthGuard, RolesGuard],
 })
 export class AuthModule {}

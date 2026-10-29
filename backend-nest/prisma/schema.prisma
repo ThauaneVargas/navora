@@ -136,6 +136,10 @@ model User {
   active               Boolean   @default(true)
   passwordResetToken   String?   @unique @map("password_reset_token")
   passwordResetExpires DateTime? @map("password_reset_expires")
+  // Tokens emitidos antes desta data sao recusados (troca/redefinicao de senha).
+  passwordChangedAt    DateTime? @map("password_changed_at")
+  // Tentativas erradas do codigo de recuperacao; na 5a o codigo e descartado.
+  passwordResetAttempts Int      @default(0) @map("password_reset_attempts")
   // Regra de seguranca: funcionarios (RECEPTION/ADMIN) nunca sao excluidos,
   // apenas desativados, para preservar a auditoria do que fizeram no sistema.
   // Um trigger no PostgreSQL bloqueia DELETE desses usuarios.
@@ -154,6 +158,7 @@ model User {
   statusChanges      UserStatusChange[] @relation("UserStatusChangeTarget")
   statusChangesMade  UserStatusChange[] @relation("UserStatusChangeActor")
   visitorDecisions   VisitorAccessRequest[] @relation("VisitorAccessDecidedBy")
+  callRequests       CallRequest[]          @relation("CallRequestUser")
 
   @@map("users")
 }
@@ -235,6 +240,11 @@ model CallRequest {
   createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime   @updatedAt @map("updated_at")
 
+  // Paciente logado que abriu o chamado; nulo = sem conta.
+  userId      Int?       @map("user_id")
+  user        User?      @relation("CallRequestUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
   @@map("call_requests")
 }
 

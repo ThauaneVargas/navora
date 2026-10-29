@@ -19,6 +19,7 @@ function user(overrides: Record<string, any> = {}) {
     phone: overrides.phone ?? null,
     role: overrides.role ?? UserRole.ADMIN,
     active: overrides.active ?? true,
+    passwordChangedAt: null as Date | null,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
   };
@@ -91,6 +92,13 @@ async function run() {
   assert.equal(validated.id, activeAdmin.id, 'token valido autentica usuario');
   assert.equal(Object.prototype.hasOwnProperty.call(validated, 'passwordHash'), false, 'token valido nao serializa passwordHash');
   await expectUnauthorized('token invalido', () => service.validateToken('token-invalido'));
+
+  // Senha trocada depois do login: o token antigo deixa de valer.
+  activeAdmin.passwordChangedAt = new Date(Date.now() + 5_000);
+  await expectUnauthorized('token emitido antes da troca de senha', () => service.validateToken(login.access_token));
+  activeAdmin.passwordChangedAt = new Date(Date.now() - 60_000);
+  assert.equal((await service.validateToken(login.access_token)).id, activeAdmin.id, 'token emitido depois da troca continua valendo');
+  activeAdmin.passwordChangedAt = null;
 
   const controller = new AuthController(service);
   const me = await controller.me(validated);

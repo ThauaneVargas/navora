@@ -3,6 +3,8 @@ import { Beacon, CallRequest, VisitorAccessRequest } from '@prisma/client';
 export function mapCallToApi(call: CallRequest) {
   return {
     id: call.id,
+    // false = enviado sem conta (Acesso rapido/visitante): conferir antes de mobilizar equipe.
+    registered_patient: Boolean(call.userId),
     user_type: call.userType,
     user_name: call.userName,
     area: call.area,

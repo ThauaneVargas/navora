@@ -15,9 +15,10 @@ import PasswordRules from '../components/PasswordRules';
 import { navoraApi, isNetworkError } from '../services/api';
 import { isStrongPassword, stripSpaces } from '../utils/masks';
 
-export default function ResetPasswordScreen({ navigate, goBack }) {
+export default function ResetPasswordScreen({ navigate, goBack, routeParams = {} }) {
   const { appColors: colors, t } = useApp();
   const styles = useThemeStyles();
+  const [email, setEmail] = useState(routeParams.email || '');
   const [token, setToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -26,7 +27,11 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
   const [done, setDone] = useState(false);
 
   const handleReset = async () => {
-    if (!token.trim()) {
+    if (!email.trim().includes('@')) {
+      Alert.alert(t('common.attention'), t('forgot.invalidEmail'));
+      return;
+    }
+    if (!/^\d{6}$/.test(token.trim())) {
       Alert.alert(t('common.attention'), t('reset.codeRequired'));
       return;
     }
@@ -41,7 +46,7 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
 
     setLoading(true);
     try {
-      await navoraApi.resetPassword(token.trim(), newPassword);
+      await navoraApi.resetPassword(email.trim().toLowerCase(), token.trim(), newPassword);
       setDone(true);
     } catch (error) {
       if (isNetworkError(error)) {
@@ -80,15 +85,32 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
         </Text>
 
         <View style={styles.inputBox}>
+          <MaterialCommunityIcons name="email-outline" size={19} color={colors.primary} />
+          <TextInput
+            style={styles.input}
+            placeholder={t('forgot.emailPlaceholder')}
+            placeholderTextColor={colors.lightText}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoCorrect={false}
+            editable={!loading}
+          />
+        </View>
+
+        <View style={styles.inputBox}>
           <MaterialCommunityIcons name="key-outline" size={19} color={colors.primary} />
           <TextInput
             style={styles.input}
             placeholder={t('reset.codePlaceholder')}
             placeholderTextColor={colors.lightText}
             value={token}
-            onChangeText={setToken}
-            autoCapitalize="none"
-            autoCorrect={false}
+            onChangeText={(value) => setToken(value.replace(/\D/g, '').slice(0, 6))}
+            keyboardType="number-pad"
+            maxLength={6}
+            autoComplete="one-time-code"
+            textContentType="oneTimeCode"
             editable={!loading}
           />
         </View>

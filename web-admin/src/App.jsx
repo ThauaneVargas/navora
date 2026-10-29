@@ -202,6 +202,8 @@ function mapCallFromApi(call) {
     priority: callApiPriorityToLabel[call.priority] || call.priority,
     status: callApiStatusToLabel[call.status] || call.status,
     emergencyContact: call.emergency_contact || '',
+    // false = sem conta (Acesso rápido/visitante). undefined = backend antigo.
+    registeredPatient: call.registered_patient,
     createdAt: created
       ? created.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       : 'Agora',
@@ -789,8 +791,8 @@ function App() {
         password: data.password,
         role,
       });
-      const account = mapUserToStaffAccount(created);
-      setStaffAccounts((items) => [account, ...items]);
+      const account = mapStaffFromApi({ ...created, created_at: created.createdAt });
+      setStaffAccounts((items) => [account, ...items.filter((item) => item.authSource === 'api')]);
       setUsers((items) => [
         { id: created.id, name: created.name, role: account.roleLabel, status: 'Ativo', location: data.sector || 'Recepção', lastSeen: 'Nunca', accessibility: 'Nao' },
         ...items,
@@ -801,6 +803,10 @@ function App() {
       if (handleAuthFailure(error, 'Acesso negado para cadastrar funcionário')) return;
       if (error?.status === 409) {
         showToast('Já existe uma conta com este e-mail', 'warning');
+        return;
+      }
+      if (error?.status === 400) {
+        showToast('Confira os dados: a senha precisa de 8+ caracteres, com letra, número e símbolo, sem espaço', 'warning');
         return;
       }
       showToast('Não foi possível cadastrar o funcionário agora', 'danger');
@@ -1418,7 +1424,7 @@ function UsersPage({ app }) {
 
       <div className="page-toolbar">
         <div className="page-search"><Search size={16} /><input placeholder="Buscar por nome, e-mail ou setor" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
-        <button className="btn btn-primary" onClick={() => openStaffAccount(app)}><Plus size={16} />Adicionar perfil local</button>
+        <button className="btn btn-primary" onClick={() => openStaffAccount(app)}><Plus size={16} />Cadastrar funcionário</button>
         <button className="btn btn-secondary" onClick={() => app.exportToCSV('usuarios.csv', [...staffQuery, ...visible])}><Download size={16} />Exportar</button>
       </div>
 
@@ -2173,6 +2179,7 @@ function CallCard({ call, app, reception = false, adminView = false }) {
         <div className="badges call-badges">
           <em className={`call-badge ${getPriorityBadgeTone(call.priority)}`}>{call.priority}</em>
           <em className={`call-badge ${getStatusBadgeTone(call.status)}`}>{call.status}</em>
+          {call.registeredPatient === false ? <em className="call-badge unregistered" title="Enviado sem conta (Acesso rápido ou visitante). Confirme no local.">Sem conta</em> : null}
         </div>
 
         <div className="actions call-actions">
@@ -2217,6 +2224,7 @@ function CallCard({ call, app, reception = false, adminView = false }) {
       <div className="badges call-badges">
         <em className={`call-badge ${getPriorityBadgeTone(call.priority)}`}>{call.priority}</em>
         <em className={`call-badge ${getStatusBadgeTone(call.status)}`}>{call.status}</em>
+        {call.registeredPatient === false ? <em className="call-badge unregistered" title="Enviado sem conta (Acesso rápido ou visitante). Confirme no local.">Sem conta</em> : null}
       </div>
 
       <div className="actions call-actions">
@@ -2353,26 +2361,31 @@ function openDenyVisitor(app, visitor) {
 }
 
 function openStaffAccount(app) {
-  app.openModal('Adicionar perfil local', <StaffAccountForm onSubmit={app.createStaffAccount} />);
+  app.openModal('Cadastrar funcionário', <StaffAccountForm onSubmit={app.createStaffAccount} />);
 }
 
+// Senha forte: mesma regra do backend (backend-nest/src/common/strong-password.ts).
+const STAFF_PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9\s])\S{8,72}$/;
+
 function StaffAccountForm({ onSubmit }) {
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    role: 'reception',
-    sector: 'Recepção',
-    status: 'Ativo',
-  });
+  const [form, setForm] = useState({ name: '', email: '', role: 'reception', password: '' });
+  const [sending, setSending] = useState(false);
+  const passwordOk = STAFF_PASSWORD_RULE.test(form.password);
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
   return (
     <form
       className="modal-form"
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault();
-        onSubmit(form);
+        if (!passwordOk || sending) return;
+        setSending(true);
+        try {
+          await onSubmit(form);
+        } finally {
+          setSending(false);
+        }
       }}
     >
       <label>Nome do funcionário<input required value={form.name} onChange={(event) => update('name', event.target.value)} /></label>
@@ -2383,15 +2396,13 @@ function StaffAccountForm({ onSubmit }) {
           <option value="admin">Administrador</option>
         </select>
       </label>
-      <label>Setor<input value={form.sector} onChange={(event) => update('sector', event.target.value)} /></label>
-      <label>Status
-        <select value={form.status} onChange={(event) => update('status', event.target.value)}>
-          <option>Ativo</option>
-          <option>Inativo</option>
-        </select>
+      <label>Senha inicial
+        <input required type="password" autoComplete="new-password" value={form.password} onChange={(event) => update('password', event.target.value)} />
       </label>
-      <p className="form-note">Cadastro local para organizacao do painel. Criacao real de usuario administrativo depende da integracao do backend.</p>
-      <button className="primary">Cadastrar acesso local</button>
+      <p className={passwordOk || !form.password ? 'form-note' : 'form-error'}>
+        Mínimo de 8 caracteres, com letra, número e símbolo, sem espaço. Entregue a senha à pessoa pessoalmente. Cada funcionário tem a própria conta; para tirar o acesso, desative (não é possível excluir).
+      </p>
+      <button className="primary" disabled={!passwordOk || sending}>{sending ? 'Cadastrando...' : 'Cadastrar funcionário'}</button>
     </form>
   );
 }

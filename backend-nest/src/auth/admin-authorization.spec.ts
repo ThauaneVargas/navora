@@ -40,7 +40,9 @@ function assertAdminEndpoint(handler: AnyFunction) {
 }
 
 function assertPublicEndpoint(handler: AnyFunction) {
-  assert.equal(Reflect.getMetadata(GUARDS_METADATA, handler), undefined, 'endpoint publico nao deve exigir guard');
+  // Publico = sem guard, ou so o opcional (que nunca recusa: token ruim vira anonimo).
+  const guards = guardNames(handler);
+  assert.ok(guards.every((name: string) => name === 'OptionalJwtAuthGuard'), 'endpoint publico nao deve exigir guard');
 }
 
 async function run() {

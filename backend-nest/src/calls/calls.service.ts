@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { CallStatus, CallType, Priority } from '@prisma/client';
+import { CallStatus, CallType, Priority, UserRole } from '@prisma/client';
+import { AuthenticatedUser } from '../auth/auth.types';
 import { mapCallToApi } from '../common/api-mappers';
 import { PrismaService } from '../database/prisma.service';
 import { CreateCallDto } from './dto/create-call.dto';
@@ -13,7 +14,7 @@ export class CallsService {
     return calls.map(mapCallToApi);
   }
 
-  async create(payload: CreateCallDto, forcedType?: CallType, forcedPriority?: Priority) {
+  async create(payload: CreateCallDto, forcedType?: CallType, forcedPriority?: Priority, user?: AuthenticatedUser) {
     const callType = this.normalizeType(forcedType ?? payload.call_type ?? CallType.HELP);
     const priority = forcedPriority ?? payload.priority ?? Priority.MEDIUM;
     const userName = payload.user_name || payload.patient_name || 'Paciente Navora';
@@ -34,17 +35,18 @@ export class CallsService {
         emergencyContact: payload.emergency_contact ?? null,
         status: CallStatus.PENDING,
         priority,
+        userId: user?.role === UserRole.PATIENT ? user.id : null,
       },
     });
     return mapCallToApi(call);
   }
 
-  createHelp(payload: CreateCallDto) {
-    return this.create(payload, CallType.HELP, Priority.MEDIUM);
+  createHelp(payload: CreateCallDto, user?: AuthenticatedUser) {
+    return this.create(payload, CallType.HELP, Priority.MEDIUM, user);
   }
 
-  createSos(payload: CreateCallDto) {
-    return this.create(payload, CallType.SOS, Priority.CRITICAL);
+  createSos(payload: CreateCallDto, user?: AuthenticatedUser) {
+    return this.create(payload, CallType.SOS, Priority.CRITICAL, user);
   }
 
   async updateStatus(callId: number, status: CallStatus) {

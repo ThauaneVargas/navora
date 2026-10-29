@@ -19,7 +19,13 @@ export class OptionalJwtAuthGuard implements CanActivate {
 
     if (!token) return true;
 
-    request.user = await this.authService.validateToken(token);
+    // Token vencido ou de sessao derrubada nao pode bloquear rota publica
+    // (ex.: SOS, rota de navegacao): segue como anonimo.
+    try {
+      request.user = await this.authService.validateToken(token);
+    } catch {
+      request.user = undefined;
+    }
     return true;
   }
 

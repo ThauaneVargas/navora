@@ -29,7 +29,12 @@ export default function ForgotPasswordScreen({ navigate, goBack }) {
 
     setLoading(true);
     try {
-      await navoraApi.forgotPassword(trimmed);
+      const result = await navoraApi.forgotPassword(trimmed);
+      // Servidor sem e-mail configurado: avisar, nao mandar esperar um e-mail.
+      if (result?.delivery === 'unavailable') {
+        Alert.alert(t('forgot.unavailableTitle'), t('forgot.unavailable'));
+        return;
+      }
       setSent(true);
     } catch (error) {
       if (isNetworkError(error)) {
@@ -57,7 +62,7 @@ export default function ForgotPasswordScreen({ navigate, goBack }) {
           <Text style={styles.btnText}>{t('forgot.backToLogin')}</Text>
         </Pressable>
         <Pressable
-          onPress={() => navigate('ResetPassword')}
+          onPress={() => navigate('ResetPassword', { email: email.trim().toLowerCase() })}
           style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
         >
           <Text style={styles.secondaryText}>{t('forgot.haveCode')}</Text>
@@ -102,7 +107,7 @@ export default function ForgotPasswordScreen({ navigate, goBack }) {
       </Pressable>
 
       <Pressable
-        onPress={() => navigate('ResetPassword')}
+        onPress={() => navigate('ResetPassword', { email: email.trim().toLowerCase() })}
         style={({ pressed }) => [styles.secondaryBtn, pressed && styles.pressed]}
       >
         <Text style={styles.secondaryText}>{t('forgot.haveCode')}</Text>
