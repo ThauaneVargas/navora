@@ -5,20 +5,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useApp } from '../context/AppContext';
 
-// Depois do SOS enviado: 1) mostra o andamento (a recepção recebeu? a equipe
-// está indo?), 2) deixa a pessoa dizer o que está acontecendo com um toque —
-// o SOS já saiu antes, então informar nunca atrasa o pedido, 3) oferece ligar
-// para a recepção. Códigos dos problemas: backend-nest/src/calls/call-codes.ts.
-export const SOS_PROBLEMS = [
-  { code: 'chest_pain', icon: 'heart-pulse' },
-  { code: 'breathing', icon: 'lungs' },
-  { code: 'fainting', icon: 'head-alert-outline' },
-  { code: 'fall', icon: 'human-handsdown' },
-  { code: 'bleeding', icon: 'water-alert-outline' },
-  { code: 'seizure', icon: 'flash-alert-outline' },
-  { code: 'unwell', icon: 'emoticon-sick-outline' },
-  { code: 'other', icon: 'dots-horizontal-circle-outline' },
-];
+// Depois do SOS enviado: mostra o andamento (a recepção recebeu? a equipe
+// está indo?) e oferece ligar para a recepção. Não pergunta mais "o que está
+// acontecendo" — dado de saúde que o hospital não precisava (LGPD, 29/10).
 
 const STEPS = ['sent', 'received', 'dispatched', 'inService'];
 const STEP_BY_STATUS = { PENDING: 0, ACCEPTED: 1, TEAM_DISPATCHED: 2, IN_PROGRESS: 3 };
@@ -26,11 +15,7 @@ const STEP_BY_STATUS = { PENDING: 0, ACCEPTED: 1, TEAM_DISPATCHED: 2, IN_PROGRES
 export default function SosStatusSheet({
   visible,
   call,
-  problems = [],
-  savingProblems,
-  problemsError,
   receptionPhone,
-  onToggleProblem,
   onClose,
 }) {
   const { appColors, t } = useApp();
@@ -87,39 +72,6 @@ export default function SosStatusSheet({
               })}
             </View>
           )}
-
-          {isSos && !closed ? (
-            <>
-              <Text style={styles.sectionTitle}>{t('help.whatIsHappening')}</Text>
-              <Text style={styles.sectionText}>{t('help.whatIsHappeningSub')}</Text>
-              <View style={styles.chips}>
-                {SOS_PROBLEMS.map((item) => {
-                  const active = problems.includes(item.code);
-                  return (
-                    <Pressable
-                      key={item.code}
-                      onPress={() => onToggleProblem?.(item.code)}
-                      accessibilityRole="checkbox"
-                      accessibilityState={{ checked: active }}
-                      style={({ pressed }) => [styles.chip, active && styles.chipActive, pressed && styles.pressed]}
-                    >
-                      <MaterialCommunityIcons name={item.icon} size={20} color={appColors.primary} />
-                      <Text style={[styles.chipText, active && styles.chipTextActive]}>{t(`help.problem_${item.code}`)}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-              <Text style={[styles.saveState, problemsError && styles.saveStateError]}>
-                {savingProblems
-                  ? t('help.problemsSaving')
-                  : problemsError
-                    ? t('help.problemsFailed')
-                    : problems.length
-                      ? t('help.problemsSaved')
-                      : ''}
-              </Text>
-            </>
-          ) : null}
 
           {receptionPhone ? (
             <Pressable onPress={callReception} accessibilityRole="button" style={({ pressed }) => [styles.callButton, pressed && styles.pressed]}>
@@ -185,27 +137,6 @@ const createStyles = (colors) =>
       marginBottom: 18,
     },
     closedText: { flex: 1, color: colors.text, fontSize: 16, fontWeight: '800' },
-    sectionTitle: { color: colors.text, fontSize: 18, fontWeight: '900' },
-    sectionText: { color: colors.muted, fontSize: 14, lineHeight: 20, fontWeight: '600', marginTop: 4, marginBottom: 12 },
-    chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-    chip: {
-      minHeight: 52,
-      flexGrow: 1,
-      flexBasis: '45%',
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 8,
-      paddingHorizontal: 12,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-      backgroundColor: colors.surface,
-    },
-    chipActive: { borderColor: colors.primary, borderWidth: 2, backgroundColor: colors.iconBg },
-    chipText: { flex: 1, color: colors.text, fontSize: 15, fontWeight: '700' },
-    chipTextActive: { fontWeight: '900' },
-    saveState: { minHeight: 20, color: colors.success, fontSize: 13, fontWeight: '700', marginTop: 8 },
-    saveStateError: { color: colors.danger },
     callButton: {
       minHeight: 56,
       marginTop: 14,

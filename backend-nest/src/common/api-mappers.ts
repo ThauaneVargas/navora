@@ -3,7 +3,8 @@ import { Beacon, CallRequest, VisitorAccessRequest } from '@prisma/client';
 export function mapCallToApi(call: CallRequest) {
   return {
     id: call.id,
-    // false = enviado sem conta (Acesso rapido/visitante): conferir antes de mobilizar equipe.
+    // Desde 29/10 todo chamado exige login. false = chamado antigo (de antes da
+    // regra) ou de conta excluida depois.
     registered_patient: Boolean(call.userId),
     user_type: call.userType,
     user_name: call.userName,
@@ -19,8 +20,6 @@ export function mapCallToApi(call: CallRequest) {
     emergency_contact: call.emergencyContact,
     caller_phone: call.callerPhone ?? null,
     needs: Array.isArray(call.needs) ? call.needs : [],
-    problems: Array.isArray(call.problems) ? call.problems : [],
-    problem_note: call.problemNote ?? null,
     status: call.status,
     priority: call.priority,
     created_at: call.createdAt.toISOString(),

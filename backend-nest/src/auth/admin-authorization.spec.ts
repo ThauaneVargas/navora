@@ -45,19 +45,28 @@ function assertPublicEndpoint(handler: AnyFunction) {
   assert.ok(guards.every((name: string) => name === 'OptionalJwtAuthGuard'), 'endpoint publico nao deve exigir guard');
 }
 
+// Exige estar logado (JwtAuthGuard), mas qualquer perfil serve: sem RolesGuard.
+function assertLoggedInEndpoint(handler: AnyFunction) {
+  const guards = guardNames(handler);
+  assert.ok(guards.includes('JwtAuthGuard'), 'endpoint exige login');
+  assert.ok(!guards.includes('OptionalJwtAuthGuard'), 'login nao pode ser opcional');
+  assert.ok(!guards.includes('RolesGuard'), 'qualquer conta pode usar');
+}
+
 async function run() {
   assertAdminEndpoint(CallsController.prototype.list);
   assertAdminEndpoint(CallsController.prototype.updateStatus);
-  assertPublicEndpoint(CallsController.prototype.create);
-  assertPublicEndpoint(CallsController.prototype.createHelp);
-  assertPublicEndpoint(CallsController.prototype.createSos);
+  // Chamados e pedido de visita exigem login desde 29/10 (qualquer conta).
+  assertLoggedInEndpoint(CallsController.prototype.create);
+  assertLoggedInEndpoint(CallsController.prototype.createHelp);
+  assertLoggedInEndpoint(CallsController.prototype.createSos);
+  assertLoggedInEndpoint(VisitorAccessController.prototype.create);
 
   assertAdminEndpoint(VisitorAccessController.prototype.list);
   assertAdminEndpoint(VisitorAccessController.prototype.approve);
   assertAdminEndpoint(VisitorAccessController.prototype.authorize);
   assertAdminEndpoint(VisitorAccessController.prototype.deny);
   assertAdminEndpoint(VisitorAccessController.prototype.updateStatus);
-  assertPublicEndpoint(VisitorAccessController.prototype.create);
   // Sem conta, mas não aberto: exige o código do visitante ou JWT de equipe
   // (checado no service). O guard aqui só lê o JWT se ele vier.
   assert.deepEqual(guardNames(VisitorAccessController.prototype.get), ['OptionalJwtAuthGuard'], 'GET visitante usa guard opcional');

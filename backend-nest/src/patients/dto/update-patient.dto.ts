@@ -1,4 +1,5 @@
-import { IsDateString, IsObject, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsObject, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { PHONE_PATTERN } from './register-patient.dto';
 
 export class UpdatePatientDto {
   @IsOptional()
@@ -6,17 +7,11 @@ export class UpdatePatientDto {
   @MinLength(2)
   name?: string;
 
+  // Obrigatório na conta: pode trocar, não apagar.
   @IsOptional()
   @IsString()
+  @Matches(PHONE_PATTERN, { message: 'Telefone invalido (informe DDD + numero)' })
   phone?: string;
-
-  @IsOptional()
-  @IsString()
-  patientCode?: string;
-
-  @IsOptional()
-  @IsDateString()
-  birthDate?: string | null;
 
   @IsOptional()
   @IsObject()
@@ -24,10 +19,6 @@ export class UpdatePatientDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(120)
   emergencyContact?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(1000)
-  notes?: string;
 }

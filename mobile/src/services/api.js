@@ -177,8 +177,8 @@ export const navoraApi = {
   // SOS, ajuda e pedido de visitante NAO tem modo offline: se nao chegou ao
   // servidor, a recepcao nao sabe — a tela tem que dizer que falhou, nunca
   // mostrar "enviado" com um protocolo local.
-  // Com login, o token vai junto e a recepcao ve que o chamado e de um
-  // paciente com conta. Token vencido nao bloqueia: o backend trata como anonimo.
+  // Exigem login desde 29/10: sem token (ou vencido) o backend responde 401 e
+  // a tela leva a pessoa ao Login (sem esconder a ligacao para a recepcao).
   createCall: (payload) =>
     request('/calls', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }),
   createHelpRequest: (payload) =>
@@ -188,12 +188,10 @@ export const navoraApi = {
   // Andamento do proprio chamado (codigo secreto devolvido ao criar).
   getCallStatus: (id, token) =>
     request(`/calls/${id}/status`, { headers: { 'X-Call-Token': token } }),
-  // "O que esta acontecendo?" depois do SOS enviado.
-  updateCallDetails: (id, token, details) =>
-    request(`/calls/${id}/details`, { method: 'PATCH', headers: { 'X-Call-Token': token }, body: JSON.stringify(details) }),
   getCalls: () => request('/calls', {}, []),
+  // Modo visita exige login (mesma conta do paciente).
   createVisitorAccessRequest: (payload) =>
-    request('/visitor-access', { method: 'POST', body: JSON.stringify(payload) }),
+    request('/visitor-access', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }),
   // accessToken: código secreto que o backend devolve ao criar o pedido; sem
   // ele o backend não mostra o pedido (os ids são sequenciais).
   getVisitorAccessRequest: (id, accessToken) =>

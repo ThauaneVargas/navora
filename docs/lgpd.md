@@ -1,25 +1,24 @@
 # Navora — LGPD e segurança
 
-Atualizado em 22/10/2026. Este documento descreve **o que o sistema faz hoje** com dados pessoais e **o que ainda falta** para operar com pacientes reais. Não é parecer jurídico: os itens marcados como "decisão" precisam de validação com o hospital e, de preferência, com um advogado.
+Atualizado em 29/10/2026 (cadastro mínimo e login obrigatório). Este documento descreve **o que o sistema faz hoje** com dados pessoais e **o que ainda falta** para operar com pacientes reais. Não é parecer jurídico: os itens marcados como "decisão" precisam de validação com o hospital e, de preferência, com um advogado.
 
 ## 1. Que dados existem e onde
 
 | Dado | Quem informa | Onde fica | Sensível? |
 |---|---|---|---|
-| Nome, e-mail, telefone | paciente (cadastro) | `users` | não |
+| Nome, e-mail, telefone (obrigatórios) | paciente/visitante (cadastro — mesma conta) | `users` | não |
 | Senha | paciente | `users.password_hash` (bcrypt, nunca em texto) | — |
-| Data de nascimento, CPF (`patient_code`) | paciente, opcional | `patient_profiles` | não (mas é identificador forte) |
-| Acessibilidade (cadeirante, deficiência visual/auditiva, acompanhante…) | paciente | `patient_profiles.accessibility` | **sim — saúde (art. 5º, II)** |
-| Observações (alergias, restrições) | paciente | `patient_profiles.notes` | **sim — saúde** |
-| Contato de emergência | paciente | `patient_profiles.emergency_contact` e em cada chamado | dado de terceiro |
+| ~~Data de nascimento, CPF, observações (alergias)~~ | — | **removidos em 29/10**, inclusive o que já estava gravado (migration `20261029170000_remove_unused_personal_data`) | — |
+| Acessibilidade (cadeirante, deficiência visual/auditiva, acompanhante…) — opcional | paciente | `patient_profiles.accessibility` | **sim — saúde (art. 5º, II)** |
+| Contato de emergência (telefone) — opcional | paciente | `patient_profiles.emergency_contact` e em cada chamado | dado de terceiro |
 | Consentimento (data + versão da política) | sistema | `patient_profiles.privacy_consent_at` / `privacy_policy_version` | — |
-| Pedidos de ajuda / SOS (nome, local, contato de emergência) | paciente ou visitante | `call_requests` | pode revelar saúde |
-| Pedido de visita (nome do visitante, destino, motivo) | visitante, sem conta | `visitor_access_requests` | pode revelar internação de terceiro |
+| Pedidos de ajuda / SOS (nome, local, telefone, contato de emergência, se precisa de cadeira/maca) — **só com login** desde 29/10, ligado à conta (`call_requests.user_id`). Não pergunta mais "o que está acontecendo" | paciente ou visitante | `call_requests` | pode revelar saúde |
+| Pedido de visita (nome do visitante, destino, motivo) — **só com login** desde 29/10 | visitante (mesma conta do paciente) | `visitor_access_requests` | pode revelar internação de terceiro |
 | Check-ins (nome, documento, observações) | recepção | `check_ins` | pode conter saúde |
 | Localização interna | beacon Bluetooth | **não é guardada** por pessoa — o servidor só registra que o beacon foi visto (`beacons.last_signal_at`) | — |
 | GPS ("Como chegar") | celular | só no aparelho, enquanto a tela está aberta | — |
 | Foto de perfil | paciente | só no aparelho (`profilePhotoService`) | — |
-| Dados do visitante (nome, telefone, nascimento) | visitante, **só se marcar "Lembrar meus dados"** | só no aparelho (`visitorStorage`, SecureStore); botão "Esquecer meus dados" no formulário | não |
+| ~~Dados do visitante guardados no celular ("Lembrar meus dados")~~ | — | **removido em 29/10** (o visitante tem conta); o app apaga o que restou no aparelho ao abrir | — |
 | Histórico de rotas (destinos iniciados) | sistema | só no aparelho (`routeHistoryStorage`), últimas 12; "Sair" apaga — o destino pode revelar saúde | pode revelar saúde |
 | Visita em andamento (pedido + código secreto) | sistema | só no aparelho, até a visita terminar/expirar/ser negada (ou 24 h sem resposta); "Sair" apaga | — |
 
@@ -33,7 +32,9 @@ Hospedagem: Render (backend e Postgres), região **Oregon, EUA** (confirmado no 
 
 **Transparência (art. 6º, VI e art. 9º)**
 - Tela Privacidade reescrita em 22/10. A versão anterior afirmava coisas falsas: "beacons Wi-Fi" (são Bluetooth), "dados armazenados de forma criptografada no servidor" (não há criptografia própria em repouso), um e-mail `privacidade@navora.com.br` que não existe, e "histórico salvo no dispositivo" (a tela de histórico é só exemplo).
-- Visitante (sem conta) vê um aviso antes de enviar o pedido de visita.
+- Visitante vê um aviso antes de enviar o pedido de visita.
+- **Minimização (art. 6º, III), 29/10:** cadastro só com nome, e-mail, telefone e senha; contato de emergência e acessibilidade opcionais. CPF, nascimento, observações (alergias) e "o que está acontecendo" no SOS saíram do app e do banco (o que estava gravado foi apagado pela migration).
+- **Base legal com login obrigatório:** como todo SOS/pedido agora vem de uma conta que aceitou a política, o consentimento cobre o dado de saúde (acessibilidade) que vai junto. Risco aceito pela usuária: quem não tem conta (ou está com a sessão vencida) não manda SOS pelo app — o app oferece "Ligar para a recepção" (falta o número do hospital) e manda entrar de novo.
 
 **Direitos do titular (art. 18)**
 - Acesso e correção: "Meu perfil" (já existia, `PUT /patients/me`).

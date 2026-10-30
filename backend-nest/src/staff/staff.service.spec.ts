@@ -104,7 +104,7 @@ async function run() {
   await assert.rejects(() => service.deactivate(1, otherAdmin), BadRequestException);
 
   // Endpoints: somente ADMIN, e DELETE sempre recusado.
-  const guards = (Reflect.getMetadata('__guards__', StaffController) || []).map((g: Function) => g.name);
+  const guards = (Reflect.getMetadata('__guards__', StaffController) || []).map((g: { name: string }) => g.name);
   assert.ok(guards.includes('JwtAuthGuard') && guards.includes('RolesGuard'));
   const rolesGuard = new RolesGuard(new Reflector());
   const ctx = (role: UserRole) =>

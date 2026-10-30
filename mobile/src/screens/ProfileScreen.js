@@ -109,11 +109,8 @@ function buildEditInitialValues(userProfile = {}) {
   return {
     name: userProfile?.fullName || userProfile?.name || '',
     phone: userProfile?.phone || '',
-    document: userProfile?.patientCode || '',
-    birthDateIso: userProfile?.birthDate || null,
     emergencyContact: userProfile?.emergencyContact || '',
     accessibility: userProfile?.accessibility || {},
-    notes: userProfile?.notes || '',
   };
 }
 
@@ -449,8 +446,8 @@ export default function ProfileScreen({
               ),
     },
 
-    // Sem conta (acesso rápido): os dados valem só neste acesso; criando a
-    // conta eles ficam guardados. O formulário já vem preenchido.
+    // Desde 29/10 só se entra com conta, então isto não aparece mais; fica
+    // como rede de segurança se um perfil sem conta chegar aqui.
     ...(!isVisitor && !hasAccount
       ? [
           {

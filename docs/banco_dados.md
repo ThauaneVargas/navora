@@ -5,7 +5,7 @@
 ## 1. Visão geral
 
 - **SGBD:** PostgreSQL. **ORM:** Prisma Client.
-- **Convenção:** nomes de modelo/campo em `camelCase` no código, mapeados para `snake_case` nas tabelas reais via `@map`/`@@map` (ex.: `patientCode` → coluna `patient_code`, model `PatientProfile` → tabela `patient_profiles`).
+- **Convenção:** nomes de modelo/campo em `camelCase` no código, mapeados para `snake_case` nas tabelas reais via `@map`/`@@map` (ex.: `emergencyContact` → coluna `emergency_contact`, model `PatientProfile` → tabela `patient_profiles`).
 - **Migrations:** incrementais em `backend-nest/prisma/migrations/`, aplicadas com `prisma migrate deploy` (produção) / `prisma migrate dev` (local).
 - **Seed:** `backend-nest/prisma/seed.ts`, idempotente via `upsert` — pode rodar várias vezes sem duplicar dados.
 - Produção (Render) está com o schema **desatualizado** em relação à branch atual (faltam a tabela `notifications` e colunas `google_id`/`password_reset_token`/`password_reset_expires` em `users` — ver nota de versão no `CLAUDE.md`).
@@ -214,9 +214,9 @@ erDiagram
 - `StaffProfile` existe no schema mas **não tem tela no mobile** (confirma a regra de escopo: só Paciente e Visitante no app) — é suporte a dados pra quando/se o `web-admin` precisar listar equipe por setor.
 
 ### 3.2 Chamados — `CallRequest`
-- **Decisão deliberada:** `CallRequest` não tem foreign key para `User`. Os dados de quem chamou (`userName`, `patientName`) são campos de texto soltos, duplicados no momento da criação.
-- Motivo: SOS e "Preciso de ajuda" precisam funcionar mesmo pra quem está no fluxo de **acesso rápido sem conta** (`PatientQuickRegisterScreen`, `quick: true`) ou em modo offline (fallback de `navigationAdapter.js` gera um `CallRequest` local). Exigir FK pra `User` quebraria esse caso de uso central do app.
-- Trade-off aceito: não há como consultar "todos os chamados deste paciente" por join; se isso vier a ser necessário, seria preciso adicionar um `userId` opcional sem remover os campos de texto (manter compatibilidade com chamados anônimos).
+- Os dados de quem chamou (`userName`, `patientName`, `callerPhone`) são texto copiado no momento da criação — o registro de atendimento continua legível mesmo se a conta for excluída.
+- `userId` (opcional, `onDelete: SetNull`) liga o chamado à conta. Desde 29/10 **todo chamado exige login** (decisão da usuária; antes existia "acesso rápido sem conta"), então chamados novos sempre têm `userId`; nulo = chamado antigo ou conta excluída depois.
+- Desde 29/10 não existem mais `problems`/`problem_note` ("o que está acontecendo" no SOS) nem, em `PatientProfile`, `patient_code` (CPF), `birth_date` e `notes` (migration `20261029170000_remove_unused_personal_data`).
 
 ### 3.3 Grafo de navegação — `HospitalArea` → `Sector`/`Entrance`/`NavigationNode` → `RouteEdge`/`Destination`
 - Modelo de grafo clássico: `NavigationNode` são os vértices (entradas, recepção, salas, corredores, elevadores, banheiros, saídas — `NavigationNodeType`); `RouteEdge` são as arestas, com peso (`distanceMeters`) e metadados de acessibilidade (`accessible`, `wheelchairAccessible`, `stretcherAccessible`, `routeType`).

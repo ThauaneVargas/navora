@@ -26,7 +26,7 @@ Protegido por JWT. Retorna dados do usuario autenticado.
 
 `POST /patients/register`
 
-Campos principais: `email`, `password`, `name`, `phone`, `patientCode`, `birthDate`, `accessibility`, `emergencyContact`, `notes`.
+Campos: `email`, `password`, `name`, `phone` (obrigatório, DDD + número), `accessibility` e `emergencyContact` (opcionais), `acceptedPrivacyPolicy`, `privacyPolicyVersion`. Desde 29/10 não existem mais `patientCode` (CPF), `birthDate` nem `notes` — mandar esses campos dá `400`.
 Obrigatórios (LGPD): `acceptedPrivacyPolicy: true` e `privacyPolicyVersion` (ex.: `"2026-10-22"`). Sem o aceite → `400`. A resposta traz `privacyConsentAt` e `privacyPolicyVersion`.
 
 `GET /patients/me`, `PUT /patients/me`, `PUT /patients/me/accessibility`
@@ -162,7 +162,7 @@ Todos os endpoints sao exclusivos de `ADMIN`.
 
 ### Regras de acesso (29/10)
 
-- `POST /visitor-access` sempre cria o pedido como `PENDING` (o campo `status` do corpo é ignorado). Aceita também `companions` ([{name,type}], até 10), `group_total`, `visit_code`, `assistance_request`.
+- `POST /visitor-access` exige login (`Authorization`, desde 29/10; sem token → `401`); sem `visitor_name`, usa o nome da conta. Sempre cria o pedido como `PENDING` (o campo `status` do corpo é ignorado). Aceita também `companions` ([{name,type}], até 10), `group_total`, `visit_code`, `assistance_request`.
 - `POST /navigation/access-check` e `/navigation/route-preview`: a liberação do visitante só vale com `visitor_access_request_id` **e** `visitor_access_token` (o `access_token` devolvido ao criar o pedido).
 - Sem regra cadastrada que case: visitante só acessa `public`/`visitor_allowed` (o resto pede autorização); paciente em `visitor_authorization` é orientado à recepção; destino de outra unidade (Private ↔ SUS) vira `REDIRECT_TO_RECEPTION`.
 
@@ -170,16 +170,16 @@ Todos os endpoints sao exclusivos de `ADMIN`.
 
 - `POST /auth/forgot-password` `{ email }` → `{ ok, delivery }`. `delivery`: `email` (código enviado), `log` (desenvolvimento sem SMTP, código no log), `unavailable` (produção sem SMTP — o app avisa). Resposta igual exista ou não a conta.
 - `POST /auth/reset-password` `{ email, token, newPassword }` — `token` é o código de 6 dígitos (15 min, 5 tentativas). Troca de senha invalida tokens emitidos antes.
-- `POST /calls`, `/calls/help`, `/calls/sos`: continuam públicos; com `Authorization` de paciente, o chamado fica ligado à conta. Resposta traz `registered_patient` (false = "Sem conta" no painel). Token inválido é ignorado (nunca bloqueia SOS).
+- `POST /calls`, `/calls/help`, `/calls/sos`: **exigem login** desde 29/10 (sem token ou token vencido → `401`). O chamado fica ligado à conta; sem `caller_phone`, vai o telefone da conta. `registered_patient: false` só aparece em chamados antigos (de antes da regra) ou de conta excluída.
 - `GET/PATCH /staff...` (só ADMIN): equipe, histórico, desativar/reativar. `DELETE /staff/:id` → 405.
 
 ### SOS completo (29/10)
 
 - `POST /calls/sos` (e `/calls`, `/calls/help`) aceita `caller_phone` e `needs` (`wheelchair`, `stretcher`, `mobility`, `visual`, `hearing`, `companion`) e devolve `access_token` (código secreto do chamado, só nessa resposta).
-- `PATCH /calls/:id/details` + header `X-Call-Token`: `{ problems: [...], problem_note }` — problemas: `chest_pain`, `breathing`, `fainting`, `fall`, `bleeding`, `seizure`, `unwell`, `other`. Recusado se o chamado já foi encerrado.
-- `GET /calls/:id/status` + `X-Call-Token`: `{ id, status, call_type, problems, updated_at }` — sem dados pessoais.
+- ~~`PATCH /calls/:id/details`~~ (problemas informados depois do SOS) **removido em 29/10** — o app não pergunta mais "o que está acontecendo" (dado de saúde; LGPD).
+- `GET /calls/:id/status` + `X-Call-Token`: `{ id, status, call_type, updated_at }` — sem dados pessoais.
 - `GET /calls?updated_since=<ISO>` (equipe): só chamados criados/alterados depois da data (busca rápida do painel).
-- Esses três e o `POST /calls/sos` não têm limite de requisições (Wi-Fi do hospital = mesmo IP para todos).
+- Esses dois e o `POST /calls/sos` não têm limite de requisições (Wi-Fi do hospital = mesmo IP para todos).
 
 ## Check-ins
 

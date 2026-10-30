@@ -59,14 +59,17 @@ const shadow = {
 };
 
 
-export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, navigate }) => {
+// Paciente e visitante entram com a mesma conta (e-mail + senha). O cartão
+// escolhido só decide o modo de uso: Paciente -> Início; Visitante -> pedido de
+// visita. Sem conta não há acesso (decisão da usuária, 29/10).
+export const LoginScreen = ({ onPatientReady, onCreateAccount, navigate }) => {
   const styles = useThemeStyles();
   const { appColors: colors, t } = useApp();
   const { width, height } = useWindowDimensions();
   const stageMaxWidth = Math.min(width, 430);
   const compact = height < 720;
   const [selectedProfile, setSelectedProfile] = useState('PATIENT');
-  const [emailOrCpf, setEmailOrCpf] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberData, setRememberData] = useState(false);
@@ -77,7 +80,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
   useEffect(() => {
     loadRememberedEmail().then((saved) => {
       if (saved) {
-        setEmailOrCpf(saved);
+        setEmail(saved);
         setRememberData(true);
       }
     });
@@ -103,13 +106,10 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
     setSelectedProfile(profile);
   };
 
-  const handleLogin = async () => {
-    if (selectedProfile === 'VISITOR') {
-      onLoginSuccess?.('visitor');
-      return;
-    }
+  const mode = selectedProfile === 'VISITOR' ? 'visitor' : 'patient';
 
-    if (!emailOrCpf || !password) {
+  const handleLogin = async () => {
+    if (!email || !password) {
       Alert.alert(t('common.attention'), t('login.fillFields'));
       return;
     }
@@ -117,7 +117,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
     setLoading(true);
 
     try {
-      const auth = await navoraApi.login({ email: emailOrCpf.trim(), password });
+      const auth = await navoraApi.login({ email: email.trim(), password });
 
       if (!auth?.access_token) {
         Alert.alert(t('common.error'), t('login.invalidResponse'));
@@ -132,7 +132,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
       await saveAuthToken(auth.access_token);
 
       if (rememberData) {
-        await saveRememberedEmail(emailOrCpf.trim());
+        await saveRememberedEmail(email.trim());
       } else {
         await clearRememberedEmail();
       }
@@ -144,7 +144,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
         apiUser: auth.user,
         authSource: 'api',
         hasAccount: true,
-      });
+      }, mode);
     } catch (error) {
       if (isNetworkError(error)) {
         if (error?.timeout) {
@@ -223,7 +223,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
         ...patient,
         authSource: 'biometric',
         hasAccount: true,
-      });
+      }, mode);
     } catch (error) {
       if (isNetworkError(error)) {
         Alert.alert(t('common.noConnection'), t('common.checkInternet'));
@@ -285,9 +285,9 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
             <View style={styles.form}>
               <LoginInput
                 icon="account-outline"
-                placeholder={t('login.emailOrCpf')}
-                value={emailOrCpf}
-                onChangeText={setEmailOrCpf}
+                placeholder={t('login.email')}
+                value={email}
+                onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 editable={!loading}

@@ -9,12 +9,14 @@ Histórico detalhado de cada bug/feature/decisão (itens 1–24): `docs/historic
 1. **Produção:** falta trocar a senha do banco e o `JWT_SECRET` (`docs/lgpd.md` §3). Push pra `main` = deploy de produção — só a usuária faz (`git push origin <branch>:main`).
 2. **Banco de produção free expira 19/11/2026** — procedimento em `docs/arquitetura.md` §7 (skill `/recriar-banco`). Plano pago adiado até pesquisar custos.
 3. **Beacons:** calibrar no hospital (`measuredPower`, `BEACON_STABILITY`), testar "Localização inicial" (CTM-13/14). Voz (reconhecimento do aparelho) pode entrar no mesmo APK.
-4. **Testes no celular físico:** "Primeiro acesso", editar perfil, SOS no painel em ~15 s (CTM-05/06/10/11 em `docs/casos_de_teste.md`).
+4. **Testes no celular físico:** cadastro mínimo, login como Visitante, editar perfil, SOS no painel (CTM-06/10/11 em `docs/casos_de_teste.md`).
 5. **App Store (iOS)** — código pronto em 28/10: botões Google/Apple "Em breve" removidos (Apple reprova botão falso e exigiria "Entrar com Apple"), textos de permissão em pt no `app.json` (Face ID, câmera, fotos, localização; sem microfone), `supportsTablet: false`, `ITSAppUsesNonExemptEncryption: false`, perfil `production` no `eas.json` (API de produção embutida), política pública em `web-admin/public/privacidade.html` (gerada do `privacyPolicy.js` por `npm run privacidade`). **Falta (usuária):** conta Apple Developer — app de saúde exige conta de **organização** (hospital, com D-U-N-S; regra 5.1.1(ix)) ou ficar só no TestFlight; plano pago no Render (servidor dormindo/banco expirando reprova na revisão); conta demo pro revisor; trocar `JWT_SECRET`/senha do banco; testar num iPhone (nunca testado). BLE já fica desligado no iOS (`ios_unsupported`).
 6. Sem pressa: seletor de andar com dados reais; dividir telas gigantes (`VisitorEntryScreen`, `PatientHomeScreen`, `App.js`) quando precisar mexer.
 
 ## Regras de escopo (não violar)
 - Só 2 perfis no mobile: Paciente e Visitante. Sem funcionário/médico.
+- **Login obrigatório (29/10):** paciente e visitante usam a mesma conta; sem login nada abre (`PUBLIC_SCREENS` no `App.js`). SOS, ajuda e pedido de visita exigem JWT no backend. Não recriar "acesso rápido sem conta".
+- **Cadastro mínimo (LGPD, 29/10):** nome, e-mail, telefone e senha obrigatórios; contato de emergência e acessibilidade opcionais. Não pedir CPF, nascimento, alergias/observações nem "o que está acontecendo" no SOS.
 - Sem QR Code, sem agendamento, sem chamada de paciente.
 - BLE (beacons Feasycom FSC-BP104D, códigos `FSC-01/02/10/11`) é OPCIONAL — app funciona 100% sem beacon. Só Android.
 - Não remover o fallback offline (`navigationAdapter.js`).

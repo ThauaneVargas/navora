@@ -10,22 +10,18 @@ import { saveAuthToken } from '../services/authToken';
 import { PRIVACY_POLICY_VERSION, getPrivacyPolicy } from '../data/privacyPolicy';
 import {
   isStrongPassword,
-  isValidBirthDate,
-  isValidCPF,
   isValidEmail,
   isValidPhone,
-  maskBirthDate,
-  maskCPF,
   maskPhone,
   sanitizeName,
   stripSpaces,
 } from '../utils/masks';
 import PasswordRules from '../components/PasswordRules';
 
+// Cadastro mínimo (LGPD, 29/10): nome, telefone, e-mail e senha obrigatórios;
+// contato de emergência opcional. Sem CPF, nascimento nem observações.
 const personalFields = [
   { key: 'name', label: 'Nome completo', icon: 'account-outline', mask: sanitizeName, autoCapitalize: 'words' },
-  { key: 'birth', label: 'Data de nascimento', icon: 'calendar-outline', mask: maskBirthDate, keyboardType: 'number-pad', maxLength: 10 },
-  { key: 'document', label: 'CPF', icon: 'card-account-details-outline', mask: maskCPF, keyboardType: 'number-pad', maxLength: 14 },
   { key: 'phone', label: 'Telefone', icon: 'phone-outline', mask: maskPhone, keyboardType: 'phone-pad', maxLength: 15 },
   { key: 'email', label: 'E-mail', icon: 'email-outline', keyboardType: 'email-address', autoCapitalize: 'none', autoCorrect: false },
   { key: 'password', label: 'Senha', icon: 'lock-outline', secure: true, mask: stripSpaces, maxLength: 72 },
@@ -59,20 +55,6 @@ const accessibilityMap = {
   'Precisa de orientacao por voz': 'voiceGuidance',
 };
 
-const parseBirthDate = (value) => {
-  const trimmed = value?.trim();
-  if (!trimmed) return undefined;
-  const brDate = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-  if (brDate) return `${brDate[3]}-${brDate[2]}-${brDate[1]}`;
-  return /^\d{4}-\d{2}-\d{2}$/.test(trimmed) ? trimmed : undefined;
-};
-
-// Inverso de parseBirthDate: data ISO (vinda da API) -> DD/MM/AAAA (formato do input mascarado).
-const isoToBrDate = (iso) => {
-  const match = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
-  return match ? `${match[3]}/${match[2]}/${match[1]}` : '';
-};
-
 const buildAccessibility = (selected) =>
   Object.fromEntries(
     Object.entries(accessibilityMap)
@@ -93,24 +75,20 @@ const buildSelectedFromAccessibility = (accessibility = {}) =>
       .map(([key]) => [accessibilityKeyToLabel[key], true])
   );
 
-export default function PatientRegisterScreen({ navigate, onPatientReady, onProfileUpdate, userProfile, routeParams = {} }) {
+export default function PatientRegisterScreen({ navigate, onPatientReady, routeParams = {} }) {
   const { appColors, t, language } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
   const policy = useMemo(() => getPrivacyPolicy(language), [language]);
   // mode: 'edit' vem do ProfileScreen (editar cadastro existente via PATCH /patients/me).
-  // Sem mode, é cadastro novo (do "Cadastre-se" ou do "Primeiro acesso" do acesso rápido,
-  // que so preenche nome/telefone/nascimento em initialValues e deixa o resto pra aqui).
+  // Sem mode, é cadastro novo (do "Cadastre-se" no Login).
   const isEditMode = routeParams.mode === 'edit';
   const initialValues = routeParams.initialValues || {};
   const [form, setForm] = useState(() => ({
     name: initialValues.name || '',
     phone: initialValues.phone ? maskPhone(initialValues.phone) : '',
-    document: initialValues.document ? maskCPF(initialValues.document) : '',
-    birth: initialValues.birthDateIso ? isoToBrDate(initialValues.birthDateIso) : (initialValues.birth || ''),
     emergencyContact: initialValues.emergencyContact ? maskPhone(initialValues.emergencyContact) : '',
   }));
   const [selected, setSelected] = useState(() => buildSelectedFromAccessibility(initialValues.accessibility));
-  const [notes, setNotes] = useState(() => initialValues.notes || '');
   const [loading, setLoading] = useState(false);
   // LGPD: cadastro novo só segue com o aceite explícito (dados de saúde).
   const [consent, setConsent] = useState(false);
@@ -132,21 +110,24 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, onProf
   };
 
   const fieldErrors = useMemo(() => ({
-    document: form.document && !isValidCPF(form.document) ? t('register.errCpf') : null,
     email: form.email && !isValidEmail(form.email) ? t('register.errEmail') : null,
-    birth: form.birth && !isValidBirthDate(form.birth) ? t('register.errBirth') : null,
     phone: form.phone && !isValidPhone(form.phone) ? t('register.errPhone') : null,
     emergencyContact: form.emergencyContact && !isValidPhone(form.emergencyContact) ? t('register.errPhone') : null,
     confirmPassword:
       form.confirmPassword && form.confirmPassword !== form.password
         ? t('register.errMismatch')
         : null,
-  }), [form.document, form.email, form.birth, form.phone, form.emergencyContact, form.confirmPassword, form.password, t]);
+  }), [form.email, form.phone, form.emergencyContact, form.confirmPassword, form.password, t]);
 
   const handleSubmit = async () => {
     if (isEditMode) {
       if (!form.name?.trim()) {
         Alert.alert(t('register.nameRequiredTitle'), t('register.nameRequired'));
+        return;
+      }
+
+      if (!form.phone?.trim()) {
+        Alert.alert(t('register.phoneRequiredTitle'), t('register.phoneRequired'));
         return;
       }
 
@@ -158,34 +139,14 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, onProf
       setLoading(true);
       const editPayload = {
         name: form.name.trim(),
-        phone: form.phone?.trim() || undefined,
-        patientCode: form.document?.trim() || undefined,
-        birthDate: parseBirthDate(form.birth),
+        phone: form.phone.trim(),
         accessibility: buildAccessibility(selected),
-        emergencyContact: form.emergencyContact?.trim() || undefined,
-        // String vazia (e não undefined) pra a pessoa conseguir apagar as observações.
-        notes: notes.trim(),
+        // String vazia (e não undefined) pra a pessoa conseguir apagar o contato.
+        emergencyContact: form.emergencyContact?.trim() || '',
       };
 
-      // Sem conta (acesso rápido / modo demonstração) não há PATCH no servidor:
-      // salva no perfil desta sessão. Antes caía em "sessão expirada" e voltava
-      // pro login, e a pessoa não conseguia mudar nada.
-      if (userProfile?.authSource !== 'api') {
-        onProfileUpdate?.({
-          name: editPayload.name.split(' ')[0],
-          fullName: editPayload.name,
-          phone: editPayload.phone,
-          patientCode: editPayload.patientCode,
-          birthDate: editPayload.birthDate,
-          accessibility: editPayload.accessibility,
-          emergencyContact: editPayload.emergencyContact,
-          notes: editPayload.notes,
-        });
-        setLoading(false);
-        Alert.alert(t('register.updatedTitle'), t('register.updatedNoAccount'));
-        navigate('Profile');
-        return;
-      }
+      // Todo acesso agora tem conta (login obrigatório desde 29/10): sempre salva
+      // no servidor. Antes, quem entrava sem conta salvava só nesta sessão.
 
       try {
         // PATCH/PUT real em /patients/me — ao contrário do fluxo de criação abaixo,
@@ -209,7 +170,7 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, onProf
       return;
     }
 
-    if (!form.name?.trim() || !form.email?.trim() || !form.password?.trim()) {
+    if (!form.name?.trim() || !form.phone?.trim() || !form.email?.trim() || !form.password?.trim()) {
       Alert.alert(t('register.incompleteTitle'), t('register.incomplete'));
       return;
     }
@@ -236,32 +197,13 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, onProf
       name: form.name.trim(),
       email: form.email.trim().toLowerCase(),
       password: form.password,
-      phone: form.phone?.trim() || undefined,
-      patientCode: form.document?.trim() || undefined,
-      birthDate: parseBirthDate(form.birth),
+      phone: form.phone.trim(),
       accessibility: buildAccessibility(selected),
       emergencyContact: form.emergencyContact?.trim() || undefined,
-      notes: notes.trim() || undefined,
     };
 
     try {
       const registered = await navoraApi.registerPatient(payload);
-      if (registered?.demoMode) {
-        onPatientReady?.({
-          type: 'patient',
-          name: payload.name.split(' ')[0],
-          fullName: payload.name,
-          phone: payload.phone,
-          patientCode: payload.patientCode,
-          accessibility: payload.accessibility,
-          notes: payload.notes,
-          hasAccount: true,
-          authSource: 'fallback',
-        });
-        navigate('PatientHome');
-        return;
-      }
-
       if (registered?.access_token) {
         await saveAuthToken(registered.access_token);
       } else {
@@ -368,19 +310,6 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, onProf
             </Pressable>
           );
         })}
-      </View>
-
-      <View style={[styles.notesBox, shadows.card]}>
-        <Text style={styles.notesLabel}>{t('register.notes')}</Text>
-        <TextInput
-          value={notes}
-          onChangeText={setNotes}
-          multiline
-          textAlignVertical="top"
-          placeholder={t('register.notesPlaceholder')}
-          placeholderTextColor={appColors.lightText}
-          style={styles.notesInput}
-        />
       </View>
 
       {!isEditMode ? (
@@ -566,28 +495,6 @@ const createStyles = (colors) => StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
     fontWeight: '700',
-  },
-  notesBox: {
-    marginTop: 16,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-  },
-  notesLabel: {
-    color: colors.text,
-    fontSize: 15,
-    fontWeight: '900',
-    marginBottom: 10,
-  },
-  notesInput: {
-    minHeight: 96,
-    color: colors.text,
-    fontSize: 15,
-    lineHeight: 21,
-    fontWeight: '600',
-    padding: 0,
   },
   mainButton: {
     height: 58,

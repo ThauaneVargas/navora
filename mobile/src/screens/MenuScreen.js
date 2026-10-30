@@ -19,7 +19,7 @@ const menuItems = [
   { titleKey: 'menu.notifications', subtitleKey: 'menu.notificationsSub', icon: 'bell-outline', screen: 'Notifications', tone: 'amber' },
   { titleKey: 'menu.settings', subtitleKey: 'menu.settingsSub', icon: 'cog-outline', screen: 'Settings' },
   { titleKey: 'menu.privacy', subtitleKey: 'menu.privacySub', icon: 'shield-lock-outline', screen: 'Privacy', tone: 'teal' },
-  { titleKey: 'menu.logout', subtitleKey: 'menu.logoutSub', icon: 'logout', screen: 'HomeStart', danger: true },
+  { titleKey: 'menu.logout', subtitleKey: 'menu.logoutSub', icon: 'logout', screen: 'Login', danger: true },
 ];
 
 function menuShadow(themeColors, isDark) {

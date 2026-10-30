@@ -1,5 +1,4 @@
 import React, {
-  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -33,13 +32,6 @@ import {
 } from '../services/visitorAccessMonitor';
 
 import {
-  forgetRememberedVisitor,
-  loadRememberedVisitor,
-  saveRememberedVisitor,
-} from '../services/visitorStorage';
-
-import {
-  maskBirthDate,
   maskPhone,
   sanitizeName,
 } from '../utils/masks';
@@ -175,6 +167,7 @@ export default function VisitorEntryScreen({
   onVisitorAccessRequestUpdated,
   visitorIdentificationDraft = {},
   onVisitorIdentificationDraftChange,
+  userProfile,
 }) {
   const {
     appColors,
@@ -197,6 +190,9 @@ export default function VisitorEntryScreen({
 
   /*
    * IDENTIFICAÇÃO
+   *
+   * Visitante entra logado (29/10): nome e telefone já vêm da conta. Sem data
+   * de nascimento e sem "lembrar meus dados" — a conta já guarda.
    */
 
   const [
@@ -204,6 +200,7 @@ export default function VisitorEntryScreen({
     setFullName,
   ] = useState(
     visitorIdentificationDraft.fullName ||
+      userProfile?.fullName ||
       ''
   );
 
@@ -212,65 +209,10 @@ export default function VisitorEntryScreen({
     setPhone,
   ] = useState(
     visitorIdentificationDraft.phone ||
-      ''
+      (userProfile?.phone
+        ? maskPhone(userProfile.phone)
+        : '')
   );
-
-  const [
-    birthDate,
-    setBirthDate,
-  ] = useState(
-    visitorIdentificationDraft.birthDate ||
-      ''
-  );
-
-
-  /*
-   * "Lembrar meus dados neste celular" — opcional, fica só no aparelho.
-   */
-
-  const [
-    rememberMe,
-    setRememberMe,
-  ] = useState(false);
-
-  const [
-    hasRemembered,
-    setHasRemembered,
-  ] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-
-    loadRememberedVisitor().then((saved) => {
-      if (!active || !saved?.fullName) return;
-
-      setHasRemembered(true);
-      setRememberMe(true);
-
-      // Não sobrescreve o que a pessoa já começou a digitar.
-      setFullName((current) => current || saved.fullName);
-      setPhone((current) => current || saved.phone || '');
-      setBirthDate((current) => current || saved.birthDate || '');
-    });
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  const forgetMe = async () => {
-    await forgetRememberedVisitor();
-    setHasRemembered(false);
-    setRememberMe(false);
-    setFullName('');
-    setPhone('');
-    setBirthDate('');
-    onVisitorIdentificationDraftChange?.({
-      fullName: '',
-      phone: '',
-      birthDate: '',
-    });
-  };
 
 
   /*
@@ -372,16 +314,6 @@ export default function VisitorEntryScreen({
 
     onVisitorIdentificationDraftChange?.({
       phone: masked,
-    });
-  };
-
-
-  const updateBirth = (value) => {
-    const masked = maskBirthDate(value);
-    setBirthDate(masked);
-
-    onVisitorIdentificationDraftChange?.({
-      birthDate: masked,
     });
   };
 
@@ -616,9 +548,7 @@ export default function VisitorEntryScreen({
 
   const previousStep = () => {
     if (step === 0) {
-      goBack?.(
-        'HomeStart'
-      );
+      goBack?.();
 
       return;
     }
@@ -779,16 +709,6 @@ export default function VisitorEntryScreen({
       const cleanName =
         fullName.trim();
 
-      if (rememberMe) {
-        saveRememberedVisitor({
-          fullName: cleanName,
-          phone: phone.trim(),
-          birthDate: birthDate.trim(),
-        });
-      } else if (hasRemembered) {
-        forgetRememberedVisitor();
-      }
-
 
       const visitorProfile = {
         type: 'visitor',
@@ -805,10 +725,6 @@ export default function VisitorEntryScreen({
 
         phone:
           phone.trim() ||
-          null,
-
-        birthDate:
-          birthDate.trim() ||
           null,
 
         area,
@@ -1136,92 +1052,6 @@ export default function VisitorEntryScreen({
             }
           />
 
-
-          <Field
-            label={t('visitor.birthDate')}
-            value={
-              birthDate
-            }
-            onChangeText={
-              updateBirth
-            }
-            placeholder={t('visitor.birthDatePlaceholder')}
-            keyboardType="number-pad"
-            maxLength={10}
-            appColors={
-              appColors
-            }
-          />
-
-          <Pressable
-            onPress={() =>
-              setRememberMe(
-                (value) => !value
-              )
-            }
-            accessibilityRole="checkbox"
-            accessibilityState={{
-              checked: rememberMe,
-            }}
-            style={styles.rememberRow}
-          >
-            <MaterialCommunityIcons
-              name={
-                rememberMe
-                  ? 'checkbox-marked'
-                  : 'checkbox-blank-outline'
-              }
-              size={28}
-              color={
-                rememberMe
-                  ? appColors.primary
-                  : appColors.muted
-              }
-            />
-
-            <View style={styles.rememberCopy}>
-              <Text
-                style={[
-                  styles.rememberTitle,
-                  { color: appColors.text },
-                ]}
-              >
-                {t('visitor.rememberTitle')}
-              </Text>
-
-              <Text
-                style={[
-                  styles.rememberText,
-                  { color: appColors.muted },
-                ]}
-              >
-                {t('visitor.rememberText')}
-              </Text>
-            </View>
-          </Pressable>
-
-          {hasRemembered ? (
-            <Pressable
-              onPress={forgetMe}
-              accessibilityRole="button"
-              style={styles.forgetButton}
-            >
-              <MaterialCommunityIcons
-                name="delete-outline"
-                size={18}
-                color={appColors.danger}
-              />
-
-              <Text
-                style={[
-                  styles.forgetText,
-                  { color: appColors.danger },
-                ]}
-              >
-                {t('visitor.forget')}
-              </Text>
-            </Pressable>
-          ) : null}
         </View>
       )}
 
@@ -1867,17 +1697,6 @@ export default function VisitorEntryScreen({
                 appColors
               }
             />
-
-            <ReviewLine
-              label={t('visitor.birth')}
-              value={
-                birthDate ||
-                t('common.notInformed')
-              }
-              appColors={
-                appColors
-              }
-            />
           </ReviewSection>
 
 
@@ -2037,7 +1856,7 @@ export default function VisitorEntryScreen({
         </Pressable>
       ) : (
         <>
-        {/* LGPD: aviso de transparência pro visitante (sem conta). */}
+        {/* LGPD: aviso de transparência pro visitante. */}
         <Text
           style={[
             styles.privacyNotice,
@@ -2653,43 +2472,6 @@ function ReviewLine({
 
 const styles =
   StyleSheet.create({
-    rememberRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      gap: 12,
-      marginTop: 16,
-      minHeight: 44,
-    },
-
-    rememberCopy: {
-      flex: 1,
-      gap: 2,
-    },
-
-    rememberTitle: {
-      fontSize: 15,
-      fontWeight: '900',
-    },
-
-    rememberText: {
-      fontSize: 13,
-      lineHeight: 18,
-      fontWeight: '600',
-    },
-
-    forgetButton: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      minHeight: 44,
-      marginTop: 4,
-    },
-
-    forgetText: {
-      fontSize: 14,
-      fontWeight: '800',
-    },
-
     privacyNotice: {
       fontSize: 13,
       lineHeight: 19,

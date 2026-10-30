@@ -1,12 +1,12 @@
 import * as SecureStore from 'expo-secure-store';
 
-// Visitante não tem conta. Duas coisas ficam guardadas SÓ neste celular
-// (SecureStore, o mesmo cofre do token do paciente) — nada vai pro servidor:
-// 1. Dados de identificação (nome, telefone, nascimento), só se a pessoa
-//    marcar "Lembrar meus dados neste celular". Pré-preenche a próxima visita.
-// 2. A visita em andamento (pedido + código secreto), pra quem fechar o app
-//    voltar direto pra ela. Some quando a visita termina, expira ou é negada.
+// Visita em andamento (pedido + código secreto) guardada SÓ neste celular
+// (SecureStore, o mesmo cofre do token), pra quem fechar o app voltar direto
+// pra ela. Some quando a visita termina, expira, é negada ou a pessoa sai.
+// Desde 29/10 o visitante entra com conta: nome e telefone vêm dela.
 
+// Antigo "Lembrar meus dados" (nome, telefone, nascimento): não existe mais;
+// a chave só é lida pra ser apagada dos celulares que ainda a têm.
 const REMEMBERED_KEY = 'navora.visitor.remembered';
 const ACTIVE_VISIT_KEY = 'navora.visitor.activeVisit';
 
@@ -46,16 +46,7 @@ async function readJson(key) {
   }
 }
 
-export async function saveRememberedVisitor({ fullName, phone, birthDate }) {
-  await writeJson(REMEMBERED_KEY, {
-    fullName: fullName || '',
-    phone: phone || '',
-    birthDate: birthDate || '',
-  });
-}
-
-export const loadRememberedVisitor = () => readJson(REMEMBERED_KEY);
-export const forgetRememberedVisitor = () => writeJson(REMEMBERED_KEY, null);
+export const clearLegacyRememberedVisitor = () => writeJson(REMEMBERED_KEY, null);
 
 export function isVisitFinished(request) {
   if (!request) return true;

@@ -35,9 +35,11 @@ export class VisitorAccessController {
     return this.visitorAccessService.get(requestId, { visitorToken, user });
   }
 
+  // Modo visita exige login (29/10): o pedido sai com o nome da conta.
   @Post()
-  create(@Body() payload: CreateVisitorAccessDto) {
-    return this.visitorAccessService.create(payload);
+  @UseGuards(JwtAuthGuard)
+  create(@Body() payload: CreateVisitorAccessDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.visitorAccessService.create(payload, user);
   }
 
   @Patch(':requestId/approve')

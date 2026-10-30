@@ -1,8 +1,6 @@
 import React, {
-  useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 
@@ -56,6 +54,7 @@ import {
 } from '../data/routes';
 
 import {
+  isAuthError,
   isNetworkError,
   navoraApi,
 } from '../services/api';
@@ -86,6 +85,7 @@ export default function HelpScreen({
   userType = 'patient',
   userProfile,
   onCreateHelpRequest,
+  onLogout,
 }) {
   const insets =
     useSafeAreaInsets();
@@ -128,9 +128,6 @@ export default function HelpScreen({
   // Chamado em andamento (sobrevive a troca de tela: activeCallStorage).
   const [activeCall, setActiveCall] = useState(null);
   const [statusSheetVisible, setStatusSheetVisible] = useState(false);
-  const [savingProblems, setSavingProblems] = useState(false);
-  const [problemsError, setProblemsError] = useState(false);
-  const problemsSeq = useRef(0);
 
   const areaId = userProfile?.area || 'private';
   const receptionPhone = getReceptionPhone(areaId);
@@ -173,30 +170,6 @@ export default function HelpScreen({
       clearInterval(timer);
     };
   }, [activeCallId, activeCallToken, activeCallDone]);
-
-  const toggleProblem = useCallback(
-    async (code) => {
-      if (!activeCall) return;
-      const current = activeCall.problems || [];
-      const problems = current.includes(code) ? current.filter((item) => item !== code) : [...current, code];
-      const optimistic = { ...activeCall, problems };
-      setActiveCall(optimistic);
-      setSavingProblems(true);
-      setProblemsError(false);
-      const seq = ++problemsSeq.current;
-      try {
-        await navoraApi.updateCallDetails(activeCall.id, activeCall.token, { problems });
-        await updateActiveCall({ problems });
-        if (seq === problemsSeq.current) setSavingProblems(false);
-      } catch {
-        if (seq === problemsSeq.current) {
-          setSavingProblems(false);
-          setProblemsError(true);
-        }
-      }
-    },
-    [activeCall]
-  );
 
 
   const currentLocation = {
@@ -386,12 +359,10 @@ export default function HelpScreen({
           token: apiResponse.access_token,
           kind: isSos ? 'sos' : 'help',
           status: apiResponse.status || 'PENDING',
-          problems: [],
         };
         await saveActiveCall(tracked);
         setActiveCall((await getActiveCall()) || tracked);
-        setProblemsError(false);
-        // SOS: abre direto o "O que esta acontecendo?" + andamento.
+        // SOS: abre direto o andamento (Enviado -> Recebido -> ...).
         if (isSos) setStatusSheetVisible(true);
       }
 
@@ -415,14 +386,30 @@ export default function HelpScreen({
             ? t('help.protocol', { id: request.id })
             : t('help.requestedNow'),
       });
-    } catch {
+    } catch (error) {
+      const callReceptionButton = receptionPhone
+        ? [{ text: t('help.callReception'), onPress: () => Linking.openURL(`tel:${receptionPhone}`).catch(() => {}) }]
+        : [];
+
+      // Chamado exige login: sessão vencida (8 h) recusa o envio. Avisa e leva
+      // ao Login, sem esconder a ligação para a recepção.
+      if (isAuthError(error)) {
+        Alert.alert(
+          t('help.sessionExpiredTitle'),
+          t('help.sessionExpired'),
+          [
+            ...callReceptionButton,
+            { text: t('help.loginAgain'), onPress: () => onLogout?.() },
+          ]
+        );
+        return;
+      }
+
       Alert.alert(
         t('help.sendFailedTitle'),
         t('help.sendFailed'),
         [
-          ...(receptionPhone
-            ? [{ text: t('help.callReception'), onPress: () => Linking.openURL(`tel:${receptionPhone}`).catch(() => {}) }]
-            : []),
+          ...callReceptionButton,
           { text: t('help.tryAgain'), onPress: () => submit(kind, reason) },
           { text: t('common.close'), style: 'cancel' },
         ]
@@ -786,11 +773,7 @@ export default function HelpScreen({
         <SosStatusSheet
           visible={statusSheetVisible}
           call={activeCall}
-          problems={activeCall?.problems || []}
-          savingProblems={savingProblems}
-          problemsError={problemsError}
           receptionPhone={receptionPhone}
-          onToggleProblem={toggleProblem}
           onClose={() =>
             setStatusSheetVisible(false)
           }

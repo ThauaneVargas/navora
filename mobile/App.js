@@ -3,17 +3,10 @@ import { Alert, AppState, BackHandler, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import SplashScreen from './src/screens/SplashScreen';
 import LoginScreen from './src/screens/LoginScreen';
-import HomeStartScreen from './src/screens/HomeStartScreen';
 import HelpChoiceScreen from './src/screens/HelpChoiceScreen';
 import CareAreaChoiceScreen from './src/screens/CareAreaChoiceScreen';
 import ExternalRouteScreen from './src/screens/ExternalRouteScreen';
 import ArrivalPreparationScreen from './src/screens/ArrivalPreparationScreen';
-import ProfileChoiceScreen from './src/screens/ProfileChoiceScreen';
-import PatientAccessChoiceScreen from './src/screens/PatientAccessChoiceScreen';
-import PatientIdentificationScreen from './src/screens/PatientIdentificationScreen';
-import PatientLoginScreen from './src/screens/PatientLoginScreen';
-import PatientQuickRegisterScreen from './src/screens/PatientQuickRegisterScreen';
-import PatientAccessibilitySetupScreen from './src/screens/PatientAccessibilitySetupScreen';
 import PatientHomeScreen from './src/screens/PatientHomeScreen';
 import AssistantScreen from './src/screens/AssistantScreen';
 import SearchScreen from './src/screens/SearchScreen';
@@ -54,7 +47,7 @@ import { indoorLocationService, indoorLog, isBeaconDiagnosticsEnabled } from './
 import { deriveNavigationProgress } from './src/services/navigationAdapter';
 import { hospitalDetectionService } from './src/services/hospitalDetectionService';
 import { startVisitorAccessMonitor, stopVisitorAccessMonitor } from './src/services/visitorAccessMonitor';
-import { clearActiveVisit, loadActiveVisit, saveActiveVisit } from './src/services/visitorStorage';
+import { clearActiveVisit, clearLegacyRememberedVisitor, loadActiveVisit, saveActiveVisit } from './src/services/visitorStorage';
 import { clearActiveCall } from './src/services/activeCallStorage';
 import { clearRouteHistory, recordRoute } from './src/services/routeHistoryStorage';
 import { clearFavorites } from './src/services/favoritesStorage';
@@ -62,18 +55,10 @@ import { isRoutePreview } from './src/components/ActiveRouteBar';
 
 const screens = {
   Splash: SplashScreen,
-  HomeStart: HomeStartScreen,
   HelpChoice: HelpChoiceScreen,
   CareAreaChoice: CareAreaChoiceScreen,
   ExternalRoute: ExternalRouteScreen,
   ArrivalPreparation: ArrivalPreparationScreen,
-  ProfileChoice: ProfileChoiceScreen,
-  PatientAccessChoice: PatientAccessChoiceScreen,
-  PatientIdentification: PatientIdentificationScreen,
-  PatientLogin: PatientLoginScreen,
-  PatientQuickRegister: PatientQuickRegisterScreen,
-  PatientQuickAccess: PatientQuickRegisterScreen,
-  PatientAccessibilitySetup: PatientAccessibilitySetupScreen,
   PatientHome: PatientHomeScreen,
   Login: LoginScreen,
   Home: PatientHomeScreen,
@@ -105,6 +90,11 @@ const screens = {
 };
 
 const mobileScreens = new Set(Object.keys(screens));
+
+// Login obrigatório (decisão da usuária, 29/10): paciente e visitante só usam
+// o app com conta — SOS e pedido de visita inclusive. Sem sessão, qualquer
+// tela fora desta lista vira o Login.
+const PUBLIC_SCREENS = new Set(['Splash', 'Login', 'PatientRegister', 'ForgotPassword', 'ResetPassword']);
 
 export default function App() {
   const [screenStack, setScreenStack] = useState(['Splash']);
@@ -144,7 +134,12 @@ export default function App() {
   const restoredVisitRef = useRef(false);
   const splashDoneRef = useRef(false);
 
-  const screen = screenStack[screenStack.length - 1];
+  const isLoggedIn = Boolean(userProfile?.hasAccount);
+  const requestedScreen = screenStack[screenStack.length - 1];
+  const screen =
+    PUBLIC_SCREENS.has(requestedScreen) || isLoggedIn
+      ? requestedScreen
+      : 'Login';
 
   const CurrentScreen = screens[screen] || SplashScreen;
 
@@ -188,10 +183,10 @@ export default function App() {
 
     const restoreVisit = async () => {
       const saved = await loadActiveVisit();
-      if (!active || !saved) return;
+      if (!active || !saved) return false;
 
       restoredVisitRef.current = true;
-      setUserProfile(saved.visitor);
+      setUserProfile({ ...saved.visitor, hasAccount: true, authSource: 'api' });
       setVisitorAccessRequest(saved.request);
       startVisitorAccessMonitor({
         request: saved.request,
@@ -202,13 +197,18 @@ export default function App() {
       if (splashDoneRef.current) {
         setScreenStack(['Home']);
       }
+      return true;
     };
 
     const restoreSession = async () => {
+      // LGPD: o antigo "Lembrar meus dados" do visitante (com nascimento) sai do celular.
+      clearLegacyRememberedVisitor();
+
       const token = await getAuthToken();
 
       if (!token) {
-        await restoreVisit();
+        // Visita de antes do login obrigatório (ou sessão encerrada): não volta.
+        await clearActiveVisit();
         return;
       }
 
@@ -232,9 +232,13 @@ export default function App() {
           authSource: 'api',
           hasAccount: true,
         });
+
+        // Visita em andamento desta conta: volta direto pra ela.
+        await restoreVisit();
       } catch (error) {
         if (isAuthError(error)) {
           await removeAuthToken();
+          await clearActiveVisit();
         }
       }
     };
@@ -282,7 +286,7 @@ export default function App() {
       const safeStack =
         stack.length
           ? stack
-          : ['HomeStart'];
+          : ['Login'];
 
       if (
         safeStack[
@@ -605,7 +609,11 @@ export default function App() {
         detectionState
       );
 
-      setUserProfile(profile);
+      // Troca unidade/modo sem perder a conta logada.
+      setUserProfile((current) => ({
+        ...(current || {}),
+        ...profile,
+      }));
       setActiveRoute(null);
 
       setVisitorAccessRequest(
@@ -661,43 +669,11 @@ export default function App() {
     return detectionState;
   };
 
-  const handleProfileDraft = ({
-    type = 'patient',
-
-    area =
-      userProfile?.area ||
-      'private',
-  }) => {
-    const areaData =
-      getCurrentAreaById(
-        area
-      );
-
-    setUserProfile({
-      type,
-
-      profile:
-        type === 'visitor'
-          ? 'VISITOR'
-          : 'PATIENT',
-
-      area: areaData.id,
-      entry: areaData.entry,
-      entryLabel:
-        areaData.entryLabel,
-
-      hasAccount: false,
-
-      arrivalStatus:
-        'OUTSIDE',
-
-      visitorAccess:
-        'NONE',
-    });
-  };
-
+  // mode: 'visitor' quando a pessoa entrou com "Visitante" marcado no Login
+  // (mesma conta; muda só o modo de uso do app).
   const handlePatientReady = (
-    patient
+    patient,
+    mode = 'patient'
   ) => {
     const area =
       getCurrentAreaById(
@@ -710,9 +686,11 @@ export default function App() {
       patient?.apiUser ||
       patient?.user;
 
+    const isVisitorMode = mode === 'visitor';
+
     setUserProfile({
-      type: 'patient',
-      profile: 'PATIENT',
+      type: isVisitorMode ? 'visitor' : 'patient',
+      profile: isVisitorMode ? 'VISITOR' : 'PATIENT',
 
       id: patient?.id,
 
@@ -736,12 +714,6 @@ export default function App() {
       phone:
         apiUser?.phone ||
         patient?.phone,
-
-      patientCode:
-        patient?.patientCode,
-
-      birthDate:
-        patient?.birthDate,
 
       name:
         patient?.name ||
@@ -784,14 +756,6 @@ export default function App() {
       emergencyContact:
         patient?.emergencyContact,
 
-      notes:
-        patient?.notes,
-
-      cpf:
-        patient?.cpf ||
-        patient?.document ||
-        null,
-
       arrivalStatus:
         'OUTSIDE',
 
@@ -816,28 +780,28 @@ export default function App() {
           'private'
       );
 
-    setUserProfile({
+    setUserProfile((current) => ({
+      // Conta logada (id, e-mail, contato de emergência, acessibilidade...).
+      ...(current || {}),
+
       type: 'visitor',
       profile: 'VISITOR',
 
       name:
         visitor.name ||
+        current?.name ||
         'Visitante',
 
       fullName:
         visitor.fullName ||
         visitor.name ||
+        current?.fullName ||
         'Visitante Navora',
 
       phone:
         visitor.phone ||
+        current?.phone ||
         null,
-
-      birthDate:
-        visitor.birthDate ||
-        null,
-
-      cpf: '',
 
       area: area.id,
       entry: area.entry,
@@ -864,41 +828,12 @@ export default function App() {
 
       visitorAccess:
         'NONE',
-    });
+    }));
 
     setActiveRoute(null);
 
     setVisitorAccessRequest(
       null
-    );
-  };
-
-  const handleLoginSuccess = (
-    selectedUserType
-  ) => {
-    const profile =
-      buildProfile(
-        selectedUserType
-      );
-
-    const detectionState =
-      hospitalDetectionService.confirmArrival(
-        profile.area
-      );
-
-    setHospitalDetection(
-      detectionState
-    );
-
-    setUserProfile(profile);
-
-    setRouteParams({});
-
-    setScreenStack(
-      profile.type ===
-        'visitor'
-        ? ['VisitorEntry']
-        : ['PatientHome']
     );
   };
 
@@ -2528,14 +2463,6 @@ export default function App() {
     ]);
   };
 
-  // Edição de dados sem conta (acesso rápido): só muda o perfil desta sessão.
-  const handleProfileUpdate = (patch) => {
-    setUserProfile((current) => ({
-      ...(current || {}),
-      ...patch,
-    }));
-  };
-
   // "Iniciar rota" na prévia do mapa: a partir daqui é rota em andamento.
   const handleConfirmRoute = () => {
     setActiveRoute((current) =>
@@ -2586,13 +2513,14 @@ export default function App() {
           <LoginScreen
             navigate={navigate}
 
-            onLoginSuccess={
-              handleLoginSuccess
-            }
-
-            onPatientReady={(patient) => {
-              handlePatientReady(patient);
-              setScreenStack(['PatientHome']);
+            onPatientReady={(patient, mode) => {
+              handlePatientReady(patient, mode);
+              setRouteParams({});
+              setScreenStack([
+                mode === 'visitor'
+                  ? 'VisitorEntry'
+                  : 'PatientHome',
+              ]);
             }}
 
             onCreateAccount={() => {
@@ -2690,10 +2618,6 @@ export default function App() {
               recalculateActiveRouteFromBeacon
             }
 
-            onProfileDraft={
-              handleProfileDraft
-            }
-
             onPatientReady={
               handlePatientReady
             }
@@ -2702,21 +2626,8 @@ export default function App() {
               handleVisitorReady
             }
 
-            patientIdentificationDraft={
-              identificationDrafts.patient
-            }
-
             visitorIdentificationDraft={
               identificationDrafts.visitor
-            }
-
-            onPatientIdentificationDraftChange={(
-              patch
-            ) =>
-              updateIdentificationDraft(
-                'PATIENT',
-                patch
-              )
             }
 
             onVisitorIdentificationDraftChange={(
@@ -2760,10 +2671,6 @@ export default function App() {
 
             onConfirmRoute={
               handleConfirmRoute
-            }
-
-            onProfileUpdate={
-              handleProfileUpdate
             }
 
             onCancelRoutePreview={

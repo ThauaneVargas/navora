@@ -111,16 +111,6 @@ const callNeedLabels = {
   hearing: 'Deficiência auditiva',
   companion: 'Precisa de acompanhante',
 };
-const callProblemLabels = {
-  chest_pain: 'Dor no peito',
-  breathing: 'Falta de ar',
-  fainting: 'Desmaio ou tontura',
-  fall: 'Queda ou machucado',
-  bleeding: 'Sangramento',
-  seizure: 'Convulsão',
-  unwell: 'Mal-estar',
-  other: 'Outro',
-};
 
 // Alerta sonoro do SOS sem arquivo de audio: tres bipes com Web Audio. O
 // navegador so libera som depois de um clique na pagina; o login ja conta.
@@ -276,12 +266,11 @@ function mapCallFromApi(call) {
     emergencyContact: call.emergency_contact || '',
     callerPhone: call.caller_phone || '',
     needs: (call.needs || []).map((code) => callNeedLabels[code] || code),
-    problems: (call.problems || []).map((code) => callProblemLabels[code] || code),
-    problemNote: call.problem_note || '',
     callType: call.call_type,
     apiStatus: call.status,
     updatedAtRaw: call.updated_at || call.created_at || null,
-    // false = sem conta (Acesso rápido/visitante). undefined = backend antigo.
+    // Desde 29/10 todo chamado exige login. false = chamado antigo, de antes
+    // da regra (ou conta excluida depois). undefined = backend antigo.
     registeredPatient: call.registered_patient,
     createdAt: created
       ? created.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
@@ -759,7 +748,7 @@ function App() {
       } else if (fresh.length) {
         showToast(`Novo chamado: ${fresh[0].type} - ${fresh[0].patient}`, 'warning');
       }
-      // Problemas informados depois (ex.: "Dor no peito") atualizam o alerta aberto.
+      // Mudancas no chamado (ex.: status) atualizam o alerta aberto.
       setSosAlert((current) => (current ? changed.find((call) => call.id === current.id) || current : current));
     } catch (error) {
       if (isUnauthorizedError(error)) handleAuthFailure(error);
@@ -1303,7 +1292,6 @@ function App() {
             <div className="sos-banner-copy">
               <b>SOS — {sosAlert.patient}</b>
               <span>{sosAlert.location}{sosAlert.beacon ? ` - ${sosAlert.beacon}` : ''}</span>
-              {sosAlert.problems?.length ? <span>Informou: {sosAlert.problems.join(', ')}</span> : null}
               {sosAlert.needs?.length ? <span>Precisa: {sosAlert.needs.join(', ')}</span> : null}
             </div>
             <div className="sos-banner-actions">
@@ -2363,14 +2351,13 @@ function CallCard({ call, app, reception = false, adminView = false }) {
         {call.emergencyContact ? (
           <span className="call-emergency-contact"><HeartPulse size={14} aria-hidden="true" />Contato de emergência: {call.emergencyContact}</span>
         ) : null}
-        {call.problems?.length ? <span className="call-extra call-problems"><b>Informou:</b> {call.problems.join(', ')}</span> : null}
         {call.needs?.length ? <span className="call-extra"><b>Precisa:</b> {call.needs.join(', ')}</span> : null}
         {call.callerPhone ? <span className="call-extra"><b>Telefone:</b> {call.callerPhone}</span> : null}
 
         <div className="badges call-badges">
           <em className={`call-badge ${getPriorityBadgeTone(call.priority)}`}>{call.priority}</em>
           <em className={`call-badge ${getStatusBadgeTone(call.status)}`}>{call.status}</em>
-          {call.registeredPatient === false ? <em className="call-badge unregistered" title="Enviado sem conta (Acesso rápido ou visitante). Confirme no local.">Sem conta</em> : null}
+          {call.registeredPatient === false ? <em className="call-badge unregistered" title="Chamado antigo, enviado sem conta (antes do login obrigatório). Confirme no local.">Sem conta</em> : null}
         </div>
 
         <div className="actions call-actions">
@@ -2411,14 +2398,13 @@ function CallCard({ call, app, reception = false, adminView = false }) {
       {call.emergencyContact ? (
         <span className="call-emergency-contact"><HeartPulse size={14} aria-hidden="true" />Contato de emergência: {call.emergencyContact}</span>
       ) : null}
-      {call.problems?.length ? <span className="call-extra call-problems"><b>Informou:</b> {call.problems.join(', ')}</span> : null}
       {call.needs?.length ? <span className="call-extra"><b>Precisa:</b> {call.needs.join(', ')}</span> : null}
       {call.callerPhone ? <span className="call-extra"><b>Telefone:</b> {call.callerPhone}</span> : null}
 
       <div className="badges call-badges">
         <em className={`call-badge ${getPriorityBadgeTone(call.priority)}`}>{call.priority}</em>
         <em className={`call-badge ${getStatusBadgeTone(call.status)}`}>{call.status}</em>
-        {call.registeredPatient === false ? <em className="call-badge unregistered" title="Enviado sem conta (Acesso rápido ou visitante). Confirme no local.">Sem conta</em> : null}
+        {call.registeredPatient === false ? <em className="call-badge unregistered" title="Chamado antigo, enviado sem conta (antes do login obrigatório). Confirme no local.">Sem conta</em> : null}
       </div>
 
       <div className="actions call-actions">

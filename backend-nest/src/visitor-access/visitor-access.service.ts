@@ -32,7 +32,7 @@ export class VisitorAccessService {
     return mapVisitorAccessToApi(request);
   }
 
-  async create(payload: CreateVisitorAccessDto) {
+  async create(payload: CreateVisitorAccessDto, user?: AuthenticatedUser) {
     const area = this.normalizeArea(payload);
     const entrance = payload.entrance || payload.entry || this.defaultEntrance(area.areaId);
     const entry = payload.entry || entrance;
@@ -41,7 +41,7 @@ export class VisitorAccessService {
     const request = await this.prisma.visitorAccessRequest.create({
       data: {
         accessTokenHash: hashSecretToken(accessToken),
-        visitorName: payload.visitor_name ?? 'Visitante Navora',
+        visitorName: payload.visitor_name?.trim() || user?.name || 'Visitante Navora',
         areaId: area.areaId,
         area: area.areaName,
         areaName: area.areaName,

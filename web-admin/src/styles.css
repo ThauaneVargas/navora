@@ -4027,4 +4027,3 @@ button:disabled[title] { opacity: 0.5; cursor: not-allowed; }
 .sos-sound-toggle[aria-pressed="true"] { color: var(--primary); border-color: var(--primary-soft); }
 .call-extra { display: block; font-size: 13px; color: var(--ink); margin-top: 4px; overflow-wrap: anywhere; }
 .call-extra b { color: var(--muted); font-weight: 800; }
-.call-problems { color: var(--danger); font-weight: 800; }
