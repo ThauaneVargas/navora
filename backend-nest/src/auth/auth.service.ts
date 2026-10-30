@@ -270,8 +270,19 @@ export class AuthService {
 
     return this.jwtService.signAsync(payload, {
       secret: this.jwtSecret(),
-      expiresIn: (this.configService.get<string>('JWT_EXPIRES_IN') || '8h') as any,
+      expiresIn: this.expiresInFor(user.role) as any,
     });
+  }
+
+  // Paciente/visitante: 30 dias. Com login obrigatorio para SOS, sessao curta
+  // fazia o SOS falhar com o app aberto (internacao dura dias). Continua
+  // revogavel: conta excluida/desativada ou senha trocada derruba o token
+  // (validateToken). Equipe do painel segue com 8 h.
+  expiresInFor(role: UserRole) {
+    if (role === UserRole.PATIENT) {
+      return this.configService.get<string>('JWT_PATIENT_EXPIRES_IN') || '30d';
+    }
+    return this.configService.get<string>('JWT_EXPIRES_IN') || '8h';
   }
 
   private jwtSecret() {

@@ -38,6 +38,7 @@ Hospedagem: Render (backend e Postgres), região **Oregon, EUA** (confirmado no 
 
 **Direitos do titular (art. 18)**
 - Acesso e correção: "Meu perfil" (já existia, `PUT /patients/me`).
+- Eliminação também pela web, sem o app: `excluir-conta.html` (servida com o painel; e-mail + senha; exigência do Google Play), desde 29/10.
 - Eliminação e revogação do consentimento: botão **Excluir minha conta** na tela Privacidade → `DELETE /patients/me` (pede a senha de novo). Apaga `users`, `patient_profiles`, `notifications`; desliga `check_ins` da conta. Chamados de SOS/ajuda já feitos **ficam** (registro de atendimento do hospital) — está dito na política.
 
 **Segurança (art. 46) — corrigido em 22/10**

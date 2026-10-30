@@ -95,6 +95,7 @@ ${sectionsHtml}
   </main>
   <footer>
     <p>Versão ${escape(PRIVACY_POLICY_VERSION)}. O mesmo texto aparece no app, em Menu › Privacidade.</p>
+    <p><a href="excluir-conta.html" style="color: var(--primary)">Excluir minha conta</a> · Delete my account · Eliminar mi cuenta</p>
   </footer>
 </body>
 </html>

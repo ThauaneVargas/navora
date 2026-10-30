@@ -19,6 +19,7 @@ import * as SecureStore from 'expo-secure-store';
 import { navoraApi, isNetworkError } from '../services/api';
 import { getAuthToken, saveAuthToken } from '../services/authToken';
 import { useApp } from '../context/AppContext';
+import LanguagePicker from '../components/LanguagePicker';
 
 const REMEMBERED_EMAIL_KEY = 'navora.login.remembered_email';
 
@@ -254,7 +255,8 @@ export const LoginScreen = ({ onPatientReady, onCreateAccount, navigate }) => {
           bounces={false}
           overScrollMode="never"
         >
-          {/* Idioma fica só em Configurações (decisão da usuária, 28/10). */}
+          {/* Idioma no rodapé (29/10): com login obrigatório, quem não fala português
+              precisa trocar antes de se cadastrar — Configurações só abre logado. */}
           <View style={[styles.stage, { maxWidth: stageMaxWidth }]}>
             <View style={[styles.brandBlock, compact && styles.brandBlockCompact]}>
               <Image
@@ -389,6 +391,8 @@ export const LoginScreen = ({ onPatientReady, onCreateAccount, navigate }) => {
               <Text style={styles.signupText}>{t('login.noAccount')}</Text>
               <Text style={styles.signupLink}>{t('login.signUp')}</Text>
             </Pressable>
+
+            <LanguagePicker compact style={styles.languagePicker} />
           </View>
         </KeyboardAwareScrollView>
       </SafeAreaView>
@@ -732,6 +736,12 @@ const createStyles = (colors) => StyleSheet.create({
     justifyContent: 'center',
     marginTop: 10,
     flexWrap: 'wrap',
+  },
+
+  languagePicker: {
+    justifyContent: 'center',
+    marginTop: 14,
+    marginBottom: 6,
   },
 
   signupText: {

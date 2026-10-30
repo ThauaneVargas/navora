@@ -391,7 +391,7 @@ export default function HelpScreen({
         ? [{ text: t('help.callReception'), onPress: () => Linking.openURL(`tel:${receptionPhone}`).catch(() => {}) }]
         : [];
 
-      // Chamado exige login: sessão vencida (8 h) recusa o envio. Avisa e leva
+      // Chamado exige login: sessão vencida (30 dias) recusa o envio. Avisa e leva
       // ao Login, sem esconder a ligação para a recepção.
       if (isAuthError(error)) {
         Alert.alert(

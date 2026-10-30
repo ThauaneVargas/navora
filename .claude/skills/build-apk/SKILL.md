@@ -5,6 +5,16 @@ description: Compila o APK release do Navora (JS embutido, sem Metro) no Windows
 
 # Build do APK (Android, Windows)
 
+## Qual build?
+- **APK para distribuir (pacientes, piloto):** EAS na nuvem, perfil `apk` do `eas.json` (API de produção embutida, **assinado com a chave de produção** que o Expo cria e guarda). A usuária roda (precisa da conta Expo dela, grátis — o plano grátis tem número limitado de builds por mês):
+  ```powershell
+  cd C:\dev\navora\mobile; npx eas-cli login; npx eas-cli build -p android --profile apk
+  ```
+  Na primeira vez o EAS pergunta sobre o keystore: escolher gerar um novo. Fazer backup com `npx eas-cli credentials` (perder a chave = não dá mais para atualizar o app instalado). O link do APK sai no fim do build.
+  Telefones da recepção: preencher `EXPO_PUBLIC_RECEPTION_PHONE_PRIVATE`/`_SUS` no perfil `production` do `eas.json` (o `apk` herda).
+- **Google Play:** `npx eas-cli build -p android --profile production` (gera AAB).
+- **APK de teste local** (o resto deste arquivo): assinado com a chave **debug** — só para testar no celular da usuária, nunca para distribuir (Play Protect alerta e não atualiza por cima do APK de produção).
+
 O projeto mora em `C:\dev\navora` desde 28/10/2026 (saiu do OneDrive porque, com RN 0.88, os arquivos C++ gerados passavam de 260 caracteres). **Mesmo assim o build direto em `C:\dev\navora\mobile` falha** (testado em 28/10: o codegen do `react-native-safe-area-context` gera pasta com 267 caracteres). Usar sempre o plano B (cópia em `C:\nv\mobile`), no fim deste arquivo.
 
 ## Antes

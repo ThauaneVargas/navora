@@ -16,7 +16,16 @@
       "env": {
         "EXPO_PUBLIC_NAVORA_API_URL": "https://navora-backend-kpio.onrender.com",
         "EXPO_PUBLIC_BLE_ENABLED": "true",
-        "EXPO_PUBLIC_BEACON_DIAGNOSTICS": "false"
+        "EXPO_PUBLIC_BEACON_DIAGNOSTICS": "false",
+        "EXPO_PUBLIC_RECEPTION_PHONE_PRIVATE": "",
+        "EXPO_PUBLIC_RECEPTION_PHONE_SUS": ""
+      }
+    },
+    "apk": {
+      "extends": "production",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
       }
     }
   },
