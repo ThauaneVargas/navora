@@ -28,7 +28,7 @@ Custos: calculadora em https://claude.ai/artifact/AvwkdZvAL9EHcHLVhMwAAs. Decis�
 - [ ] **Até 19/11/2026:** contratar servidor e banco pagos **(você)** — procedimento de troca do banco em `docs/arquitetura.md` §7 (skill `/recriar-banco`).
 - [ ] Tirar o painel da Vercel (o plano grátis proíbe uso comercial) → site estático no Render **(você + Claude)**.
 - [ ] **Domínio próprio** (ex.: `navora.com.br`, no Registro.br): links fixos para API, painel, política e exclusão de conta. Trocar de hospedagem depois não quebra os links cadastrados nas lojas **(você)**.
-- [ ] Corrigir `backend-nest/render.yaml` (diz `ohio`, os serviços reais estão em Oregon) e o plano (`free`) quando contratar **(Claude)**.
+- [x] Corrigir `backend-nest/render.yaml` (região Oregon, nome do banco `navora-db-2`, `healthCheckPath`) — 29/10. Falta trocar `plan` quando contratar **(Claude)**.
 
 ---
 
@@ -39,13 +39,14 @@ Custos: calculadora em https://claude.ai/artifact/AvwkdZvAL9EHcHLVhMwAAs. Decis�
 - [ ] Trocar `JWT_SECRET` (botão "Generate" no Render) e a senha do banco **(você)**.
 - [ ] Configurar e-mail do "Esqueci minha senha": `SMTP_HOST/PORT/USER/PASS`, `MAIL_FROM` (Gmail com "senha de app" serve para o piloto; tem limite diário de envio) **(você)**. Sem isso, quem esquece a senha fica sem o app — inclusive sem SOS.
 - [ ] Monitor externo grátis (UptimeRobot ou Better Stack) avisando por e-mail/celular se a produção cair — ela já ficou 10 dias fora sem ninguém ver **(você)**.
-- [ ] Fazer o `/health` consultar o banco (hoje responde "ok" mesmo com o banco fora), para o monitor enxergar queda real **(Claude)**.
+- [x] `/health` consulta o banco: responde 503 se o banco cair — 29/10. Use `https://<api>/health` no monitor.
 - [ ] Testar produção com a skill `/checar-producao` depois de cada deploy **(Claude)**.
 
 **Contas e acessos**
 - [ ] Verificação em 2 etapas (2FA) em: GitHub, Render, Expo, Google Cloud, Google Play, Apple, e-mail usado no SMTP **(você)**.
 - [ ] Proteger a branch `main` no GitHub (push na `main` = deploy de produção): exigir PR **(você)**.
-- [ ] Testes automáticos no GitHub a cada PR (GitHub Actions rodando testes + lint dos 3 projetos) e alertas de dependência com falha de segurança (Dependabot) **(Claude cria, você ativa)**.
+- [x] Testes automáticos no GitHub a cada PR (`.github/workflows/ci.yml`) e alertas de dependência (`.github/dependabot.yml`) — criados em 29/10.
+- [ ] Ligar no GitHub: Settings › Code security › **Dependabot alerts** e **Dependabot security updates**; e na proteção da `main`, exigir o CI passando **(você)**.
 - [ ] Restringir a chave do Google Maps no Google Cloud ao app `com.navora.app` + SHA-1 da assinatura (ela está aberta no repositório) **(você)**.
 - [ ] Contas individuais para cada pessoa da recepção (nunca senha compartilhada); desativar quem sair **(hospital + você no painel)**.
 
@@ -57,7 +58,8 @@ Custos: calculadora em https://claude.ai/artifact/AvwkdZvAL9EHcHLVhMwAAs. Decis�
 **Operação do SOS (sem isso o SOS não serve)**
 - [ ] Definir **um computador fixo na recepção** com o painel sempre aberto, som ligado (clicar uma vez na página libera o alerta sonoro) e sem entrar em descanso de tela **(hospital)**.
 - [ ] Combinar quem atende o SOS em cada turno e em quanto tempo **(hospital)**.
-- [ ] Treinar a recepção no painel (aprovar visita, mudar status do SOS, desativar funcionário) — Claude pode escrever um guia de 1 página **(Claude + hospital)**.
+- [x] Guia de 1 página: `docs/guia-recepcao.md` (29/10) — preencher endereço do painel e responsável técnico e imprimir.
+- [ ] Treinar a recepção no painel com o guia **(hospital)**.
 - [ ] Teste de SOS ponta a ponta no hospital (celular → painel → "Equipe a caminho" aparece no celular) **(você)**.
 
 **Testes no celular (Android)** — APK de produção pelo EAS (`/build-apk`)
@@ -88,7 +90,8 @@ Custos: calculadora em https://claude.ai/artifact/AvwkdZvAL9EHcHLVhMwAAs. Decis�
 
 **Piloto Android por APK (mais rápido)**
 - [ ] `npx eas-cli login` + `npx eas-cli build -p android --profile apk` **(você)**; guardar cópia da chave (`npx eas-cli credentials`).
-- [ ] Página/QR Code para baixar o APK; instrução de "instalar apps desconhecidos" para os pacientes **(Claude faz a página)**.
+- [x] Página de download com instruções: `web-admin/public/baixar.html` (29/10).
+- [ ] Colar o link do APK no `navora-apk-url` da página e gerar o QR: `npm run qr-download -- https://<painel>/baixar.html` (no `web-admin`) **(você ou Claude, quando houver o link)**.
 
 **Google Play**
 - [ ] Conta de desenvolvedor — de **organização** (do hospital) evita o teste fechado de 12 testadores por 14 dias exigido de conta pessoal; conferir se app de saúde exige conta de organização **(hospital/você)**.

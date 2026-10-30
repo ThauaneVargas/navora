@@ -1,0 +1,92 @@
+# Testes automáticos a cada PR e a cada push na main (push na main = deploy de
+# produção no Render). Mesmos comandos do CLAUDE.md, com um Postgres de teste.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (testes, e2e, lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend-nest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: navora
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Banco descartável do próprio CI — não é segredo.
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/navora?schema=public
+      JWT_SECRET: ci-only-secret-not-used-anywhere-else-1234567890
+      JWT_EXPIRES_IN: 8h
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend-nest/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - run: npx prisma db seed
+      - run: npm test
+      - run: npm run test:e2e
+      - run: npm run lint
+      - run: npm run build
+
+  mobile:
+    name: App (testes e lint)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npx expo lint
+
+  web-admin:
+    name: Painel (lint e build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web-admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web-admin/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build

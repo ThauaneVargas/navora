@@ -1,18 +1,24 @@
+# Referência do que roda no Render (Blueprint). Os serviços reais foram criados
+# à mão em Oregon (conferido no painel em 23/10) — mantenha este arquivo igual
+# ao painel. Ao contratar o plano pago (até 19/11/2026, quando o banco grátis
+# expira), troque `plan` aqui também. Ver docs/checklist-lancamento.md §1.
 services:
   - type: web
     name: navora-backend
     runtime: node
     plan: free
-    region: ohio
+    region: oregon
     rootDir: .
     buildCommand: npm ci && npx prisma generate && npm run build
     startCommand: npx prisma migrate deploy && node dist/main
+    # Monitor e Render consultam este caminho; responde 503 se o banco cair.
+    healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
         fromDatabase:
-          name: navora-db
+          name: navora-db-2
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
@@ -20,6 +26,6 @@ services:
         value: "3000"
 
 databases:
-  - name: navora-db
+  - name: navora-db-2
     plan: free
-    region: ohio
+    region: oregon

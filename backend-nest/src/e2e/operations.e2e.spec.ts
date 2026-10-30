@@ -41,6 +41,10 @@ async function run() {
     const receptionToken = await login(httpServer, 'recepcao@navora.com');
     const patientToken = await login(httpServer, 'paciente@navora.com');
 
+    const health = await request(httpServer).get('/health');
+    assert.equal(health.status, 200);
+    assert.equal(health.body.database, 'ok', '/health consulta o banco de verdade');
+
     const callsWithoutToken = await request(httpServer).get('/calls');
     assert.equal(callsWithoutToken.status, 401);
     const callsWithInvalidToken = await request(httpServer).get('/calls').set('Authorization', 'Bearer token-invalido');
