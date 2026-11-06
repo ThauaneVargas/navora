@@ -1,28 +1,26 @@
-import { Equals, IsDateString, IsEmail, IsObject, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { Equals, IsEmail, IsObject, IsOptional, IsString, Matches, MaxLength, MinLength } from 'class-validator';
+import { StrongPassword } from '../../common/strong-password';
 
+// Telefone brasileiro com DDD: 10 ou 11 dígitos, com ou sem máscara.
+export const PHONE_PATTERN = /^\D*(\d\D*){10,11}$/;
+
+// Cadastro mínimo (LGPD, 29/10): nome, e-mail, telefone e senha obrigatórios;
+// contato de emergência e acessibilidade opcionais. CPF, nascimento e
+// observações não existem mais.
 export class RegisterPatientDto {
   @IsEmail()
   email!: string;
 
-  @IsString()
-  @MinLength(6)
+  @StrongPassword()
   password!: string;
 
   @IsString()
   @MinLength(2)
   name!: string;
 
-  @IsOptional()
   @IsString()
-  phone?: string;
-
-  @IsOptional()
-  @IsString()
-  patientCode?: string;
-
-  @IsOptional()
-  @IsDateString()
-  birthDate?: string;
+  @Matches(PHONE_PATTERN, { message: 'Telefone invalido (informe DDD + numero)' })
+  phone!: string;
 
   @IsOptional()
   @IsObject()
@@ -30,12 +28,8 @@ export class RegisterPatientDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(120)
   emergencyContact?: string;
-
-  @IsOptional()
-  @IsString()
-  @MaxLength(1000)
-  notes?: string;
 
   // LGPD: sem o aceite explícito da política (inclui dados de saúde), não cria conta.
   @Equals(true, { message: 'E preciso aceitar a politica de privacidade' })

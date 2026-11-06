@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Navora · Excluir minha conta</title>
+  <meta name="description" content="Exclua sua conta do app Navora e os dados ligados a ela.">
+  <!--
+    Página pública de exclusão de conta (exigência do Google Play: a pessoa
+    precisa conseguir pedir a exclusão sem reinstalar o app). Faz o mesmo que
+    o botão "Excluir minha conta" do app: entra com e-mail e senha
+    (POST /auth/login) e chama DELETE /patients/me pedindo a senha de novo.
+    Servida junto com o painel (mesma origem já liberada no CORS do backend).
+  -->
+  <meta name="navora-api" content="https://navora-backend-kpio.onrender.com">
+  <style>
+    :root {
+      --bg: #FBF4F5; --surface: #FFFFFF; --text: #171417; --muted: #6D6870;
+      --primary: #7A1021; --border: #E8E3E5; --soft: #F5E8EB; --danger: #B3261E; --ok: #1E7A3C;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #101014; --surface: #1A1A21; --text: #FFFFFF; --muted: #C6C6CF;
+        --primary: #FF6B7F; --border: #30303A; --soft: #331D23; --danger: #FF8A80; --ok: #7BD88F; color-scheme: dark; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    header, main, footer { max-width: 620px; margin: 0 auto;
+      padding-left: max(20px, env(safe-area-inset-left)); padding-right: max(20px, env(safe-area-inset-right)); }
+    header { padding-block: 40px 8px; }
+    .brand { color: var(--primary); font-weight: 800; font-size: 28px; margin: 0; }
+    h1 { margin: 4px 0 0; font-size: 26px; line-height: 1.25; }
+    .lead { color: var(--muted); margin: 4px 0 0; }
+    main { padding-block: 16px 24px; display: grid; gap: 20px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 24px; }
+    h2 { margin: 0 0 8px; font-size: 19px; }
+    ul { margin: 0; padding-left: 20px; }
+    li + li { margin-top: 4px; }
+    label { display: block; font-weight: 700; margin: 16px 0 6px; }
+    input[type=email], input[type=password] { width: 100%; min-height: 52px; padding: 12px 14px; font: inherit;
+      color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 14px; }
+    input:focus-visible, button:focus-visible, a:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .check { display: flex; gap: 12px; align-items: flex-start; margin-top: 18px; font-weight: 600; }
+    .check input { width: 24px; height: 24px; margin-top: 2px; accent-color: var(--primary); flex: none; }
+    button { width: 100%; min-height: 56px; margin-top: 20px; border: 0; border-radius: 16px; font: inherit; font-weight: 800;
+      color: #FFFFFF; background: var(--danger); cursor: pointer; }
+    button:disabled { opacity: .6; cursor: wait; }
+    .status { margin: 16px 0 0; padding: 12px 14px; border-radius: 14px; background: var(--soft); }
+    .status.error { color: var(--danger); }
+    .status.ok { color: var(--ok); font-weight: 700; }
+    .status:empty { display: none; }
+    .muted { color: var(--muted); font-size: 15px; }
+    a { color: var(--primary); }
+    footer { padding-block: 0 40px; color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <header>
+    <p class="brand">Navora</p>
+    <h1>Excluir minha conta</h1>
+    <p class="lead">Delete my account · Eliminar mi cuenta</p>
+  </header>
+
+  <main>
+    <section class="card" aria-labelledby="what">
+      <h2 id="what">O que acontece</h2>
+      <ul>
+        <li><strong>Apagamos:</strong> seu cadastro (nome, e-mail, telefone, senha), suas necessidades de acessibilidade, o contato de emergência e suas notificações.</li>
+        <li><strong>Fica no hospital:</strong> pedidos de ajuda e SOS já feitos, sem ligação com a sua conta — são o registro de atendimento do hospital.</li>
+        <li>Não dá para desfazer. Para usar o app de novo, será preciso criar outra conta.</li>
+      </ul>
+      <p class="muted">Também dá para excluir pelo próprio app: Menu › Privacidade › Excluir minha conta.</p>
+    </section>
+
+    <form class="card" id="delete-form" novalidate>
+      <h2>Confirme com seu e-mail e senha</h2>
+
+      <label for="email">E-mail da conta</label>
+      <input id="email" name="email" type="email" autocomplete="email" required>
+
+      <label for="password">Senha</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+
+      <label class="check">
+        <input id="confirm" type="checkbox" required>
+        <span>Entendo que minha conta e meus dados serão apagados e que isso não pode ser desfeito.</span>
+      </label>
+
+      <button type="submit" id="submit">Excluir minha conta</button>
+      <p class="status" id="status" role="status" aria-live="polite"></p>
+      <p class="muted">Esqueceu a senha? Use "Esqueci minha senha" no app ou peça ajuda na recepção do hospital.</p>
+    </form>
+
+    <section class="card" lang="en" aria-labelledby="en-title">
+      <h2 id="en-title">In English</h2>
+      <p>Enter your account e-mail and password above, tick the box and press the red button. We erase your registration (name, e-mail, phone, password), accessibility needs, emergency contact and notifications. Help and SOS requests already made stay in the hospital's care records, no longer linked to you. This cannot be undone. You can also do it in the app: Menu › Privacy › Delete my account.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p><a href="privacidade.html">Política de privacidade</a></p>
+  </footer>
+
+  <script>
+    (function () {
+      // Rodando local (npm run dev do painel), usa o backend local.
+      var local = /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+      var api = local ? 'http://localhost:8000' : document.querySelector('meta[name="navora-api"]').content;
+
+      var form = document.getElementById('delete-form');
+      var button = document.getElementById('submit');
+      var statusBox = document.getElementById('status');
+
+      function show(text, kind) {
+        statusBox.textContent = text;
+        statusBox.className = 'status' + (kind ? ' ' + kind : '');
+      }
+
+      // O servidor gratuito "dorme": a primeira resposta pode levar ~1 minuto.
+      function call(path, options) {
+        var controller = new AbortController();
+        var timer = setTimeout(function () { controller.abort(); }, 90000);
+        options.signal = controller.signal;
+        options.headers = Object.assign({ 'Content-Type': 'application/json' }, options.headers || {});
+        return fetch(api + path, options).finally(function () { clearTimeout(timer); });
+      }
+
+      form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        var email = document.getElementById('email').value.trim().toLowerCase();
+        var password = document.getElementById('password').value;
+
+        if (!email || !password) return show('Preencha o e-mail e a senha.', 'error');
+        if (!document.getElementById('confirm').checked) return show('Marque a confirmação para continuar.', 'error');
+
+        button.disabled = true;
+        show('Conferindo seus dados… Na primeira tentativa pode levar até 1 minuto.');
+
+        try {
+          var login = await call('/auth/login', { method: 'POST', body: JSON.stringify({ email: email, password: password }) });
+          if (login.status === 401 || login.status === 403) return show('E-mail ou senha incorretos. Nada foi apagado.', 'error');
+          if (login.status === 429) return show('Muitas tentativas. Espere 1 minuto e tente de novo.', 'error');
+          if (!login.ok) return show('Não foi possível entrar agora. Nada foi apagado. Tente mais tarde.', 'error');
+
+          var auth = await login.json();
+          if (!auth.user || auth.user.role !== 'PATIENT') {
+            return show('Esta é uma conta da equipe do hospital. Fale com a administração do hospital. Nada foi apagado.', 'error');
+          }
+
+          var removal = await call('/patients/me', {
+            method: 'DELETE',
+            headers: { Authorization: 'Bearer ' + auth.access_token },
+            body: JSON.stringify({ password: password }),
+          });
+          if (!removal.ok) return show('Não foi possível excluir agora. Nada foi apagado. Tente mais tarde.', 'error');
+
+          form.reset();
+          show('Pronto: sua conta e seus dados foram apagados. Você pode desinstalar o app.', 'ok');
+        } catch (error) {
+          show('Sem resposta do servidor. Confira a internet e tente de novo. Nada foi apagado.', 'error');
+        } finally {
+          button.disabled = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

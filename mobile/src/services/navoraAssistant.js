@@ -18,17 +18,18 @@ export const assistantProvider = {
 };
 
 // Atalhos exibidos na tela do assistente. Ficam aqui (e não na tela) pra o
-// teste garantir que todo atalho tem resposta própria.
+// teste garantir que todo atalho tem resposta própria. `label` é o texto em
+// português que vai pro assistente; a tela mostra `t('assistant.sug_<key>')`.
 export const assistantSuggestions = [
-  { label: 'Como chegar ao hospital', icon: 'map-marker-outline' },
-  { label: 'Estou em outra entrada', icon: 'door-open' },
-  { label: 'Quero visitar alguém', icon: 'account-heart-outline' },
-  { label: 'Estou perdido', icon: 'help-circle-outline' },
-  { label: 'Banheiro mais próximo', icon: 'human-male' },
-  { label: 'Rota acessível', icon: 'wheelchair-accessibility' },
-  { label: 'Ativar modo noturno', icon: 'weather-night' },
-  { label: 'Apoio clínico', icon: 'stethoscope' },
-  { label: 'SOS Emergência', icon: 'alarm-light-outline' },
+  { key: 'howToGet', label: 'Como chegar ao hospital', icon: 'map-marker-outline' },
+  { key: 'otherEntrance', label: 'Estou em outra entrada', icon: 'door-open' },
+  { key: 'visit', label: 'Quero visitar alguém', icon: 'account-heart-outline' },
+  { key: 'lost', label: 'Estou perdido', icon: 'help-circle-outline' },
+  { key: 'restroom', label: 'Banheiro mais próximo', icon: 'human-male' },
+  { key: 'accessible', label: 'Rota acessível', icon: 'wheelchair-accessibility' },
+  { key: 'darkMode', label: 'Ativar modo noturno', icon: 'weather-night' },
+  { key: 'clinical', label: 'Apoio clínico', icon: 'stethoscope' },
+  { key: 'sos', label: 'SOS Emergência', icon: 'alarm-light-outline' },
 ];
 
 // --- Texto -------------------------------------------------------------------

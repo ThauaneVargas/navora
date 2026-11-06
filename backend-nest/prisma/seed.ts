@@ -199,7 +199,6 @@ async function upsertDemoUser(data: {
       },
       create: {
         userId: user.id,
-        patientCode: 'PAT-DEMO-001',
         accessibility: {
           avoidStairs: true,
           preferElevator: true,

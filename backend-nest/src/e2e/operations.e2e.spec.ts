@@ -41,23 +41,35 @@ async function run() {
     const receptionToken = await login(httpServer, 'recepcao@navora.com');
     const patientToken = await login(httpServer, 'paciente@navora.com');
 
+    const health = await request(httpServer).get('/health');
+    assert.equal(health.status, 200);
+    assert.equal(health.body.database, 'ok', '/health consulta o banco de verdade');
+
     const callsWithoutToken = await request(httpServer).get('/calls');
     assert.equal(callsWithoutToken.status, 401);
     const callsWithInvalidToken = await request(httpServer).get('/calls').set('Authorization', 'Bearer token-invalido');
     assert.equal(callsWithInvalidToken.status, 401);
     const patientCalls = await request(httpServer).get('/calls').set('Authorization', `Bearer ${patientToken}`);
     assert.equal(patientCalls.status, 403);
-    const help = await request(httpServer).post('/calls/help').send({ patient_name: 'E2E Help', location: 'E2E location' });
+    // Chamados exigem login desde 29/10 (SOS inclusive).
+    const sosWithoutLogin = await request(httpServer).post('/calls/sos').send({ patient_name: 'E2E SOS anonimo' });
+    assert.equal(sosWithoutLogin.status, 401, 'SOS sem login e recusado');
+    const helpWithoutLogin = await request(httpServer).post('/calls/help').send({ patient_name: 'E2E Help anonimo' });
+    assert.equal(helpWithoutLogin.status, 401, 'ajuda sem login e recusada');
+    const help = await request(httpServer).post('/calls/help').set('Authorization', `Bearer ${patientToken}`).send({ patient_name: 'E2E Help', location: 'E2E location' });
     assert.equal(help.status, 201);
     assert.equal(help.body.call_type, 'HELP');
     assert.equal(help.body.status, 'PENDING');
     createdCallIds.push(help.body.id);
-    const sos = await request(httpServer).post('/calls/sos').send({ patient_name: 'E2E SOS', reason: 'E2E emergency' });
+    const sos = await request(httpServer).post('/calls/sos').set('Authorization', `Bearer ${patientToken}`).send({ patient_name: 'E2E SOS', reason: 'E2E emergency' });
     assert.equal(sos.status, 201);
     assert.equal(sos.body.call_type, 'SOS');
     assert.equal(sos.body.priority, 'CRITICAL');
+    assert.equal(sos.body.registered_patient, true, 'SOS fica ligado a conta');
+    const sosDetails = await request(httpServer).patch(`/calls/${sos.body.id}/details`).set('X-Call-Token', sos.body.access_token).send({ problems: ['fall'] });
+    assert.equal(sosDetails.status, 404, 'nao existe mais "o que esta acontecendo"');
     createdCallIds.push(sos.body.id);
-    const invalidCall = await request(httpServer).post('/calls').send({ call_type: 'INVALID_TYPE' });
+    const invalidCall = await request(httpServer).post('/calls').set('Authorization', `Bearer ${patientToken}`).send({ call_type: 'INVALID_TYPE' });
     assert.equal(invalidCall.status, 400);
     const callsList = await request(httpServer).get('/calls').set('Authorization', `Bearer ${receptionToken}`);
     assert.equal(callsList.status, 200);
@@ -73,9 +85,11 @@ async function run() {
     assert.equal(visitorListWithoutToken.status, 401);
     const visitorListForPatient = await request(httpServer).get('/visitor-access').set('Authorization', `Bearer ${patientToken}`);
     assert.equal(visitorListForPatient.status, 403);
-    const invalidVisitor = await request(httpServer).post('/visitor-access').send({});
+    const visitorWithoutLogin = await request(httpServer).post('/visitor-access').send({ visitor_name: 'E2E anonimo', requested_destination: 'private-visita' });
+    assert.equal(visitorWithoutLogin.status, 401, 'modo visita exige login');
+    const invalidVisitor = await request(httpServer).post('/visitor-access').set('Authorization', `Bearer ${patientToken}`).send({});
     assert.equal(invalidVisitor.status, 400);
-    const visitor = await request(httpServer).post('/visitor-access').send({ visitor_name: 'E2E Visitor Approve', requested_destination: 'private-visita' });
+    const visitor = await request(httpServer).post('/visitor-access').set('Authorization', `Bearer ${patientToken}`).send({ visitor_name: 'E2E Visitor Approve', requested_destination: 'private-visita' });
     assert.equal(visitor.status, 201);
     assert.equal(visitor.body.status, 'PENDING');
     assert.equal(visitor.body.denied_reason, null);
@@ -101,7 +115,7 @@ async function run() {
     assert.equal(visitorInRoute.status, 200);
     const invalidVisitorTransition = await request(httpServer).patch(`/visitor-access/${visitor.body.id}/status`).set('Authorization', `Bearer ${adminToken}`).send({ status: 'PENDING' });
     assert.equal(invalidVisitorTransition.status, 400);
-    const deniedVisitor = await request(httpServer).post('/visitor-access').send({ visitor_name: 'E2E Visitor Deny', requested_destination: 'private-visita' });
+    const deniedVisitor = await request(httpServer).post('/visitor-access').set('Authorization', `Bearer ${patientToken}`).send({ visitor_name: 'E2E Visitor Deny', requested_destination: 'private-visita' });
     assert.equal(deniedVisitor.status, 201);
     createdVisitorIds.push(deniedVisitor.body.id);
     const denied = await request(httpServer).patch(`/visitor-access/${deniedVisitor.body.id}/deny`).set('Authorization', `Bearer ${adminToken}`).send({ denial_reason: 'E2E denied' });
@@ -174,7 +188,9 @@ async function run() {
     const invalidRegistration = await request(httpServer).post('/patients/register').send({ email: 'invalid' });
     assert.equal(invalidRegistration.status, 400);
     registeredPatientEmail = `e2e.patient.${Date.now()}@example.com`;
-    const newPatient = { email: registeredPatientEmail, password: 'e2e-password-123', name: 'E2E Patient', patientCode: `E2E-${Date.now()}` };
+    const newPatient = { email: registeredPatientEmail, password: 'e2e-password-123', name: 'E2E Patient', phone: '(81) 99999-0000' };
+    const withoutPhone = await request(httpServer).post('/patients/register').send({ ...newPatient, phone: undefined, acceptedPrivacyPolicy: true, privacyPolicyVersion: '2026-10-29' });
+    assert.equal(withoutPhone.status, 400, 'telefone e obrigatorio no cadastro');
     const withoutConsent = await request(httpServer).post('/patients/register').send(newPatient);
     assert.equal(withoutConsent.status, 400, 'LGPD: sem aceitar a politica nao cria conta');
     const registration = await request(httpServer).post('/patients/register').send({ ...newPatient, acceptedPrivacyPolicy: true, privacyPolicyVersion: '2026-10-22' });

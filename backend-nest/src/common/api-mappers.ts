@@ -3,6 +3,9 @@ import { Beacon, CallRequest, VisitorAccessRequest } from '@prisma/client';
 export function mapCallToApi(call: CallRequest) {
   return {
     id: call.id,
+    // Desde 29/10 todo chamado exige login. false = chamado antigo (de antes da
+    // regra) ou de conta excluida depois.
+    registered_patient: Boolean(call.userId),
     user_type: call.userType,
     user_name: call.userName,
     area: call.area,
@@ -15,6 +18,8 @@ export function mapCallToApi(call: CallRequest) {
     beacon_code: call.beaconCode,
     message: call.message,
     emergency_contact: call.emergencyContact,
+    caller_phone: call.callerPhone ?? null,
+    needs: Array.isArray(call.needs) ? call.needs : [],
     status: call.status,
     priority: call.priority,
     created_at: call.createdAt.toISOString(),
@@ -46,15 +51,24 @@ export function mapVisitorAccessToApi(request: VisitorAccessRequest) {
     release_type: request.releaseType,
     denial_reason: request.denialReason,
     destination_id: request.destinationId,
+    companions: Array.isArray(request.companions) ? request.companions : [],
+    group_total: request.groupTotal ?? 1,
+    visit_code: request.visitCode ?? null,
+    assistance_request: request.assistanceRequest ?? null,
     authorized_at: request.authorizedAt?.toISOString() ?? null,
     expires_at: request.expiresAt?.toISOString() ?? null,
     finished_at: request.finishedAt?.toISOString() ?? null,
+    decided_by_id: request.decidedById ?? null,
+    decided_at: request.decidedAt?.toISOString() ?? null,
     created_at: request.createdAt.toISOString(),
     updated_at: request.updatedAt.toISOString(),
   };
 }
 
+import { beaconHealth, isPhysicalBeacon } from './beacon-health';
+
 export function mapBeaconToApi(beacon: Beacon & { navigationNode?: { id: number; code: string; label: string; floor: string | null } | null }) {
+  const health = beaconHealth(beacon);
   return {
     id: beacon.id,
     code: beacon.code,
@@ -62,9 +76,10 @@ export function mapBeaconToApi(beacon: Beacon & { navigationNode?: { id: number;
     area: beacon.area,
     area_name: beacon.areaName,
     location: beacon.location,
-    battery: beacon.battery,
+    battery: health.battery,
     sector: beacon.sector,
-    status: beacon.status,
+    status: health.status,
+    physical: isPhysicalBeacon(beacon),
     navigation_node: beacon.navigationNode
       ? {
           id: beacon.navigationNode.id,

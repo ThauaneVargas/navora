@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   Activity,
@@ -98,6 +98,68 @@ const pathPages = Object.fromEntries(Object.entries(pagePaths).map(([page, path]
 
 // Intervalo da atualização automática do painel (chamados/SOS, visitantes, resumo).
 const OPERATIONAL_REFRESH_MS = 15000;
+// SOS precisa aparecer quase na hora: busca so os chamados novos/alterados.
+const CALLS_FAST_REFRESH_MS = 2500;
+const SOS_SOUND_KEY = 'navora.admin.sos_sound';
+
+// Codigos do app -> texto do painel (backend-nest/src/calls/call-codes.ts).
+const callNeedLabels = {
+  wheelchair: 'Cadeira de rodas',
+  stretcher: 'Maca',
+  mobility: 'Dificuldade de locomoção',
+  visual: 'Deficiência visual',
+  hearing: 'Deficiência auditiva',
+  companion: 'Precisa de acompanhante',
+};
+
+// Alerta sonoro do SOS sem arquivo de audio: tres bipes com Web Audio. O
+// navegador so libera som depois de um clique na pagina; o login ja conta.
+let sosAudioContext = null;
+function unlockSosAudio() {
+  try {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    if (!sosAudioContext) sosAudioContext = new AudioCtx();
+    if (sosAudioContext.state === 'suspended') sosAudioContext.resume();
+  } catch {
+    // sem audio: o alerta visual continua
+  }
+}
+function playSosSound() {
+  try {
+    unlockSosAudio();
+    if (!sosAudioContext) return;
+    const start = sosAudioContext.currentTime;
+    [0, 0.35, 0.7].forEach((offset) => {
+      const osc = sosAudioContext.createOscillator();
+      const gain = sosAudioContext.createGain();
+      osc.type = 'square';
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0.0001, start + offset);
+      gain.gain.exponentialRampToValueAtTime(0.25, start + offset + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + offset + 0.25);
+      osc.connect(gain).connect(sosAudioContext.destination);
+      osc.start(start + offset);
+      osc.stop(start + offset + 0.27);
+    });
+  } catch {
+    // sem audio: o alerta visual continua
+  }
+}
+function readSosSoundPref() {
+  try {
+    return window.localStorage.getItem(SOS_SOUND_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+function saveSosSoundPref(enabled) {
+  try {
+    window.localStorage.setItem(SOS_SOUND_KEY, enabled ? 'on' : 'off');
+  } catch {
+    // preferencia so desta sessao
+  }
+}
 const profileOverrideKey = 'navora.admin.profile_overrides';
 
 const statusOrder = {
@@ -153,6 +215,32 @@ function mapUserToStaffAccount(user) {
   };
 }
 
+function formatStaffDate(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleDateString('pt-BR');
+}
+
+function mapStaffFromApi(staff) {
+  const role = roleMap[staff?.role];
+  const active = staff?.active !== false;
+  return {
+    id: `API-${staff?.id}`,
+    apiId: staff?.id,
+    name: staff?.name || 'Funcionario Navora',
+    email: staff?.email,
+    phone: staff?.phone,
+    role,
+    roleLabel: roleLabelMap[role] || staff?.role,
+    sector: staff?.sector_name || staff?.job_title || (role === 'admin' ? 'Gestao' : 'Recepcao'),
+    status: active ? 'Ativo' : 'Desativado',
+    createdAt: formatStaffDate(staff?.created_at),
+    deactivatedAt: formatStaffDate(staff?.deactivated_at),
+    deactivatedBy: staff?.deactivated_by?.name || '',
+    authSource: 'api',
+  };
+}
+
 const callLabelToApiStatus = Object.fromEntries(
   Object.entries(callApiStatusToLabel).map(([key, value]) => [value, key])
 );
@@ -176,6 +264,14 @@ function mapCallFromApi(call) {
     priority: callApiPriorityToLabel[call.priority] || call.priority,
     status: callApiStatusToLabel[call.status] || call.status,
     emergencyContact: call.emergency_contact || '',
+    callerPhone: call.caller_phone || '',
+    needs: (call.needs || []).map((code) => callNeedLabels[code] || code),
+    callType: call.call_type,
+    apiStatus: call.status,
+    updatedAtRaw: call.updated_at || call.created_at || null,
+    // Desde 29/10 todo chamado exige login. false = chamado antigo, de antes
+    // da regra (ou conta excluida depois). undefined = backend antigo.
+    registeredPatient: call.registered_patient,
     createdAt: created
       ? created.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
       : 'Agora',
@@ -262,6 +358,12 @@ function mapVisitorAccessFromApi(request) {
     allowedTime: request.permission_minutes ? `${request.permission_minutes} minutos` : request.allowed_time || '',
     releaseType: request.release_type,
     denialReason: request.denial_reason,
+    groupTotal: request.group_total ?? 1,
+    companions: (Array.isArray(request.companions) ? request.companions : [])
+      .map((companion) => `${companion?.name || 'Sem nome'}${companion?.type === 'child' ? ' (criança)' : companion?.type === 'elderly' ? ' (idoso)' : ''}`)
+      .join(', ') || 'Nenhum',
+    visitCode: request.visit_code || '',
+    assistanceRequest: request.assistance_request || 'Não solicitado',
   };
 }
 
@@ -360,6 +462,7 @@ function App() {
   const [authRestoring, setAuthRestoring] = useState(true);
   const [users, setUsers] = useState(initialUsers);
   const [staffAccounts, setStaffAccounts] = useState(initialStaffAccounts);
+  const [staffSource, setStaffSource] = useState('fallback');
   const [calls, setCalls] = useState(initialCalls);
   const [beacons, setBeacons] = useState(initialBeacons);
   const [beaconsSource, setBeaconsSource] = useState('fallback');
@@ -375,6 +478,11 @@ function App() {
   const [settings, setSettings] = useState(initialSettings);
   const [dashboardSummary, setDashboardSummary] = useState(null);
   const [lastRefreshedAt, setLastRefreshedAt] = useState(null);
+  // SOS em tempo quase real: ids ja vistos, ultima alteracao conhecida e o alerta na tela.
+  const knownCallIdsRef = useRef(null);
+  const lastCallSyncRef = useRef(null);
+  const [sosAlert, setSosAlert] = useState(null);
+  const [sosSoundEnabled, setSosSoundEnabled] = useState(readSosSoundPref);
   const [toast, setToast] = useState(null);
   const [modal, setModal] = useState(null);
   const [filters, setFilters] = useState({});
@@ -453,7 +561,9 @@ function App() {
   const loadCalls = async ({ silent = false } = {}) => {
     try {
       const requests = await adminApi.getCalls();
-      setCalls(requests.map(mapCallFromApi));
+      const mapped = requests.map(mapCallFromApi);
+      setCalls(mapped);
+      rememberCalls(mapped);
       return true;
     } catch (error) {
       if (silent) return handleSilentRefreshFailure(error);
@@ -542,6 +652,19 @@ function App() {
     }
   };
 
+  const loadStaff = async () => {
+    try {
+      const { data: apiStaff, source } = await adminApi.getStaff();
+      if (!Array.isArray(apiStaff)) throw new Error('Formato invalido de funcionarios');
+      setStaffAccounts(apiStaff.map(mapStaffFromApi));
+      setStaffSource(source);
+    } catch (error) {
+      if (handleAuthFailure(error)) return;
+      setStaffAccounts(initialStaffAccounts);
+      setStaffSource('fallback');
+    }
+  };
+
   const loadNavigationData = async () => {
     try {
       const { data: bootstrap } = await adminApi.getNavigationBootstrap();
@@ -590,8 +713,92 @@ function App() {
       loadCheckIns();
       loadMessages();
       loadNavigationData();
+      if (currentRole === 'admin') loadStaff();
     }
   }, [currentRole]);
+
+  // Guarda o que ja foi visto. Na primeira carga nao alerta (sao chamados antigos).
+  const rememberCalls = (mapped) => {
+    if (!knownCallIdsRef.current) knownCallIdsRef.current = new Set();
+    mapped.forEach((call) => {
+      knownCallIdsRef.current.add(call.id);
+      if (call.updatedAtRaw && (!lastCallSyncRef.current || call.updatedAtRaw > lastCallSyncRef.current)) {
+        lastCallSyncRef.current = call.updatedAtRaw;
+      }
+    });
+  };
+
+  // Busca rapida: so chamados novos/alterados. Chamado novo de SOS toca o alerta.
+  const syncNewCalls = async () => {
+    if (!knownCallIdsRef.current || !lastCallSyncRef.current) return;
+    try {
+      const changed = (await adminApi.getCalls(lastCallSyncRef.current)).map(mapCallFromApi);
+      if (!changed.length) return;
+      const fresh = changed.filter((call) => !knownCallIdsRef.current.has(call.id));
+      setCalls((items) => {
+        const byId = new Map(items.map((item) => [item.id, item]));
+        changed.forEach((call) => byId.set(call.id, { ...byId.get(call.id), ...call, history: byId.get(call.id)?.history || call.history }));
+        return [...byId.values()].sort((a, b) => String(b.updatedAtRaw).localeCompare(String(a.updatedAtRaw)));
+      });
+      rememberCalls(changed);
+      const newSos = fresh.find((call) => call.callType === 'SOS');
+      if (newSos) {
+        setSosAlert(newSos);
+        if (sosSoundEnabled) playSosSound();
+      } else if (fresh.length) {
+        showToast(`Novo chamado: ${fresh[0].type} - ${fresh[0].patient}`, 'warning');
+      }
+      // Mudancas no chamado (ex.: status) atualizam o alerta aberto.
+      setSosAlert((current) => (current ? changed.find((call) => call.id === current.id) || current : current));
+    } catch (error) {
+      if (isUnauthorizedError(error)) handleAuthFailure(error);
+    }
+  };
+
+  useEffect(() => {
+    if (!currentRole) return undefined;
+    const unlock = () => unlockSosAudio();
+    window.addEventListener('pointerdown', unlock);
+    const timer = window.setInterval(syncNewCalls, CALLS_FAST_REFRESH_MS);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('pointerdown', unlock);
+    };
+    // syncNewCalls le refs e setters; o som segue a preferencia atual.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentRole, sosSoundEnabled]);
+
+  // Titulo da aba pisca enquanto houver SOS sem resposta (aba em segundo plano).
+  useEffect(() => {
+    const base = 'Navora Web Admin';
+    if (!sosAlert) {
+      document.title = base;
+      return undefined;
+    }
+    let on = false;
+    const timer = window.setInterval(() => {
+      on = !on;
+      document.title = on ? '🔴 SOS — Navora' : base;
+    }, 1000);
+    return () => {
+      window.clearInterval(timer);
+      document.title = base;
+    };
+  }, [sosAlert]);
+
+  const toggleSosSound = () => {
+    setSosSoundEnabled((current) => {
+      const next = !current;
+      saveSosSoundPref(next);
+      if (next) playSosSound();
+      return next;
+    });
+  };
+
+  const openSosAlert = () => {
+    setSosAlert(null);
+    navigatePage(currentRole === 'admin' ? 'admin-alerts' : 'reception-calls');
+  };
 
   // Sem isto, um SOS criado no celular só aparecia no painel depois de recarregar a
   // página — a lista de chamados só era buscada no login. Pula quando a aba está
@@ -742,8 +949,8 @@ function App() {
         password: data.password,
         role,
       });
-      const account = mapUserToStaffAccount(created);
-      setStaffAccounts((items) => [account, ...items]);
+      const account = mapStaffFromApi({ ...created, created_at: created.createdAt });
+      setStaffAccounts((items) => [account, ...items.filter((item) => item.authSource === 'api')]);
       setUsers((items) => [
         { id: created.id, name: created.name, role: account.roleLabel, status: 'Ativo', location: data.sector || 'Recepção', lastSeen: 'Nunca', accessibility: 'Nao' },
         ...items,
@@ -756,19 +963,67 @@ function App() {
         showToast('Já existe uma conta com este e-mail', 'warning');
         return;
       }
+      if (error?.status === 400) {
+        showToast('Confira os dados: a senha precisa de 8+ caracteres, com letra, número e símbolo, sem espaço', 'warning');
+        return;
+      }
       showToast('Não foi possível cadastrar o funcionário agora', 'danger');
     }
   };
 
-  const toggleStaffStatus = (id) => {
+  // Regra de seguranca: funcionarios nunca sao excluidos, apenas desativados.
+  // A desativacao bloqueia o acesso ao painel e preserva o historico de acoes.
+  const applyStaffStatusLocally = (account, deactivate) => {
     setStaffAccounts((items) =>
       items.map((item) =>
-        item.id === id
-          ? { ...item, status: item.status === 'Ativo' ? 'Inativo' : 'Ativo' }
+        item.id === account.id
+          ? {
+              ...item,
+              status: deactivate ? 'Desativado' : 'Ativo',
+              deactivatedAt: deactivate ? new Date().toLocaleDateString('pt-BR') : '',
+              deactivatedBy: deactivate ? currentUser?.name || '' : '',
+            }
           : item
       )
     );
-    showToast('Status de acesso atualizado');
+  };
+
+  const changeStaffStatus = async (account, deactivate, reason) => {
+    if (!account.apiId) {
+      applyStaffStatusLocally(account, deactivate);
+      closeModal();
+      showToast(deactivate ? 'Perfil local desativado (modo demonstracao)' : 'Perfil local reativado (modo demonstracao)', 'warning');
+      return;
+    }
+
+    try {
+      const updated = deactivate
+        ? await adminApi.deactivateStaff(account.apiId, reason)
+        : await adminApi.reactivateStaff(account.apiId, reason);
+      setStaffAccounts((items) => items.map((item) => (item.id === account.id ? mapStaffFromApi(updated) : item)));
+      closeModal();
+      showToast(deactivate ? `Acesso de ${account.name} desativado. Historico preservado.` : `Acesso de ${account.name} reativado.`);
+    } catch (error) {
+      if (handleAuthFailure(error, 'Somente administradores podem alterar acessos da equipe')) return;
+      if (isNetworkError(error)) {
+        showToast('API indisponivel. Nenhuma alteracao foi feita.', 'danger');
+        return;
+      }
+      const message = error?.payload?.message;
+      showToast(typeof message === 'string' ? message : 'Nao foi possivel alterar o acesso.', 'danger');
+    }
+  };
+
+  const openStaffStatusChange = (account) => {
+    const deactivate = account.status === 'Ativo';
+    openModal(
+      deactivate ? 'Desativar acesso' : 'Reativar acesso',
+      <StaffStatusForm account={account} deactivate={deactivate} onSubmit={(reason) => changeStaffStatus(account, deactivate, reason)} />
+    );
+  };
+
+  const openStaffAudit = (account) => {
+    openModal(`Historico de ${account.name}`, <StaffAuditView account={account} />);
   };
 
   const applyCallStatus = (id, status, extra = {}) => {
@@ -842,15 +1097,6 @@ function App() {
 
   const updateBeacon = (id, changes) => {
     setBeacons((items) => items.map((item) => (item.id === id ? { ...item, ...changes } : item)));
-  };
-
-  const restartBeacon = (id) => {
-    updateBeacon(id, { status: 'Reiniciando...' });
-    showToast('Reiniciando beacon', 'info');
-    window.setTimeout(() => {
-      updateBeacon(id, { status: 'Online', battery: Math.max(beacons.find((b) => b.id === id)?.battery || 80, 35), lastSignal: 'Agora' });
-      showToast('Beacon online novamente');
-    }, 900);
   };
 
   const createMessage = async (data) => {
@@ -959,7 +1205,7 @@ function App() {
     const help = calls.filter((call) => call.type.includes('Ajuda')).length;
     const doctor = calls.filter((call) => call.type === 'Solicitar Medico').length;
     const busiestSector = [...sectors].sort((a, b) => b.peopleCount - a.peopleCount)[0];
-    const lowBeacon = beacons.find((beacon) => beacon.battery < 30);
+    const lowBeacon = beacons.find((beacon) => Number.isFinite(beacon.battery) && beacon.battery < 30);
     return {
       period,
       monitoredPeople: users.length,
@@ -1014,9 +1260,9 @@ function App() {
     messages, visitors, settings, filters, dashboardSummary, lastRefreshedAt, refreshOperationalData,
     setCurrentPage: navigatePage, setFilters, showToast, openModal, closeModal,
     updateCallStatus, assignTeam, closeCall, createCheckin, updateCheckinStatus,
-    updateBeacon, restartBeacon, createMessage, saveSettings, generateReport, exportToCSV,
+    updateBeacon, createMessage, saveSettings, generateReport, exportToCSV,
     setSectors, setMessages, setCalls, setUsers, setVisitors, updateVisitor, updateVisitorAccessStatus, authorizeVisitor, denyVisitor,
-    createStaffAccount, toggleStaffStatus, updateCurrentUserProfile,
+    createStaffAccount, openStaffStatusChange, openStaffAudit, staffSource, updateCurrentUserProfile,
   };
 
   if (authRestoring) return <LoginPage onLogin={login} toast={toast} />;
@@ -1041,6 +1287,24 @@ function App() {
           notificationCount={calls.filter((call) => call.status !== 'Encerrado').length + messages.length}
           onEditProfile={() => openProfileEditor(app)}
         />
+        {sosAlert ? (
+          <div className="sos-banner" role="alert">
+            <div className="sos-banner-copy">
+              <b>SOS — {sosAlert.patient}</b>
+              <span>{sosAlert.location}{sosAlert.beacon ? ` - ${sosAlert.beacon}` : ''}</span>
+              {sosAlert.needs?.length ? <span>Precisa: {sosAlert.needs.join(', ')}</span> : null}
+            </div>
+            <div className="sos-banner-actions">
+              <button type="button" className="sos-banner-open" onClick={openSosAlert}>Ver chamado</button>
+              <button type="button" className="sos-banner-dismiss" onClick={() => setSosAlert(null)}>Dispensar</button>
+            </div>
+          </div>
+        ) : null}
+        <div className="sos-sound-row">
+          <button type="button" className="sos-sound-toggle" onClick={toggleSosSound} aria-pressed={sosSoundEnabled}>
+            {sosSoundEnabled ? 'Som do SOS: ligado' : 'Som do SOS: desligado'}
+          </button>
+        </div>
         <PageRouter role={currentRole} page={currentPage} app={app} />
       </section>
       <Toast toast={toast} />
@@ -1336,13 +1600,18 @@ function UsersPage({ app }) {
 
       <div className="page-toolbar">
         <div className="page-search"><Search size={16} /><input placeholder="Buscar por nome, e-mail ou setor" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
-        <button className="btn btn-primary" onClick={() => openStaffAccount(app)}><Plus size={16} />Adicionar perfil local</button>
+        <button className="btn btn-primary" onClick={() => openStaffAccount(app)}><Plus size={16} />Cadastrar funcionário</button>
         <button className="btn btn-secondary" onClick={() => app.exportToCSV('usuarios.csv', [...staffQuery, ...visible])}><Download size={16} />Exportar</button>
       </div>
 
       <FilterChips items={['Todos', 'Administrador', 'Recepção', 'Pacientes']} active={filter} onChange={setFilter} />
 
       <SectionCard title="Acessos administrativos" subtitle="Controle de acessos da equipe interna ao sistema.">
+        <p className="form-note staff-rule-note">
+          <ShieldCheck size={15} />
+          Por seguranca, funcionarios nao podem ser excluidos. Ao desativar, a pessoa perde o acesso ao painel na hora, mas o historico do que ela autorizou ou negou continua registrado.
+          {app.staffSource !== 'api' ? ' Exibindo perfis de demonstracao.' : ''}
+        </p>
         <PremiumTable
           rows={staffQuery}
           columns={[
@@ -1351,16 +1620,30 @@ function UsersPage({ app }) {
             { key: 'roleLabel', label: 'Perfil', render: (account) => <RoleBadge value={account.roleLabel} /> },
             { key: 'sector', label: 'Setor', render: (account) => account.sector },
             { key: 'status', label: 'Status', render: (account) => <NvBadge value={account.status} /> },
-            { key: 'lastLogin', label: 'Ultimo acesso', render: (account) => account.lastLogin },
-            { key: 'actions', label: 'Acoes', render: (account) => (
-              <RowActions>
-                <button className="btn btn-secondary" onClick={() => app.openModal('Perfil administrativo', <Details data={account} />)}>Ver perfil</button>
-                <ActionMenu>
-                  <button onClick={() => app.toggleStaffStatus(account.id)}>{account.status === 'Ativo' ? 'Desativar' : 'Ativar'}</button>
-                  <button onClick={() => app.openModal('Dados de acesso', <Details data={account} />)}>Ver dados</button>
-                </ActionMenu>
-              </RowActions>
+            { key: 'registro', label: 'Registro', render: (account) => (
+              account.status === 'Ativo'
+                ? (account.lastLogin ? `Ultimo acesso: ${account.lastLogin}` : `Desde ${account.createdAt || '-'}`)
+                : `Desativado${account.deactivatedAt ? ` em ${account.deactivatedAt}` : ''}${account.deactivatedBy ? ` por ${account.deactivatedBy}` : ''}`
             ) },
+            { key: 'actions', label: 'Acoes', render: (account) => {
+              const isSelf = Boolean(app.currentUser?.email) && app.currentUser.email === account.email;
+              return (
+                <RowActions>
+                  <button className="btn btn-secondary" onClick={() => app.openStaffAudit(account)}>Historico</button>
+                  <ActionMenu>
+                    <button
+                      className={account.status === 'Ativo' ? 'menu-danger' : ''}
+                      disabled={isSelf}
+                      title={isSelf ? 'Voce nao pode desativar o seu proprio acesso' : undefined}
+                      onClick={() => app.openStaffStatusChange(account)}
+                    >
+                      {account.status === 'Ativo' ? 'Desativar acesso' : 'Reativar acesso'}
+                    </button>
+                    <button onClick={() => app.openModal('Dados de acesso', <Details data={account} />)}>Ver dados</button>
+                  </ActionMenu>
+                </RowActions>
+              );
+            } },
           ]}
         />
       </SectionCard>
@@ -1396,7 +1679,7 @@ function BeaconsPage({ app }) {
   const [filter, setFilter] = useState('Todos');
   const [query, setQuery] = useState('');
   const visible = app.beacons.filter((beacon) => {
-    const matchesFilter = filter === 'Todos' || beacon.status === filter || (filter === 'Bateria baixa' && beacon.battery < 30);
+    const matchesFilter = filter === 'Todos' || beacon.status === filter;
     const matchesQuery = `${beacon.id} ${beacon.name} ${beacon.sector} ${beacon.area}`.toLowerCase().includes(query.toLowerCase());
     return matchesFilter && matchesQuery;
   });
@@ -1409,16 +1692,19 @@ function BeaconsPage({ app }) {
     <div className="page-view premium-page">
       <PageHeading title="Beacons" subtitle="Monitoramento dos dispositivos de localização indoor" />
       <section className="kpi-grid">
-        <KpiCard icon={RadioTower} tone="info" label="Total de beacons" value={app.beacons.length} helper="Dispositivos cadastrados" />
-        <KpiCard icon={CheckCircle2} tone="success" label="Online" value={app.beacons.filter((b) => b.status === 'Online').length} helper="Transmitindo sinal" />
-        <KpiCard icon={Clock3} tone="warning" label="Bateria baixa" value={app.beacons.filter((b) => b.battery < 30).length} helper="Requer atenção" />
-        <KpiCard icon={ShieldCheck} tone="danger" label="Offline" value={app.beacons.filter((b) => b.status === 'Offline').length} helper="Sem comunicação" />
+        <KpiCard icon={RadioTower} tone="info" label="Beacons físicos" value={app.beacons.filter((b) => b.physical).length} helper="Aparelhos instalados" />
+        <KpiCard icon={CheckCircle2} tone="success" label="Online" value={app.beacons.filter((b) => b.status === 'Online').length} helper="Vistos por um celular nas últimas 24 h" />
+        <KpiCard icon={ShieldCheck} tone="danger" label="Sem sinal" value={app.beacons.filter((b) => b.status === 'Sem sinal').length} helper="Conferir no local (pilha ou posição)" />
+        <KpiCard icon={Clock3} tone="warning" label="Simulados" value={app.beacons.filter((b) => b.status === 'Simulado').length} helper="Só para teste, sem aparelho" />
       </section>
+      <p className="form-note beacon-health-note">
+        Os beacons só transmitem; não avisam o servidor nem informam bateria. Um beacon aparece como Online quando o celular de algum paciente ou visitante, com o Bluetooth ligado, o detecta. Sem sinal há mais de 24 h, vale conferir no local.
+      </p>
       <div className="page-toolbar">
         <div className="page-search"><Search size={16} /><input placeholder="Buscar por codigo, nome ou setor" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
         <button className="btn btn-secondary" onClick={() => app.exportToCSV('beacons.csv', rows)}><Download size={16} />Exportar</button>
       </div>
-      <FilterChips items={['Todos', 'Online', 'Atenção', 'Offline', 'Sem sinal', 'Bateria baixa', 'Manutenção']} active={filter} onChange={setFilter} />
+      <FilterChips items={['Todos', 'Online', 'Sem sinal', 'Simulado']} active={filter} onChange={setFilter} />
       <SectionCard title="Dispositivos monitorados" subtitle="Status operacional dos beacons no ambiente.">
         <PremiumTable
           rows={rows}
@@ -1435,10 +1721,6 @@ function BeaconsPage({ app }) {
               <RowActions>
                 <button className="btn btn-secondary" onClick={() => app.openModal('Detalhes do beacon', <Details data={beacon} />)}>Ver detalhes</button>
                 <button className="btn btn-info" onClick={() => { app.setFilters({ sector: beacon.sector }); app.setCurrentPage('admin-heatmap'); }}>Localizar</button>
-                <ActionMenu>
-                  <button onClick={() => app.restartBeacon(beacon.id)}>Reiniciar</button>
-                  <button onClick={() => { app.updateBeacon(beacon.id, { status: 'Manutenção' }); app.showToast('Beacon marcado para manutenção', 'warning'); }}>Manutenção</button>
-                </ActionMenu>
               </RowActions>
             ) },
           ]}
@@ -1606,11 +1888,11 @@ function NvBadge({ value }) {
   const label = String(value || 'Não informado');
   const normalized = comparableLocation(label);
   const tone =
-    normalized.includes('bloqueado') || normalized.includes('offline') || normalized.includes('negado')
+    normalized.includes('bloqueado') || normalized.includes('offline') || normalized.includes('negado') || normalized.includes('desativado') || normalized.includes('inativo')
       ? 'danger'
-      : normalized.includes('aguardando') || normalized.includes('aten') || normalized.includes('manuten') || normalized.includes('bateria')
+      : normalized.includes('aguardando') || normalized.includes('aten') || normalized.includes('manuten') || normalized.includes('bateria') || normalized.includes('sem sinal')
         ? 'warning'
-        : normalized.includes('em rota') || normalized.includes('sem sinal')
+        : normalized.includes('em rota')
           ? 'info'
           : normalized.includes('ativo') || normalized.includes('online') || normalized.includes('autorizado') || normalized.includes('finalizado') || normalized.includes('encerrado')
             ? 'success'
@@ -1638,6 +1920,7 @@ function ActionMenu({ children }) {
 }
 
 function BatteryMeter({ value }) {
+  if (value === null || value === undefined) return <span className="battery-meter-unknown">Não informado</span>;
   const safeValue = Number.isFinite(Number(value)) ? Number(value) : 0;
   const tone = safeValue < 15 ? 'danger' : safeValue < 30 ? 'warning' : 'success';
   return <span className="battery-meter"><span><i className={tone} style={{ width: `${Math.max(0, Math.min(100, safeValue))}%` }} /></span><b>{safeValue}%</b></span>;
@@ -2068,10 +2351,13 @@ function CallCard({ call, app, reception = false, adminView = false }) {
         {call.emergencyContact ? (
           <span className="call-emergency-contact"><HeartPulse size={14} aria-hidden="true" />Contato de emergência: {call.emergencyContact}</span>
         ) : null}
+        {call.needs?.length ? <span className="call-extra"><b>Precisa:</b> {call.needs.join(', ')}</span> : null}
+        {call.callerPhone ? <span className="call-extra"><b>Telefone:</b> {call.callerPhone}</span> : null}
 
         <div className="badges call-badges">
           <em className={`call-badge ${getPriorityBadgeTone(call.priority)}`}>{call.priority}</em>
           <em className={`call-badge ${getStatusBadgeTone(call.status)}`}>{call.status}</em>
+          {call.registeredPatient === false ? <em className="call-badge unregistered" title="Chamado antigo, enviado sem conta (antes do login obrigatório). Confirme no local.">Sem conta</em> : null}
         </div>
 
         <div className="actions call-actions">
@@ -2112,10 +2398,13 @@ function CallCard({ call, app, reception = false, adminView = false }) {
       {call.emergencyContact ? (
         <span className="call-emergency-contact"><HeartPulse size={14} aria-hidden="true" />Contato de emergência: {call.emergencyContact}</span>
       ) : null}
+      {call.needs?.length ? <span className="call-extra"><b>Precisa:</b> {call.needs.join(', ')}</span> : null}
+      {call.callerPhone ? <span className="call-extra"><b>Telefone:</b> {call.callerPhone}</span> : null}
 
       <div className="badges call-badges">
         <em className={`call-badge ${getPriorityBadgeTone(call.priority)}`}>{call.priority}</em>
         <em className={`call-badge ${getStatusBadgeTone(call.status)}`}>{call.status}</em>
+        {call.registeredPatient === false ? <em className="call-badge unregistered" title="Chamado antigo, enviado sem conta (antes do login obrigatório). Confirme no local.">Sem conta</em> : null}
       </div>
 
       <div className="actions call-actions">
@@ -2252,26 +2541,31 @@ function openDenyVisitor(app, visitor) {
 }
 
 function openStaffAccount(app) {
-  app.openModal('Adicionar perfil local', <StaffAccountForm onSubmit={app.createStaffAccount} />);
+  app.openModal('Cadastrar funcionário', <StaffAccountForm onSubmit={app.createStaffAccount} />);
 }
 
+// Senha forte: mesma regra do backend (backend-nest/src/common/strong-password.ts).
+const STAFF_PASSWORD_RULE = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9\s])\S{8,72}$/;
+
 function StaffAccountForm({ onSubmit }) {
-  const [form, setForm] = useState({
-    name: '',
-    email: '',
-    role: 'reception',
-    sector: 'Recepção',
-    status: 'Ativo',
-  });
+  const [form, setForm] = useState({ name: '', email: '', role: 'reception', password: '' });
+  const [sending, setSending] = useState(false);
+  const passwordOk = STAFF_PASSWORD_RULE.test(form.password);
 
   const update = (key, value) => setForm((current) => ({ ...current, [key]: value }));
 
   return (
     <form
       className="modal-form"
-      onSubmit={(event) => {
+      onSubmit={async (event) => {
         event.preventDefault();
-        onSubmit(form);
+        if (!passwordOk || sending) return;
+        setSending(true);
+        try {
+          await onSubmit(form);
+        } finally {
+          setSending(false);
+        }
       }}
     >
       <label>Nome do funcionário<input required value={form.name} onChange={(event) => update('name', event.target.value)} /></label>
@@ -2282,15 +2576,13 @@ function StaffAccountForm({ onSubmit }) {
           <option value="admin">Administrador</option>
         </select>
       </label>
-      <label>Setor<input value={form.sector} onChange={(event) => update('sector', event.target.value)} /></label>
-      <label>Status
-        <select value={form.status} onChange={(event) => update('status', event.target.value)}>
-          <option>Ativo</option>
-          <option>Inativo</option>
-        </select>
+      <label>Senha inicial
+        <input required type="password" autoComplete="new-password" value={form.password} onChange={(event) => update('password', event.target.value)} />
       </label>
-      <p className="form-note">Cadastro local para organizacao do painel. Criacao real de usuario administrativo depende da integracao do backend.</p>
-      <button className="primary">Cadastrar acesso local</button>
+      <p className={passwordOk || !form.password ? 'form-note' : 'form-error'}>
+        Mínimo de 8 caracteres, com letra, número e símbolo, sem espaço. Entregue a senha à pessoa pessoalmente. Cada funcionário tem a própria conta; para tirar o acesso, desative (não é possível excluir).
+      </p>
+      <button className="primary" disabled={!passwordOk || sending}>{sending ? 'Cadastrando...' : 'Cadastrar funcionário'}</button>
     </form>
   );
 }
@@ -2335,6 +2627,114 @@ function VisitorAuthorizationForm({ visitor, onSubmit }) {
       <div className="route-preview"><b>Rota permitida</b><span>{routePreview}</span></div>
       <button className="primary">Confirmar autorizacao</button>
     </form>
+  );
+}
+
+function StaffStatusForm({ account, deactivate, onSubmit }) {
+  const [reason, setReason] = useState('');
+  const [sending, setSending] = useState(false);
+  const submit = async (event) => {
+    event.preventDefault();
+    if (sending) return;
+    setSending(true);
+    try {
+      await onSubmit(reason.trim());
+    } finally {
+      setSending(false);
+    }
+  };
+  return (
+    <form className="modal-form" onSubmit={submit}>
+      <Details data={{ funcionario: account.name, email: account.email, perfil: account.roleLabel }} />
+      <p className="form-note">
+        {deactivate
+          ? 'A pessoa nao conseguira mais entrar no painel e sessoes abertas serao encerradas. Os registros do que ela fez (autorizacoes, recusas e alteracoes) continuam salvos. Funcionarios nunca sao excluidos.'
+          : 'A pessoa volta a ter acesso ao painel com o mesmo perfil de antes.'}
+      </p>
+      <label>Motivo (opcional)
+        <textarea
+          rows={3}
+          maxLength={300}
+          value={reason}
+          placeholder={deactivate ? 'Ex.: desligamento, troca de setor, ferias' : 'Ex.: retorno ao setor'}
+          onChange={(event) => setReason(event.target.value)}
+        />
+      </label>
+      <button className={`primary ${deactivate ? 'danger' : ''}`} disabled={sending}>
+        {sending ? 'Salvando...' : deactivate ? 'Confirmar desativacao' : 'Confirmar reativacao'}
+      </button>
+    </form>
+  );
+}
+
+const visitorDecisionLabels = {
+  APPROVED: 'Autorizado',
+  DENIED: 'Negado',
+  IN_ROUTE: 'Autorizado',
+  ARRIVED: 'Autorizado',
+  OFF_ROUTE: 'Autorizado',
+  FINISHED: 'Autorizado',
+  EXPIRED: 'Autorizado',
+  CANCELED: 'Cancelado',
+};
+
+function StaffAuditView({ account }) {
+  const [state, setState] = useState({ loading: Boolean(account.apiId), data: null, error: '' });
+
+  useEffect(() => {
+    if (!account.apiId) return undefined;
+    let active = true;
+    adminApi
+      .getStaffAudit(account.apiId)
+      .then((data) => active && setState({ loading: false, data, error: '' }))
+      .catch((error) => active && setState({
+        loading: false,
+        data: null,
+        error: isNetworkError(error) ? 'API indisponivel. Tente novamente em instantes.' : 'Nao foi possivel carregar o historico.',
+      }));
+    return () => {
+      active = false;
+    };
+  }, [account.apiId]);
+
+  if (!account.apiId) {
+    return <p className="form-note">O historico fica disponivel quando o painel esta conectado a API. Este e um perfil de demonstracao.</p>;
+  }
+  if (state.loading) return <p className="form-note">Carregando historico...</p>;
+  if (state.error) return <p className="form-error">{state.error}</p>;
+
+  const changes = state.data?.status_changes || [];
+  const decisions = state.data?.visitor_decisions || [];
+  const when = (value) => (value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
+
+  return (
+    <div className="staff-audit">
+      <Details data={{ funcionario: account.name, situacao: account.status, perfil: account.roleLabel }} />
+      <h3>Alteracoes de acesso</h3>
+      {changes.length ? (
+        <ul className="staff-audit-list">
+          {changes.map((change) => (
+            <li key={change.id}>
+              <b>{change.action === 'DEACTIVATED' ? 'Desativado' : 'Reativado'}</b>
+              <span>{when(change.created_at)} por {change.performed_by?.name || '-'}</span>
+              {change.reason ? <small>Motivo: {change.reason}</small> : null}
+            </li>
+          ))}
+        </ul>
+      ) : <p className="form-note">Nenhuma alteracao de acesso registrada.</p>}
+      <h3>Decisoes sobre visitantes</h3>
+      {decisions.length ? (
+        <ul className="staff-audit-list">
+          {decisions.map((decision) => (
+            <li key={decision.id}>
+              <b>{visitorDecisionLabels[decision.status] || decision.status}: {decision.visitor_name}</b>
+              <span>{decision.requested_destination} - {decision.area_name} - {when(decision.decided_at)}</span>
+              {decision.denied_reason ? <small>Motivo: {decision.denied_reason}</small> : null}
+            </li>
+          ))}
+        </ul>
+      ) : <p className="form-note">Nenhuma autorizacao ou recusa registrada para este funcionario.</p>}
+    </div>
   );
 }
 

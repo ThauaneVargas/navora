@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
-import { colors, shadows } from '../theme/colors';
+import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 
 export default function Mode3DScreen({ navigate, goBack, activeRoute: selectedRoute, navigationProgress }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   const { activeRoute: fallbackRoute } = useApp();
   const activeRoute = selectedRoute || fallbackRoute;
   const routeSteps = Array.isArray(activeRoute?.steps) ? activeRoute.steps : [];
@@ -76,7 +78,7 @@ export default function Mode3DScreen({ navigate, goBack, activeRoute: selectedRo
             <Text style={styles.primaryText}>Buscar destino</Text>
           </Pressable>
         </View>
-        <BottomTabs active="Navigate" navigate={navigate} />
+        <BottomTabs active="Navigate" navigate={navigate} hideRouteBar />
       </Screen>
     );
   }
@@ -189,7 +191,7 @@ export default function Mode3DScreen({ navigate, goBack, activeRoute: selectedRo
         <Text style={styles.endText}>Encerrar rota</Text>
       </Pressable>
 
-      <BottomTabs active="Navigate" navigate={navigate} />
+      <BottomTabs active="Navigate" navigate={navigate} hideRouteBar />
     </Screen>
   );
 }
@@ -202,6 +204,8 @@ function getArrivalInstruction(activeRoute, routeSteps) {
 }
 
 function Info({ icon, label, value }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   return (
     <View style={styles.infoBlock}>
       <View style={styles.infoIcon}>
@@ -215,7 +219,14 @@ function Info({ icon, label, value }) {
   );
 }
 
-const styles = StyleSheet.create({
+// Estilos acompanham o tema (claro/escuro); antes usavam a paleta fixa do
+// tema claro e não mudavam no modo noturno.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+const createStyles = (colors) => StyleSheet.create({
   emptyCard: {
     minHeight: 260,
     borderRadius: 24,
@@ -275,7 +286,7 @@ const styles = StyleSheet.create({
   noticeCard: {
     minHeight: 38,
     borderRadius: 16,
-    backgroundColor: '#FFF6F7',
+    backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: 12,
@@ -293,7 +304,7 @@ const styles = StyleSheet.create({
   scene: {
     height: 410,
     borderRadius: 26,
-    backgroundColor: '#F5F1F2',
+    backgroundColor: colors.backgroundSoft,
     borderWidth: 1,
     borderColor: colors.border,
     marginTop: 14,
@@ -307,7 +318,7 @@ const styles = StyleSheet.create({
     zIndex: 3,
     height: 30,
     borderRadius: 15,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     paddingHorizontal: 9,
@@ -326,7 +337,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 96,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -334,7 +345,7 @@ const styles = StyleSheet.create({
     width: 150,
     height: 10,
     borderRadius: 10,
-    backgroundColor: '#F7D9DE',
+    backgroundColor: colors.iconBg,
   },
   lightStripSmall: {
     width: 92,
@@ -347,7 +358,7 @@ const styles = StyleSheet.create({
     top: 82,
     bottom: 0,
     width: 176,
-    backgroundColor: '#E9E0E3',
+    backgroundColor: colors.borderStrong,
     transform: [{ skewX: '-10deg' }],
     paddingTop: 78,
     alignItems: 'center',
@@ -358,7 +369,7 @@ const styles = StyleSheet.create({
     top: 82,
     bottom: 0,
     width: 176,
-    backgroundColor: '#DED3D7',
+    backgroundColor: colors.borderStrong,
     transform: [{ skewX: '10deg' }],
     paddingTop: 92,
     alignItems: 'center',
@@ -367,11 +378,11 @@ const styles = StyleSheet.create({
     width: 70,
     height: 7,
     borderRadius: 7,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     marginBottom: 10,
   },
   wallLabel: {
-    color: '#686068',
+    color: colors.muted,
     fontSize: 11,
     fontWeight: '900',
   },
@@ -379,12 +390,12 @@ const styles = StyleSheet.create({
     width: 64,
     height: 88,
     borderRadius: 12,
-    backgroundColor: '#F8F6F7',
+    backgroundColor: colors.backgroundSoft,
     borderWidth: 1,
-    borderColor: '#D2C4C9',
+    borderColor: colors.borderStrong,
   },
   doorLabel: {
-    color: '#686068',
+    color: colors.muted,
     fontSize: 10,
     fontWeight: '900',
     marginTop: 8,
@@ -395,10 +406,10 @@ const styles = StyleSheet.create({
     right: 68,
     bottom: -38,
     height: 276,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
     transform: [{ perspective: 520 }, { rotateX: '58deg' }],
     borderTopWidth: 4,
-    borderTopColor: '#D9C9CE',
+    borderTopColor: colors.borderStrong,
     alignItems: 'center',
   },
   centerLine: {
@@ -432,7 +443,7 @@ const styles = StyleSheet.create({
     minWidth: 188,
     minHeight: 70,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.94)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 12,
@@ -457,7 +468,7 @@ const styles = StyleSheet.create({
     bottom: 18,
     minWidth: 126,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
     padding: 13,
@@ -551,9 +562,9 @@ const styles = StyleSheet.create({
   endButton: {
     height: 50,
     borderRadius: 16,
-    backgroundColor: '#FFF6F7',
+    backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
-    borderColor: '#FFD2D7',
+    borderColor: colors.borderStrong,
     marginTop: 10,
     alignItems: 'center',
     justifyContent: 'center',

@@ -4,6 +4,7 @@ import React, {
 } from 'react';
 
 import {
+  Alert,
   Image,
   Modal,
   Platform,
@@ -34,6 +35,8 @@ import Header
 
 import BottomTabs
   from '../components/BottomTabs';
+
+import { useRouteBarSpace } from '../components/ActiveRouteBar';
 
 import {
   shadows,
@@ -74,10 +77,11 @@ function getInitials(
 
 
 function getEmergencyContactSummary(
-  emergencyContact
+  emergencyContact,
+  t
 ) {
   if (!emergencyContact) {
-    return 'Não informado';
+    return t('common.notInformed');
   }
 
   if (
@@ -95,7 +99,7 @@ function getEmergencyContactSummary(
 
   return values.length
     ? values.join(' • ')
-    : 'Não informado';
+    : t('common.notInformed');
 }
 
 // Monta o prefill pra PatientRegisterScreen abrir em modo de edição (PATCH /patients/me)
@@ -105,11 +109,8 @@ function buildEditInitialValues(userProfile = {}) {
   return {
     name: userProfile?.fullName || userProfile?.name || '',
     phone: userProfile?.phone || '',
-    document: userProfile?.patientCode || '',
-    birthDateIso: userProfile?.birthDate || null,
     emergencyContact: userProfile?.emergencyContact || '',
     accessibility: userProfile?.accessibility || {},
-    notes: userProfile?.notes || '',
   };
 }
 
@@ -123,6 +124,10 @@ export default function ProfileScreen({
   const insets =
     useSafeAreaInsets();
 
+  // Espaço da barra "Rota em andamento" (aparece acima das abas).
+  const routeBarSpace =
+    useRouteBarSpace();
+
   const { height: windowHeight } =
     useWindowDimensions();
 
@@ -132,6 +137,7 @@ export default function ProfileScreen({
     toggleTheme,
     userPreferences:
       fallbackPreferences,
+    t,
   } = useApp();
 
 
@@ -144,16 +150,16 @@ export default function ProfileScreen({
 
   const roleLabel =
     isVisitor
-      ? 'Visitante'
-      : 'Paciente';
+      ? t('common.visitor')
+      : t('common.patient');
 
 
   const displayName =
     userProfile?.fullName ||
     userProfile?.name ||
     (isVisitor
-      ? 'Visitante'
-      : 'Paciente');
+      ? t('common.visitor')
+      : t('common.patient'));
 
 
   const [
@@ -184,7 +190,8 @@ export default function ProfileScreen({
 
   const emergencyContactSummary =
     getEmergencyContactSummary(
-      userProfile?.emergencyContact
+      userProfile?.emergencyContact,
+      t
     );
 
 
@@ -359,16 +366,53 @@ export default function ProfileScreen({
    * CONTA
    */
 
+  const hasAccount =
+    userProfile?.authSource === 'api' ||
+    Boolean(userProfile?.hasAccount);
+
+  const openAccountHelp = () => {
+    Alert.alert(
+      t('profile.accountHelp'),
+      hasAccount
+        ? t('profile.accountHelpText')
+        : t('profile.accountHelpNoAccount'),
+      [
+        hasAccount
+          ? {
+              text: t('profile.accountHelpForgot'),
+              onPress: () => navigate('ForgotPassword'),
+            }
+          : {
+              text: t('profile.createAccount'),
+              onPress: () =>
+                navigate('PatientRegister', {
+                  initialValues: buildEditInitialValues(userProfile),
+                  from: 'Profile',
+                }),
+            },
+        ...(hasAccount
+          ? [
+              {
+                text: t('profile.security'),
+                onPress: () => navigate('Settings', { section: 'security' }),
+              },
+            ]
+          : []),
+        { text: t('common.close'), style: 'cancel' },
+      ]
+    );
+  };
+
   const accountItems = [
     {
       icon:
         'account-outline',
 
       title:
-        'Dados pessoais',
+        t('profile.personalData'),
 
       subtitle:
-        'Nome, nascimento, telefone e e-mail',
+        t('profile.personalDataSub'),
 
       onPress:
         isVisitor
@@ -385,7 +429,7 @@ export default function ProfileScreen({
         'account-heart-outline',
 
       title:
-        'Contato de emergência',
+        t('profile.emergencyContact'),
 
       subtitle:
         emergencyContactSummary,
@@ -398,19 +442,44 @@ export default function ProfileScreen({
           : () =>
               navigate(
                 'PatientRegister',
-                { mode: 'edit', initialValues: buildEditInitialValues(userProfile) }
+                { mode: 'edit', initialValues: buildEditInitialValues(userProfile), focus: 'emergencyContact' }
               ),
     },
+
+    // Desde 29/10 só se entra com conta, então isto não aparece mais; fica
+    // como rede de segurança se um perfil sem conta chegar aqui.
+    ...(!isVisitor && !hasAccount
+      ? [
+          {
+            icon:
+              'account-plus-outline',
+
+            title:
+              t('profile.createAccount'),
+
+            subtitle:
+              t('profile.createAccountSub'),
+
+            highlight: true,
+
+            onPress: () =>
+              navigate(
+                'PatientRegister',
+                { initialValues: buildEditInitialValues(userProfile), from: 'Profile' }
+              ),
+          },
+        ]
+      : []),
 
     {
       icon:
         'shield-account-outline',
 
       title:
-        'Segurança da conta',
+        t('profile.security'),
 
       subtitle:
-        'Senha, biometria e segurança',
+        t('profile.securitySub'),
 
       onPress: () =>
         navigate(
@@ -427,13 +496,14 @@ export default function ProfileScreen({
         'account-question-outline',
 
       title:
-        'Ajuda sobre minha conta',
+        t('profile.accountHelp'),
 
       subtitle:
-        'Problemas com cadastro ou acesso',
+        t('profile.accountHelpSub'),
 
-      onPress: () =>
-        navigate('Help'),
+      // Antes levava pra própria tela de Ajuda (pedido de socorro), sem nada
+      // sobre conta. Agora oferece o que resolve: senha ou criar conta.
+      onPress: openAccountHelp,
     },
   ];
 
@@ -448,10 +518,10 @@ export default function ProfileScreen({
         'human-wheelchair',
 
       title:
-        'Acessibilidade',
+        t('profile.accessibility'),
 
       subtitle:
-        'Mobilidade, texto, contraste e orientação',
+        t('profile.accessibilitySub'),
 
       onPress: () =>
         navigate(
@@ -464,15 +534,15 @@ export default function ProfileScreen({
         'map-marker-path',
 
       title:
-        'Preferência de rota',
+        t('profile.routePreference'),
 
       subtitle:
         userPreferences
           .avoidStairs ||
         userPreferences
           .wheelchair
-          ? 'Rota acessível'
-          : 'Mais rápida',
+          ? t('profile.accessibleRoute')
+          : t('profile.fastestRoute'),
 
       onPress: () =>
         navigate(
@@ -489,13 +559,13 @@ export default function ProfileScreen({
         'volume-high',
 
       title:
-        'Orientação por voz',
+        t('profile.voiceGuidance'),
 
       subtitle:
         userPreferences
           .voiceGuidance
-          ? 'Ativada'
-          : 'Desativada',
+          ? t('profile.on')
+          : t('profile.off'),
 
       onPress: () =>
         navigate(
@@ -512,10 +582,10 @@ export default function ProfileScreen({
         'bell-outline',
 
       title:
-        'Gerenciar notificações',
+        t('profile.manageNotifications'),
 
       subtitle:
-        'Autorizações, navegação e recepção',
+        t('profile.manageNotificationsSub'),
 
       onPress: () =>
         navigate(
@@ -535,10 +605,10 @@ export default function ProfileScreen({
         'history',
 
       title:
-        'Histórico de rotas',
+        t('profile.routeHistory'),
 
       subtitle:
-        'Veja suas rotas recentes',
+        t('profile.routeHistorySub'),
 
       onPress: () =>
         navigate(
@@ -551,10 +621,10 @@ export default function ProfileScreen({
         'star-outline',
 
       title:
-        'Destinos favoritos',
+        t('profile.favorites'),
 
       subtitle:
-        'Locais salvos para acesso rápido',
+        t('profile.favoritesSub'),
 
       onPress: () =>
         navigate(
@@ -578,10 +648,10 @@ export default function ProfileScreen({
         'shield-lock-outline',
 
       title:
-        'Privacidade e permissões',
+        t('profile.privacyPermissions'),
 
       subtitle:
-        'Localização, Bluetooth, câmera e dados',
+        t('profile.privacyPermissionsSub'),
 
       onPress: () =>
         navigate(
@@ -601,10 +671,10 @@ export default function ProfileScreen({
         'cog-outline',
 
       title:
-        'Configurações',
+        t('profile.settings'),
 
       subtitle:
-        'Biometria, notificações e preferências',
+        t('profile.settingsSub'),
 
       onPress: () =>
         navigate(
@@ -633,7 +703,8 @@ export default function ProfileScreen({
         {/* CABEÇALHO */}
 
         <Header
-          title="Meu perfil"
+          fullBleed
+          title={t('profile.title')}
           centerTitle
           onMenu={() =>
             navigate('Menu')
@@ -658,7 +729,7 @@ export default function ProfileScreen({
                 Math.max(
                   insets.bottom,
                   14
-                ) + 104,
+                ) + 104 + routeBarSpace,
             },
           ]}
         >
@@ -686,7 +757,7 @@ export default function ProfileScreen({
                 )
               }
               accessibilityRole="button"
-              accessibilityLabel="Alterar foto de perfil"
+              accessibilityLabel={t('profile.changePhoto')}
               style={({ pressed }) => [
                 styles.avatarButton,
 
@@ -787,7 +858,7 @@ export default function ProfileScreen({
                   },
                 ]}
               >
-                Toque na foto para alterar
+                {t('profile.tapToChange')}
               </Text>
             </View>
 
@@ -801,7 +872,7 @@ export default function ProfileScreen({
                   )
                 }
                 accessibilityRole="button"
-                accessibilityLabel="Editar perfil"
+                accessibilityLabel={t('profile.edit')}
                 style={({ pressed }) => [
                   styles.editButton,
 
@@ -882,7 +953,7 @@ export default function ProfileScreen({
                   },
                 ]}
               >
-                Modo escuro
+                {t('profile.darkMode')}
               </Text>
 
               <Text
@@ -895,7 +966,7 @@ export default function ProfileScreen({
                   },
                 ]}
               >
-                Utilizar o Navora com tema escuro
+                {t('profile.darkModeSub')}
               </Text>
             </View>
 
@@ -905,7 +976,7 @@ export default function ProfileScreen({
                 toggleTheme
               }
               accessibilityRole="switch"
-              accessibilityLabel="Modo escuro"
+              accessibilityLabel={t('profile.darkMode')}
               accessibilityState={{
                 checked:
                   isDark,
@@ -934,7 +1005,7 @@ export default function ProfileScreen({
 
 
           <ProfileSection
-            title="Conta"
+            title={t('profile.sections.account')}
             items={
               accountItems
             }
@@ -945,7 +1016,7 @@ export default function ProfileScreen({
 
 
           <ProfileSection
-            title="Preferências"
+            title={t('profile.sections.preferences')}
             items={
               preferenceItems
             }
@@ -956,7 +1027,7 @@ export default function ProfileScreen({
 
 
           <ProfileSection
-            title="Atividade"
+            title={t('profile.sections.activity')}
             items={
               activityItems
             }
@@ -967,7 +1038,7 @@ export default function ProfileScreen({
 
 
           <ProfileSection
-            title="Privacidade"
+            title={t('profile.sections.privacy')}
             items={
               privacyItems
             }
@@ -978,7 +1049,7 @@ export default function ProfileScreen({
 
 
           <ProfileSection
-            title="Outros"
+            title={t('profile.sections.other')}
             items={
               otherItems
             }
@@ -1107,7 +1178,7 @@ export default function ProfileScreen({
                     },
                   ]}
                 >
-                  Foto do perfil
+                  {t('profile.photoTitle')}
                 </Text>
 
                 <Text
@@ -1120,7 +1191,7 @@ export default function ProfileScreen({
                     },
                   ]}
                 >
-                  Escolha como deseja alterar sua foto.
+                  {t('profile.photoSub')}
                 </Text>
 
 
@@ -1128,8 +1199,8 @@ export default function ProfileScreen({
                   'web' && (
                   <PhotoMenuItem
                     icon="camera-outline"
-                    title="Tirar foto"
-                    subtitle="Usar a câmera do aparelho"
+                    title={t('profile.takePhoto')}
+                    subtitle={t('profile.takePhotoSub')}
                     appColors={
                       appColors
                     }
@@ -1145,14 +1216,14 @@ export default function ProfileScreen({
                   title={
                     Platform.OS ===
                     'web'
-                      ? 'Escolher foto'
-                      : 'Escolher da galeria'
+                      ? t('profile.choosePhoto')
+                      : t('profile.chooseFromGallery')
                   }
                   subtitle={
                     Platform.OS ===
                     'web'
-                      ? 'Selecionar uma imagem do computador'
-                      : 'Selecionar uma imagem existente'
+                      ? t('profile.chooseFromComputer')
+                      : t('profile.chooseExisting')
                   }
                   appColors={
                     appColors
@@ -1166,8 +1237,8 @@ export default function ProfileScreen({
                 {photoUri && (
                   <PhotoMenuItem
                     icon="trash-can-outline"
-                    title="Remover foto"
-                    subtitle="Voltar para o avatar padrão"
+                    title={t('profile.removePhoto')}
+                    subtitle={t('profile.removePhotoSub')}
                     appColors={
                       appColors
                     }
@@ -1207,7 +1278,7 @@ export default function ProfileScreen({
                     },
                   ]}
                 >
-                  Cancelar
+                  {t('common.cancel')}
                 </Text>
               </Pressable>
             </Pressable>
@@ -1279,7 +1350,7 @@ export default function ProfileScreen({
                   },
                 ]}
               >
-                Remover foto?
+                {t('profile.removePhotoConfirm')}
               </Text>
 
               <Text
@@ -1292,7 +1363,7 @@ export default function ProfileScreen({
                   },
                 ]}
               >
-                Sua foto será removida e o avatar padrão será exibido.
+                {t('profile.removePhotoConfirmSub')}
               </Text>
 
 
@@ -1329,7 +1400,7 @@ export default function ProfileScreen({
                       },
                     ]}
                   >
-                    Cancelar
+                    {t('common.cancel')}
                   </Text>
                 </Pressable>
 
@@ -1355,7 +1426,7 @@ export default function ProfileScreen({
                       styles.confirmRemoveText
                     }
                   >
-                    Remover
+                    {t('profile.remove')}
                   </Text>
                 </Pressable>
               </View>

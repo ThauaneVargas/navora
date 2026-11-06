@@ -20,14 +20,6 @@ if (!configuredApiUrl) {
   );
 }
 
-const fallbackCall = (payload = {}) => ({
-  id: `LOCAL-${Date.now()}`,
-  status: 'PENDING',
-  created_at: new Date().toISOString(),
-  demoMode: true,
-  ...payload,
-});
-
 const fallbackVisitorAccess = (payload = {}) => ({
   id: `LOCAL-VIS-${Date.now()}`,
   visitor_name: payload.visitor_name || 'Visitante Navora',
@@ -109,7 +101,8 @@ async function request(path, options = {}, fallback) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const token = authenticated ? await getAuthToken() : null;
+    // Falha ao ler o token guardado nunca pode impedir o envio (ex.: SOS).
+    const token = authenticated ? await getAuthToken().catch(() => null) : null;
     const response = await fetch(`${API_BASE_URL}${path}`, {
       headers: {
         'Content-Type': 'application/json',
@@ -181,15 +174,24 @@ export const navoraApi = {
     request('/patients/me', { method: 'DELETE', authenticated: true, body: JSON.stringify({ password }) }),
   updateAccessibility: (payload) =>
     request('/patients/me/accessibility', { method: 'PUT', authenticated: true, body: JSON.stringify(payload) }, { accessibility: payload, demoMode: true }),
+  // SOS, ajuda e pedido de visitante NAO tem modo offline: se nao chegou ao
+  // servidor, a recepcao nao sabe — a tela tem que dizer que falhou, nunca
+  // mostrar "enviado" com um protocolo local.
+  // Exigem login desde 29/10: sem token (ou vencido) o backend responde 401 e
+  // a tela leva a pessoa ao Login (sem esconder a ligacao para a recepcao).
   createCall: (payload) =>
-    request('/calls', { method: 'POST', body: JSON.stringify(payload) }, () => fallbackCall(payload)),
+    request('/calls', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }),
   createHelpRequest: (payload) =>
-    request('/calls/help', { method: 'POST', body: JSON.stringify(payload) }, () => fallbackCall(payload)),
+    request('/calls/help', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }),
   createSos: (payload) =>
-    request('/calls/sos', { method: 'POST', body: JSON.stringify(payload) }, () => fallbackCall(payload)),
+    request('/calls/sos', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }),
+  // Andamento do proprio chamado (codigo secreto devolvido ao criar).
+  getCallStatus: (id, token) =>
+    request(`/calls/${id}/status`, { headers: { 'X-Call-Token': token } }),
   getCalls: () => request('/calls', {}, []),
+  // Modo visita exige login (mesma conta do paciente).
   createVisitorAccessRequest: (payload) =>
-    request('/visitor-access', { method: 'POST', body: JSON.stringify(payload) }, () => fallbackVisitorAccess(payload)),
+    request('/visitor-access', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }),
   // accessToken: código secreto que o backend devolve ao criar o pedido; sem
   // ele o backend não mostra o pedido (os ids são sequenciais).
   getVisitorAccessRequest: (id, accessToken) =>
@@ -219,8 +221,11 @@ export const navoraApi = {
   markNotificationRead: (id) => request(`/notifications/${id}/read`, { method: 'PUT', authenticated: true }),
   markAllNotificationsRead: () => request('/notifications/me/read-all', { method: 'PUT', authenticated: true }),
   deleteNotification: (id) => request(`/notifications/${id}`, { method: 'DELETE', authenticated: true }),
-  forgotPassword: (email) => request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }, { ok: true }),
-  resetPassword: (token, newPassword) => request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) }, null),
+  // Sem modo offline: sem conexao, a tela avisa (antes dizia "verifique seu e-mail").
+  forgotPassword: (email) => request('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  // O codigo de 6 digitos so vale junto com o e-mail da conta.
+  resetPassword: (email, token, newPassword) =>
+    request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ email, token, newPassword }) }),
   loginWithGoogle: (idToken) => request('/auth/google', { method: 'POST', body: JSON.stringify({ idToken }) }, null),
   getRoutes: () => request('/routes', {}, []),
   getNavigationBootstrap: () =>

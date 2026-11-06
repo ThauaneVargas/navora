@@ -1,8 +1,10 @@
 export const lightColors = {
   primary: '#7A1021',
   primaryDark: '#4E0712',
-  background: '#F7F8FA',
-  backgroundSoft: '#EEF1F4',
+  // Fundo branco-gelo quase branco (cinza #F3F2F4 ficou pesado, 28/10);
+  // os cards brancos se separam pela borda.
+  background: '#FAF7F8',
+  backgroundSoft: '#F5E9EC',
   surface: '#FFFFFF',
   surfaceAlt: '#FAF6F7',
   text: '#171417',
@@ -14,8 +16,8 @@ export const lightColors = {
   danger: '#B42332',
   success: '#168A4A',
   warning: '#B7791F',
-  bg: '#F7F8FA',
-  bgSoft: '#EEF1F4',
+  bg: '#FAF7F8',
+  bgSoft: '#F5E9EC',
   surfaceSoft: '#FAF6F7',
   primarySoft: '#F5E8EB',
   primaryDeep: '#2D070D',
@@ -27,6 +29,16 @@ export const lightColors = {
   darkCard: '#171922',
   overlay: 'rgba(23, 20, 23, 0.48)',
   attention: '#B7791F',
+  // Bordô sólido com texto branco (SOS, seta da busca, "Continuar").
+  primaryStrong: '#7A1021',
+  // Borda dos cartões de destaque (barra de rota em andamento).
+  accentBorder: '#E3C9CF',
+  // Cabeçalho e rodapé (abas): rosado bem suave, a mesma "moldura" em todas
+  // as telas. Botões do cabeçalho e aba ativa ficam brancos por cima.
+  bar: '#F7ECEF',
+  barBorder: '#EADADF',
+  // Ícone/rótulo de aba inativa: cinza escuro pra leitura fácil.
+  barInactive: '#625D64',
 };
 
 export const darkColors = {
@@ -57,6 +69,12 @@ export const darkColors = {
   darkCard: '#1A1A21',
   overlay: 'rgba(0, 0, 0, 0.58)',
   attention: '#F6B93B',
+  // No escuro o primary é rosa claro; branco em cima dele fica ilegível.
+  primaryStrong: '#B3203A',
+  accentBorder: '#4A2A31',
+  bar: '#1F161A',
+  barBorder: '#3A2A30',
+  barInactive: '#B9B4BC',
 };
 
 export const colors = lightColors;

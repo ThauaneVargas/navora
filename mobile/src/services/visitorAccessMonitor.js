@@ -86,7 +86,7 @@ function normalizeRequest(updated, fallback = {}) {
 
     allowedTime:
       updated?.permission_minutes
-        ? `${updated.permission_minutes} minutos`
+        ? `${updated.permission_minutes} min`
         : updated?.allowed_time ||
           fallback?.allowedTime,
 

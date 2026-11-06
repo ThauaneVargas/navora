@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useApp } from '../context/AppContext';
 import {
   Linking,
   Platform,
@@ -14,16 +15,6 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import * as Location from 'expo-location';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
-const COLORS = {
-  burgundy: '#980027',
-  burgundyDark: '#7D001F',
-  burgundyLight: '#FFF6F8',
-  background: '#F8F9FB',
-  surface: '#FFFFFF',
-  text: '#202124',
-  secondary: '#696B70',
-  border: '#E4E4E6',
-};
 
 const cardShadow = {
   shadowColor: '#121316',
@@ -34,7 +25,7 @@ const cardShadow = {
 };
 
 const softShadow = {
-  shadowColor: COLORS.burgundyDark,
+  shadowColor: '#7D001F',
   shadowOffset: { width: 0, height: 10 },
   shadowOpacity: 0.14,
   shadowRadius: 20,
@@ -75,6 +66,8 @@ const HOSPITAL_ENTRANCES = {
 const MAP_HEIGHT = 196;
 
 export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}, activeHospital }) {
+  const { appColors: colors, t } = useApp();
+  const styles = useThemeStyles();
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const contentMaxWidth = Math.min(width, 430);
@@ -106,18 +99,18 @@ export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}
           </View>
 
           <View style={styles.hero}>
-            <Text style={styles.kicker}>COMO CHEGAR</Text>
+            <Text style={styles.kicker}>{t('externalRoute.kicker')}</Text>
             <Text style={styles.title}>
-              Como chegar{'\n'}
-              <Text style={styles.titleAccent}>ao hospital</Text>
+              {t('externalRoute.titleA')}{'\n'}
+              <Text style={styles.titleAccent}>{t('externalRoute.titleB')}</Text>
             </Text>
             <Text style={styles.subtitle}>
-              Escolha sua entrada e seu app de navegação.{'\n'}
-              Ao chegar, o Navora continua sua rota dentro do hospital.
+              {t('externalRoute.subtitleA')}{'\n'}
+              {t('externalRoute.subtitleB')}
             </Text>
           </View>
 
-          <Text style={styles.selectorTitle}>Escolha a entrada</Text>
+          <Text style={styles.selectorTitle}>{t('externalRoute.chooseEntrance')}</Text>
           <View style={styles.entranceSelector}>
             {Object.values(HOSPITAL_ENTRANCES).map((option) => (
               <EntranceCard
@@ -135,32 +128,32 @@ export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}
 
           <View style={[styles.addressCard, cardShadow]}>
             <View style={styles.addressIconBox}>
-              <MaterialCommunityIcons name="map-marker" size={25} color={COLORS.burgundy} />
+              <MaterialCommunityIcons name="map-marker" size={25} color={colors.primary} />
             </View>
             <View style={styles.addressCopy}>
-              <Text style={styles.addressLabel}>ENDEREÇO</Text>
+              <Text style={styles.addressLabel}>{t('externalRoute.address')}</Text>
               <Text style={styles.hospitalName}>{entrance.hospitalName}</Text>
               <Text style={styles.address}>{entrance.address}</Text>
               <View style={styles.confirmedRow}>
-                <Text style={styles.confirmedText}>{entrance.label}</Text>
-                <MaterialCommunityIcons name="information-outline" size={14} color={COLORS.burgundy} />
+                <Text style={styles.confirmedText}>{t(`externalRoute.entrance_${entrance.id}`)}</Text>
+                <MaterialCommunityIcons name="information-outline" size={14} color={colors.primary} />
               </View>
             </View>
           </View>
 
           <RouteButton
             icon="google-maps"
-            iconBackground="#FFF6F8"
-            title="Abrir no Google Maps"
-            subtitle="Traçar rota até o hospital"
+            iconBackground={colors.surfaceAlt}
+            title={t('externalRoute.openGoogle')}
+            subtitle={t('externalRoute.routeToHospital')}
             onPress={() => Linking.openURL(mapsUrl)}
           />
 
           <RouteButton
             icon="waze"
             iconBackground="#EAF7FF"
-            title="Abrir no Waze"
-            subtitle="Traçar rota até o hospital"
+            title={t('externalRoute.openWaze')}
+            subtitle={t('externalRoute.routeToHospital')}
             onPress={() => Linking.openURL(wazeUrl)}
           />
 
@@ -170,8 +163,8 @@ export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}
           >
             <MaterialCommunityIcons name="map-marker" size={28} color="#FFFFFF" />
             <View style={styles.arrivalCopy}>
-              <Text style={styles.arrivalTitle}>Cheguei ao hospital</Text>
-              <Text style={styles.arrivalSubtitle}>Confirmar minha localização</Text>
+              <Text style={styles.arrivalTitle}>{t('externalRoute.arrived')}</Text>
+              <Text style={styles.arrivalSubtitle}>{t('externalRoute.confirmLocation')}</Text>
             </View>
           </Pressable>
         </View>
@@ -181,6 +174,8 @@ export default function ExternalRouteScreen({ navigate, goBack, routeParams = {}
 }
 
 function EntranceCard({ entrance, selected, onPress }) {
+  const { appColors: colors, t } = useApp();
+  const styles = useThemeStyles();
   return (
     <Pressable
       onPress={onPress}
@@ -193,30 +188,34 @@ function EntranceCard({ entrance, selected, onPress }) {
       <MaterialCommunityIcons
         name={entrance.id === 'sus' ? 'hospital-building' : 'office-building-marker-outline'}
         size={24}
-        color={selected ? COLORS.burgundy : COLORS.secondary}
+        color={selected ? colors.primary : colors.muted}
       />
       <View style={styles.entranceCopy}>
-        <Text style={[styles.entranceText, selected && styles.entranceTextSelected]}>{entrance.shortName}</Text>
+        <Text style={[styles.entranceText, selected && styles.entranceTextSelected]}>{t(`externalRoute.short_${entrance.id}`)}</Text>
         <Text style={styles.entranceSubtitle} numberOfLines={1}>{entrance.hospitalName}</Text>
       </View>
       <MaterialCommunityIcons
         name={selected ? 'check-circle' : 'circle-outline'}
         size={20}
-        color={selected ? COLORS.burgundy : '#B5BAC2'}
+        color={selected ? colors.primary : '#B5BAC2'}
       />
     </Pressable>
   );
 }
 
 function IconButton({ icon, onPress }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.iconButton, pressed && styles.pressed, cardShadow]}>
-      <MaterialCommunityIcons name={icon} size={24} color={COLORS.text} />
+      <MaterialCommunityIcons name={icon} size={24} color={colors.text} />
     </Pressable>
   );
 }
 
 function MapPreview({ entrance }) {
+  const { appColors: colors, t } = useApp();
+  const styles = useThemeStyles();
   const { coordinates } = entrance;
   const mapRef = useRef(null);
   const [hasLocationPermission, setHasLocationPermission] = useState(false);
@@ -256,46 +255,55 @@ function MapPreview({ entrance }) {
         showsMyLocationButton={false}
         toolbarEnabled={false}
       >
-        <Marker coordinate={coordinates} title={entrance.hospitalName} description={entrance.label} />
+        <Marker coordinate={coordinates} title={entrance.hospitalName} description={t(`externalRoute.entrance_${entrance.id}`)} />
       </MapView>
 
       <View style={styles.entranceMapTag}>
-        <Text style={styles.entranceMapText} numberOfLines={1}>{entrance.label}</Text>
+        <Text style={styles.entranceMapText} numberOfLines={1}>{t(`externalRoute.entrance_${entrance.id}`)}</Text>
       </View>
 
       <Pressable onPress={recenter} style={({ pressed }) => [styles.locateButton, pressed && styles.pressed]}>
-        <MaterialCommunityIcons name="crosshairs-gps" size={18} color={COLORS.text} />
+        <MaterialCommunityIcons name="crosshairs-gps" size={18} color={colors.text} />
       </Pressable>
     </View>
   );
 }
 
 function RouteButton({ icon, iconBackground, title, subtitle, onPress }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.routeButton, pressed && styles.pressed, cardShadow]}>
       <View style={[styles.routeIconBox, { backgroundColor: iconBackground }]}>
-        <MaterialCommunityIcons name={icon} size={30} color={icon === 'waze' ? '#202124' : '#4285F4'} />
+        <MaterialCommunityIcons name={icon} size={30} color={icon === 'waze' ? colors.text : '#4285F4'} />
       </View>
       <View style={styles.routeCopy}>
         <Text style={styles.routeTitle}>{title}</Text>
         <Text style={styles.routeSubtitle}>{subtitle}</Text>
       </View>
-      <MaterialCommunityIcons name="open-in-new" size={21} color={COLORS.burgundy} />
+      <MaterialCommunityIcons name="open-in-new" size={21} color={colors.primary} />
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+// Estilos acompanham o tema (claro/escuro); antes usavam a paleta fixa do
+// tema claro e não mudavam no modo noturno.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+const createStyles = (colors) => StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
 
   scrollContent: {
     flexGrow: 1,
     paddingTop: 14,
     paddingBottom: 18,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.background,
   },
 
   content: {
@@ -317,8 +325,8 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -330,7 +338,7 @@ const styles = StyleSheet.create({
   },
 
   kicker: {
-    color: COLORS.burgundy,
+    color: colors.primary,
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '900',
@@ -339,19 +347,19 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: COLORS.text,
+    color: colors.text,
     fontSize: 32,
     lineHeight: 34,
     fontWeight: '800',
   },
 
   titleAccent: {
-    color: COLORS.burgundy,
+    color: colors.primary,
   },
 
   subtitle: {
     width: '100%',
-    color: COLORS.secondary,
+    color: colors.muted,
     fontSize: 13,
     lineHeight: 18,
     fontWeight: '600',
@@ -359,7 +367,7 @@ const styles = StyleSheet.create({
   },
 
   selectorTitle: {
-    color: COLORS.text,
+    color: colors.text,
     fontSize: 14,
     lineHeight: 18,
     fontWeight: '900',
@@ -377,8 +385,8 @@ const styles = StyleSheet.create({
     minHeight: 64,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     paddingHorizontal: 10,
     paddingVertical: 9,
     flexDirection: 'row',
@@ -387,8 +395,8 @@ const styles = StyleSheet.create({
   },
 
   entranceCardSelected: {
-    borderColor: COLORS.burgundy,
-    backgroundColor: COLORS.burgundyLight,
+    borderColor: colors.primary,
+    backgroundColor: colors.surfaceAlt,
   },
 
   entranceCopy: {
@@ -397,18 +405,18 @@ const styles = StyleSheet.create({
   },
 
   entranceText: {
-    color: COLORS.text,
+    color: colors.text,
     fontSize: 13,
     lineHeight: 16,
     fontWeight: '900',
   },
 
   entranceTextSelected: {
-    color: COLORS.burgundy,
+    color: colors.primary,
   },
 
   entranceSubtitle: {
-    color: COLORS.secondary,
+    color: colors.muted,
     fontSize: 10,
     lineHeight: 13,
     fontWeight: '700',
@@ -417,7 +425,7 @@ const styles = StyleSheet.create({
 
   mapCard: {
     borderRadius: 20,
-    backgroundColor: COLORS.surface,
+    backgroundColor: colors.surface,
     padding: 6,
     marginTop: 0,
     marginBottom: 10,
@@ -426,7 +434,7 @@ const styles = StyleSheet.create({
   mapSurface: {
     height: MAP_HEIGHT,
     borderRadius: 18,
-    backgroundColor: '#E7EDF2',
+    backgroundColor: colors.backgroundSoft,
     overflow: 'hidden',
     position: 'relative',
   },
@@ -439,14 +447,14 @@ const styles = StyleSheet.create({
     minHeight: 28,
     maxWidth: 156,
     borderRadius: 14,
-    backgroundColor: COLORS.surface,
+    backgroundColor: colors.surface,
     paddingHorizontal: 10,
     justifyContent: 'center',
     ...cardShadow,
   },
 
   entranceMapText: {
-    color: COLORS.burgundy,
+    color: colors.primary,
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '900',
@@ -460,7 +468,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: COLORS.surface,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     ...cardShadow,
@@ -468,9 +476,9 @@ const styles = StyleSheet.create({
 
   addressCard: {
     borderRadius: 16,
-    backgroundColor: COLORS.burgundyLight,
+    backgroundColor: colors.surfaceAlt,
     borderWidth: 1,
-    borderColor: '#F4DDE4',
+    borderColor: colors.borderStrong,
     padding: 14,
     marginBottom: 14,
     flexDirection: 'row',
@@ -482,7 +490,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 12,
-    backgroundColor: '#FFE8EF',
+    backgroundColor: colors.iconBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -493,7 +501,7 @@ const styles = StyleSheet.create({
   },
 
   addressLabel: {
-    color: COLORS.secondary,
+    color: colors.muted,
     fontSize: 10,
     lineHeight: 13,
     fontWeight: '900',
@@ -501,7 +509,7 @@ const styles = StyleSheet.create({
   },
 
   hospitalName: {
-    color: COLORS.text,
+    color: colors.text,
     fontSize: 15,
     lineHeight: 19,
     fontWeight: '900',
@@ -509,7 +517,7 @@ const styles = StyleSheet.create({
   },
 
   address: {
-    color: COLORS.secondary,
+    color: colors.muted,
     fontSize: 12,
     lineHeight: 17,
     fontWeight: '700',
@@ -524,7 +532,7 @@ const styles = StyleSheet.create({
   },
 
   confirmedText: {
-    color: COLORS.burgundy,
+    color: colors.primary,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '900',
@@ -534,8 +542,8 @@ const styles = StyleSheet.create({
     minHeight: 60,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     paddingHorizontal: 14,
     paddingVertical: 8,
     marginBottom: 10,
@@ -558,14 +566,14 @@ const styles = StyleSheet.create({
   },
 
   routeTitle: {
-    color: COLORS.text,
+    color: colors.text,
     fontSize: 15,
     lineHeight: 19,
     fontWeight: '900',
   },
 
   routeSubtitle: {
-    color: COLORS.secondary,
+    color: colors.muted,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '600',
@@ -575,7 +583,7 @@ const styles = StyleSheet.create({
   arrivalButton: {
     height: 66,
     borderRadius: 18,
-    backgroundColor: COLORS.burgundy,
+    backgroundColor: colors.primary,
     paddingHorizontal: 22,
     marginTop: 4,
     flexDirection: 'row',

@@ -5,6 +5,7 @@ import {
   AccessSubject,
   VisitorAccessStatus,
 } from '@prisma/client';
+import { secretTokenMatches } from '../common/secret-token';
 import { PrismaService } from '../database/prisma.service';
 import { AccessCheckDto } from './dto/access-check.dto';
 
@@ -78,7 +79,13 @@ export class NavigationAccessService {
       : this.defaultDecision(destination.accessLevel, payload.subject);
     const visitorAuthorization =
       payload.subject === AccessSubject.VISITOR
-        ? await this.evaluateVisitorAuthorization(payload.visitor_access_request_id, destination.id, destination.name, evaluatedAt)
+        ? await this.evaluateVisitorAuthorization(
+            payload.visitor_access_request_id,
+            payload.visitor_access_token,
+            destination.id,
+            destination.name,
+            evaluatedAt,
+          )
         : undefined;
 
     let decision = baseEvaluation.decision;
@@ -90,6 +97,13 @@ export class NavigationAccessService {
     ) {
       decision = AccessDecision.ALLOW;
       reason = 'Acesso liberado por autorizacao valida da recepcao.';
+    }
+
+    // Private e SUS sao unidades separadas: destino da outra unidade vira
+    // orientacao na recepcao da unidade atual (mesma regra do app offline).
+    if (decision !== AccessDecision.BLOCK && this.isOtherUnit(payload.current_area_code, destination.area?.code)) {
+      decision = AccessDecision.REDIRECT_TO_RECEPTION;
+      reason = 'Este destino pertence a outra unidade do hospital. Procure a recepcao para orientacao.';
     }
 
     const redirectDestination = await this.resolveRedirectDestination(
@@ -225,13 +239,22 @@ export class NavigationAccessService {
     return Number(hour) * 60 + Number(minute);
   }
 
-  private async evaluateVisitorAuthorization(requestId: number | undefined, destinationId: number, destinationName: string, now: Date) {
+  private async evaluateVisitorAuthorization(
+    requestId: number | undefined,
+    accessToken: string | undefined,
+    destinationId: number,
+    destinationName: string,
+    now: Date,
+  ) {
     if (!requestId) {
       return { status: null, valid: false, reason: 'Nenhuma autorizacao informada.' };
     }
 
     const request = await this.prisma.visitorAccessRequest.findUnique({ where: { id: requestId } });
-    if (!request) {
+    // Sem o codigo secreto do proprio pedido, a autorizacao nao vale: os ids
+    // sao sequenciais e qualquer um poderia usar a liberacao de outra pessoa.
+    // Mesma resposta de "nao encontrado" para nao confirmar quais ids existem.
+    if (!request || !secretTokenMatches(request.accessTokenHash, accessToken)) {
       return { status: null, valid: false, reason: 'Autorizacao de visitante nao encontrada.' };
     }
 
@@ -300,18 +323,48 @@ export class NavigationAccessService {
     return 'shared-lost';
   }
 
+  // Usado quando nenhuma regra cadastrada casa. Fecha por padrao: so libera
+  // o que o perfil comprovadamente pode acessar (mesmas listas do app offline,
+  // mobile/src/data/routes.js -> canAccessDestination).
   private defaultDecision(accessLevel: string, subject: AccessSubject): RuleEvaluation {
+    const timezone = 'America/Sao_Paulo';
     if (accessLevel === 'restricted') {
-      return { decision: AccessDecision.BLOCK, reason: this.defaultReason(AccessDecision.BLOCK), timezone: 'America/Sao_Paulo' };
+      return { decision: AccessDecision.BLOCK, reason: this.defaultReason(AccessDecision.BLOCK), timezone };
     }
-    if (subject === AccessSubject.VISITOR && accessLevel === 'visitor_authorization') {
+
+    if (subject === AccessSubject.VISITOR) {
+      if (accessLevel === 'public' || accessLevel === 'visitor_allowed') {
+        return { decision: AccessDecision.ALLOW, reason: this.defaultReason(AccessDecision.ALLOW), timezone };
+      }
+      // Exames, atendimento, visita/internacao: so com liberacao da recepcao.
       return {
         decision: AccessDecision.REQUIRE_AUTHORIZATION,
         reason: this.defaultReason(AccessDecision.REQUIRE_AUTHORIZATION),
-        timezone: 'America/Sao_Paulo',
+        timezone,
       };
     }
-    return { decision: AccessDecision.ALLOW, reason: this.defaultReason(AccessDecision.ALLOW), timezone: 'America/Sao_Paulo' };
+
+    if (accessLevel === 'public' || accessLevel === 'patient' || accessLevel === 'visitor_allowed') {
+      return { decision: AccessDecision.ALLOW, reason: this.defaultReason(AccessDecision.ALLOW), timezone };
+    }
+
+    // Paciente indo para visita/internacao (ou nivel desconhecido): a recepcao orienta.
+    return {
+      decision: AccessDecision.REDIRECT_TO_RECEPTION,
+      reason: 'Para esta area, procure a recepcao para orientacao.',
+      timezone,
+    };
+  }
+
+  private isOtherUnit(currentAreaCode?: string, destinationAreaCode?: string) {
+    const units = ['private', 'sus'];
+    return (
+      !!currentAreaCode &&
+      !!destinationAreaCode &&
+      units.includes(currentAreaCode) &&
+      units.includes(destinationAreaCode) &&
+      currentAreaCode !== destinationAreaCode
+    );
   }
 
   private defaultReason(decision: AccessDecision) {

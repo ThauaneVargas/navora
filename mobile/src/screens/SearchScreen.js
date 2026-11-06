@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
 import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import { useFavorites } from '../services/favoritesStorage';
 import {
   canAccessDestination,
   destinations,
@@ -31,13 +32,19 @@ export default function SearchScreen({
   navigationData,
   navigationSource = 'fallback',
 }) {
-  const { appColors } = useApp();
+  const { appColors, t } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
   const [query, setQuery] = useState(routeParams.query || '');
   const [filter, setFilter] = useState(routeParams.category || 'Todos');
+  // O ícone de filtro da busca era só desenho: agora mostra/esconde os filtros.
+  const [showFilters, setShowFilters] = useState(true);
   const [selectedDestination, setSelectedDestination] = useState(null);
+  // "Destinos favoritos" do Perfil abre já filtrando; a ★ de cada linha
+  // favorita/desfavorita.
+  const [onlyFavorites, setOnlyFavorites] = useState(Boolean(routeParams.favoritesOnly));
+  const { isFavorite, toggleFavorite } = useFavorites();
   const area = getAreaById(userProfile.area);
-  const profileLabel = userProfile.type === 'visitor' ? 'Visitante' : 'Paciente';
+  const profileLabel = userProfile.type === 'visitor' ? t('common.visitor') : t('common.patient');
   const sourceDestinations = navigationSource === 'api' ? navigationData?.destinations || destinations : destinations;
   const isVisitor = userProfile.type === 'visitor';
   const visitorApproved = isVisitor && ['APPROVED', 'AUTHORIZED'].includes(visitorAccessRequest?.status);
@@ -69,9 +76,10 @@ export default function SearchScreen({
       const matchesAccess = baseAccess && visitorCanSeeDestination(destination);
       const matchesFilter = filter === 'Todos' || destination.category === filter;
       const matchesQuery = !q || normalize(`${destination.name} ${destination.category}`).includes(q);
-      return matchesAccess && matchesFilter && matchesQuery;
+      const matchesFavorite = !onlyFavorites || isFavorite(destination);
+      return matchesAccess && matchesFilter && matchesQuery && matchesFavorite;
     });
-  }, [filter, navigationSource, query, sourceDestinations, userProfile, visitorApproved, visitorAccessRequest]);
+  }, [filter, isFavorite, navigationSource, onlyFavorites, query, sourceDestinations, userProfile, visitorApproved, visitorAccessRequest]);
 
   const wrongAreaDestination = useMemo(() => {
     if (navigationSource === 'api') return null;
@@ -90,12 +98,12 @@ export default function SearchScreen({
     if (!destination) return;
     const currentReception = getReceptionDestination(userProfile.area);
     const destinationArea = getAreaById(destination.area);
-    const message = `Este destino pertence a outro ambiente do hospital ativo.\nVocê está em ${area.name}.\nProcure a recepção para orientação segura.`;
+    const message = t('search.otherAreaMessage', { area: area.name });
 
     Alert.alert(destinationArea.name, message, [
       { text: `Levar ate ${currentReception?.name}`, onPress: () => onStartRoute?.(currentReception) },
-      { text: 'Abrir assistente', onPress: () => navigate('Assistant') },
-      { text: 'Cancelar', style: 'cancel' },
+      { text: t('search.openAssistant'), onPress: () => navigate('Assistant') },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
@@ -104,11 +112,11 @@ export default function SearchScreen({
     const status = getExternalExamAccessStatus(destination);
 
     Alert.alert(
-      'Atendimento externo',
-      `${destination.name} recebe pacientes externos das ${status.label.replace('Atendimento externo: ', '')}.\nProcure a recepção para orientação ou aguarde o horário permitido.`,
+      t('search.externalTitle'),
+      t('search.externalMessage', { name: destination.name, hours: status.label.replace('Atendimento externo: ', '') }),
       [
         { text: `Levar ate ${reception?.name}`, onPress: () => onStartRoute?.(reception) },
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
       ]
     );
   };
@@ -131,7 +139,7 @@ export default function SearchScreen({
     }
 
     if (userProfile.type === 'patient') {
-      Alert.alert('Acesso restrito', 'Este destino não está liberado para sua área atual. Siga para a recepção ou use apenas serviços da unidade ativa.');
+      Alert.alert(t('common.restrictedAccess'), t('search.notReleased'));
       return;
     }
 
@@ -157,13 +165,13 @@ export default function SearchScreen({
 
   return (
     <Screen withBottomTabs>
-      <Header title="Navegar" subtitle="Buscar destino, revisar rota e iniciar" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title={t('search.title')} subtitle={t('search.subtitle')} centerTitle tabRoot onMenu={() => navigate('Menu')} onNotifications={() => navigate('Notifications')} />
 
       <View style={[styles.areaCard, shadows.card]}>
         <MaterialCommunityIcons name="map-marker-radius-outline" size={20} color={appColors.primary} />
         <View style={styles.copy}>
-          <Text style={styles.areaTitle}>Area atual: {area.name}</Text>
-          <Text style={styles.areaMeta}>Entrada: {area.entryLabel} - Perfil: {profileLabel}</Text>
+          <Text style={styles.areaTitle}>{t('search.currentArea', { name: area.name })}</Text>
+          <Text style={styles.areaMeta}>{t('search.areaMeta', { entry: area.entryLabel, profile: profileLabel })}</Text>
         </View>
       </View>
 
@@ -173,18 +181,42 @@ export default function SearchScreen({
           value={query}
           onChangeText={setQuery}
           onSubmitEditing={() => wrongAreaDestination && openWrongAreaAlert()}
-          placeholder="Buscar setor, servico ou destino"
+          placeholder={t('search.placeholder')}
           placeholderTextColor={appColors.lightText}
           style={styles.input}
-          accessibilityLabel="Buscar destino"
+          accessibilityLabel={t('search.searchLabel')}
         />
-        <MaterialCommunityIcons name="tune-variant" size={21} color={appColors.primary} />
+        {query ? (
+          <Pressable
+            onPress={() => setQuery('')}
+            accessibilityRole="button"
+            accessibilityLabel={t('search.clear')}
+            hitSlop={10}
+            style={styles.searchAction}
+          >
+            <MaterialCommunityIcons name="close-circle" size={21} color={appColors.muted} />
+          </Pressable>
+        ) : null}
+        <Pressable
+          onPress={() => setShowFilters((value) => !value)}
+          accessibilityRole="button"
+          accessibilityLabel={showFilters ? t('search.hideFilters') : t('search.showFilters')}
+          accessibilityState={{ expanded: showFilters }}
+          hitSlop={10}
+          style={[styles.searchAction, filter !== 'Todos' && styles.searchActionActive]}
+        >
+          <MaterialCommunityIcons
+            name="tune-variant"
+            size={21}
+            color={filter !== 'Todos' ? '#FFFFFF' : appColors.primary}
+          />
+        </Pressable>
       </View>
 
       {wrongAreaDestination ? (
         <Pressable onPress={() => openWrongAreaAlert()} style={styles.warningBox}>
           <MaterialCommunityIcons name="alert-circle-outline" size={18} color={appColors.primary} />
-          <Text style={styles.warningText}>Destino de outra area. Toque para orientacao.</Text>
+          <Text style={styles.warningText}>{t('search.otherArea')}</Text>
         </Pressable>
       ) : null}
 
@@ -193,19 +225,49 @@ export default function SearchScreen({
           <MaterialCommunityIcons name="shield-check-outline" size={17} color={appColors.primary} />
           <Text style={styles.accessNoticeText}>
             {visitorApproved
-              ? 'Apenas áreas autorizadas estão disponíveis para navegação.'
-              : 'Antes da liberação, apenas recepção, banheiro e áreas públicas aparecem aqui.'}
+              ? t('search.visitorApproved')
+              : t('search.visitorPending')}
           </Text>
         </View>
       ) : null}
 
-      <View style={styles.filters}>
-        {filters.map((item) => (
-          <Pressable key={item} onPress={() => setFilter(item)} style={[styles.filter, filter === item && styles.filterActive]}>
-            <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>{item}</Text>
+      {showFilters ? (
+        <View style={styles.filters}>
+          <Pressable
+            onPress={() => setOnlyFavorites((value) => !value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: onlyFavorites }}
+            style={[styles.filter, styles.favoriteFilter, onlyFavorites && styles.filterActive]}
+          >
+            <MaterialCommunityIcons
+              name={onlyFavorites ? 'star' : 'star-outline'}
+              size={16}
+              color={onlyFavorites ? '#FFFFFF' : appColors.primary}
+            />
+            <Text style={[styles.filterText, onlyFavorites && styles.filterTextActive]}>
+              {t('search.favorites')}
+            </Text>
           </Pressable>
-        ))}
-      </View>
+          {filters.map((item) => (
+            <Pressable
+              key={item}
+              onPress={() => setFilter(item)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: filter === item }}
+              style={[styles.filter, filter === item && styles.filterActive]}
+            >
+              <Text style={[styles.filterText, filter === item && styles.filterTextActive]}>
+                {t(`search.filters.${item}`)}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
+
+      <Text style={styles.resultCount} accessibilityLiveRegion="polite">
+        {visibleDestinations.length === 1 ? t('search.countOne') : t('search.countMany', { n: visibleDestinations.length })}
+        {filter !== 'Todos' ? t('search.inCategory', { category: t(`search.filters.${filter}`) }) : ''}
+      </Text>
 
       <View style={styles.list}>
         {visibleDestinations.map((item) => {
@@ -213,12 +275,12 @@ export default function SearchScreen({
           const outsideExternalHours =
             navigationSource !== 'api' && userProfile.type !== 'visitor' && externalAccess.controlled && !externalAccess.allowed;
           const accessLabel = item.accessLevel === 'visitor_authorization'
-            ? 'Precisa autorizacao'
+            ? t('search.needsAuthorization')
             : item.accessLevel === 'restricted'
-              ? 'Acesso restrito'
+              ? t('common.restrictedAccess')
               : outsideExternalHours
-                ? 'Fora do horario'
-                : 'Rota disponível';
+                ? t('search.outsideHours')
+                : t('search.routeAvailable');
 
           return (
             <Pressable
@@ -238,23 +300,36 @@ export default function SearchScreen({
               </View>
               <View style={styles.copy}>
                 <Text numberOfLines={1} style={styles.name}>{item.name}</Text>
-                <Text numberOfLines={1} style={styles.type}>{item.category} - {(typeof item.sector === 'object' ? item.sector?.name : item.sector) || 'Setor informado pela rota'}</Text>
-                <Text numberOfLines={1} style={styles.floor}>{item.floor || 'Andar não informado'}</Text>
+                <Text numberOfLines={1} style={styles.type}>{item.category} - {(typeof item.sector === 'object' ? item.sector?.name : item.sector) || t('search.sectorFallback')}</Text>
+                <Text numberOfLines={1} style={styles.floor}>{item.floor || t('search.floorUnknown')}</Text>
               </View>
               <View style={styles.metaBox}>
                 <Text numberOfLines={1} style={[styles.meta, outsideExternalHours && styles.metaMuted]}>{item.distance}</Text>
-                <Text numberOfLines={1} style={styles.time}>{item.time || 'Tempo indisponível'}</Text>
+                <Text numberOfLines={1} style={styles.time}>{item.time || t('search.timeUnknown')}</Text>
                 <Text numberOfLines={1} style={[styles.auth, outsideExternalHours && styles.metaMuted]}>{accessLabel}</Text>
               </View>
-              <MaterialCommunityIcons name="chevron-right" size={18} color={appColors.muted} />
+              <Pressable
+                onPress={() => toggleFavorite(item)}
+                accessibilityRole="button"
+                accessibilityLabel={isFavorite(item) ? t('search.unfavoriteA11y', { name: item.name }) : t('search.favoriteA11y', { name: item.name })}
+                accessibilityState={{ selected: isFavorite(item) }}
+                hitSlop={6}
+                style={({ pressed }) => [styles.starButton, pressed && styles.pressed]}
+              >
+                <MaterialCommunityIcons
+                  name={isFavorite(item) ? 'star' : 'star-outline'}
+                  size={24}
+                  color={isFavorite(item) ? appColors.warning : appColors.muted}
+                />
+              </Pressable>
             </Pressable>
           );
         })}
         {!visibleDestinations.length ? (
           <View style={styles.emptyState}>
-            <MaterialCommunityIcons name="map-search-outline" size={32} color={appColors.primary} />
-            <Text style={styles.emptyTitle}>Destino não encontrado</Text>
-            <Text style={styles.emptyText}>Tente outro termo ou procure a recepção para orientação.</Text>
+            <MaterialCommunityIcons name={onlyFavorites ? 'star-outline' : 'map-search-outline'} size={32} color={appColors.primary} />
+            <Text style={styles.emptyTitle}>{onlyFavorites ? t('search.noFavorites') : t('search.notFound')}</Text>
+            <Text style={styles.emptyText}>{onlyFavorites ? t('search.noFavoritesSub') : t('search.notFoundSub')}</Text>
           </View>
         ) : null}
       </View>
@@ -266,7 +341,7 @@ export default function SearchScreen({
               <MaterialCommunityIcons name="routes" size={22} color={appColors.primary} />
             </View>
             <View style={styles.copy}>
-              <Text style={styles.previewKicker}>Pré-rota</Text>
+              <Text style={styles.previewKicker}>{t('search.preRoute')}</Text>
               <Text style={styles.previewTitle}>{selectedDestination.name}</Text>
             </View>
             <Pressable onPress={() => setSelectedDestination(null)} style={styles.closePreview}>
@@ -274,21 +349,21 @@ export default function SearchScreen({
             </Pressable>
           </View>
           <View style={styles.previewGrid}>
-            <PreviewInfo label="Origem" value={userProfile.currentLocation || area.entryLabel || 'Entrada atual'} />
-            <PreviewInfo label="Destino" value={selectedDestination.name} />
-            <PreviewInfo label="Andar" value={selectedDestination.floor || 'Não informado'} />
-            <PreviewInfo label="Estimativa" value={[selectedDestination.distance, selectedDestination.time].filter(Boolean).join(' - ') || 'Indisponível'} />
+            <PreviewInfo label={t('search.origin')} value={userProfile.currentLocation || area.entryLabel || t('search.currentEntrance')} />
+            <PreviewInfo label={t('search.destination')} value={selectedDestination.name} />
+            <PreviewInfo label={t('search.floor')} value={selectedDestination.floor || t('common.notInformed')} />
+            <PreviewInfo label={t('search.estimate')} value={[selectedDestination.distance, selectedDestination.time].filter(Boolean).join(' - ') || t('common.unavailable')} />
           </View>
           <View style={styles.accessRow}>
             <MaterialCommunityIcons name="wheelchair-accessibility" size={17} color={appColors.primary} />
             <Text style={styles.accessText}>
               {userProfile?.accessibility?.avoidStairs || userProfile?.accessibility?.wheelchair
-                ? 'Preferências acessíveis consideradas quando a rota suporta.'
-                : 'Acessibilidade pode ser ajustada no Perfil ou durante a rota.'}
+                ? t('search.accessibleConsidered')
+                : t('search.accessibleAdjust')}
             </Text>
           </View>
           <Pressable onPress={() => startSelectedDestination(selectedDestination)} style={({ pressed }) => [styles.startButton, pressed && styles.pressed]}>
-            <Text style={styles.startText}>Iniciar navegação</Text>
+            <Text style={styles.startText}>{t('search.startNavigation')}</Text>
             <MaterialCommunityIcons name="navigation-variant" size={18} color="#FFFFFF" />
           </Pressable>
         </View>
@@ -365,18 +440,30 @@ const createStyles = (colors) => StyleSheet.create({
   },
   accessNoticeText: { flex: 1, color: colors.primary, fontSize: 12, lineHeight: 16, fontWeight: '900' },
   filters: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 12, marginBottom: 8 },
+  searchAction: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  searchActionActive: { backgroundColor: colors.primary },
+  resultCount: { color: colors.muted, fontSize: 13, fontWeight: '800', marginTop: 4, marginBottom: 2 },
   filter: {
-    minHeight: 34,
-    borderRadius: 17,
-    paddingHorizontal: 12,
+    minHeight: 40,
+    borderRadius: 20,
+    paddingHorizontal: 16,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
   },
+  favoriteFilter: { flexDirection: 'row', gap: 6 },
   filterActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  filterText: { color: colors.muted, fontSize: 11, fontWeight: '900' },
+  // ★ do tamanho de um botão (44 px de toque com o hitSlop).
+  starButton: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  filterText: { color: colors.muted, fontSize: 13, fontWeight: '900' },
   filterTextActive: { color: '#FFFFFF' },
   list: {
     marginTop: 6,

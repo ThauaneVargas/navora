@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   Platform,
-  ScrollView,
   StyleSheet,
   View,
   useWindowDimensions,
@@ -13,6 +12,10 @@ import {
 } from 'react-native-safe-area-context';
 
 import { StatusBar } from 'expo-status-bar';
+
+import KeyboardAwareScrollView from './KeyboardAwareScrollView';
+
+import { useRouteBarSpace } from './ActiveRouteBar';
 
 import { useApp } from '../context/AppContext';
 
@@ -33,9 +36,14 @@ export default function Screen({
   dark = false,
   padded = true,
   withBottomTabs = false,
+  // false quando a própria tela pinta a área da barra de status (ex.: AppHeader
+  // branco da Início) — senão o inset do topo é aplicado duas vezes.
+  topInset = true,
 }) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  // Barra "Rota em andamento" acima das abas: a rolagem ganha esse espaço.
+  const routeBarSpace = useRouteBarSpace();
 
   const {
     isDark,
@@ -68,9 +76,12 @@ export default function Screen({
   // Para telas com BottomTabs, não incluir 'bottom' nas edges do SafeAreaView
   // — o BottomTabs gerencia o inset inferior via useSafeAreaInsets próprio.
   // Isso evita dupla contagem do inset (SafeAreaView + paddingBottom do BottomTabs).
-  const safeAreaEdges = withBottomTabs
-    ? ['top', 'left', 'right']
-    : ['top', 'left', 'right', 'bottom'];
+  const safeAreaEdges = [
+    ...(topInset ? ['top'] : []),
+    'left',
+    'right',
+    ...(withBottomTabs ? [] : ['bottom']),
+  ];
 
   // Padding inferior do conteúdo scrollável:
   // withBottomTabs: altura do BottomTabs (62) + inset inferior do dispositivo + folga
@@ -81,7 +92,7 @@ export default function Screen({
   );
 
   const bottomPadding = withBottomTabs
-    ? 62 + bottomInset + 18
+    ? 62 + bottomInset + 18 + routeBarSpace
     : 18;
 
   const contentStyle = [
@@ -96,6 +107,8 @@ export default function Screen({
     },
   ];
 
+  // A área segura (faixa da hora/bateria e barra de gestos) leva a cor do
+  // cabeçalho/rodapé (bar); o conteúdo fica no fundo cinza-gelo (bg).
   if (!scroll) {
     return (
       <SafeAreaView
@@ -105,7 +118,7 @@ export default function Screen({
 
           {
             backgroundColor:
-              appColors.bg,
+              appColors.bar,
           },
         ]}
       >
@@ -118,6 +131,9 @@ export default function Screen({
             styles.inner,
 
             {
+              backgroundColor:
+                appColors.bg,
+
               maxWidth:
                 IS_WEB
                   ? APP_MAX_WIDTH
@@ -150,7 +166,7 @@ export default function Screen({
 
         {
           backgroundColor:
-            appColors.bg,
+            appColors.bar,
         },
       ]}
     >
@@ -163,6 +179,9 @@ export default function Screen({
           styles.inner,
 
           {
+            backgroundColor:
+              appColors.bg,
+
             maxWidth:
               IS_WEB
                 ? APP_MAX_WIDTH
@@ -170,10 +189,13 @@ export default function Screen({
           },
         ]}
       >
-        <ScrollView
+        <KeyboardAwareScrollView
           style={styles.scroll}
           contentContainerStyle={
             contentStyle
+          }
+          minBottomPadding={
+            bottomPadding
           }
           showsVerticalScrollIndicator={
             false
@@ -186,7 +208,7 @@ export default function Screen({
           overScrollMode="never"
         >
           {children}
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </View>
     </SafeAreaView>
   );

@@ -49,8 +49,6 @@ function makeHarness() {
       const now = new Date('2026-01-01T00:00:00.000Z');
       const profile = {
         id: nextProfileId++,
-        patientCode: null,
-        birthDate: null,
         accessibility: {},
         createdAt: now,
         updatedAt: now,
@@ -129,8 +127,6 @@ async function run() {
     password: 'senha123',
     name: 'Paciente Demo',
     phone: '21999999999',
-    patientCode: 'PAT-100',
-    birthDate: '1990-01-10',
     accessibility: {
       wheelchair: true,
       avoidStairs: true,
@@ -138,7 +134,6 @@ async function run() {
       visualImpairment: true,
       diagnosis: true,
     } as any,
-    notes: '  Alergia a dipirona  ',
     acceptedPrivacyPolicy: true,
     privacyPolicyVersion: '2026-10-22',
   });
@@ -156,7 +151,10 @@ async function run() {
     { wheelchair: true, avoidStairs: true, highContrast: true, visualImpairment: true },
     'accessibility ignora campos nao permitidos (e guarda deficiencia visual)',
   );
-  assert.equal(registered.patient.notes, 'Alergia a dipirona', 'cadastro guarda observacoes (sem espacos nas pontas)');
+  for (const removed of ['patientCode', 'birthDate', 'notes']) {
+    assert.equal(Object.prototype.hasOwnProperty.call(registered.patient, removed), false, `cadastro nao tem mais ${removed} (LGPD)`);
+  }
+  assert.equal(users[0].phone, '21999999999', 'telefone obrigatorio fica na conta');
   assert.ok(registered.patient.privacyConsentAt, 'cadastro registra quando o consentimento LGPD foi dado');
   assert.equal(registered.patient.privacyPolicyVersion, '2026-10-22', 'cadastro registra a versao da politica aceita');
 
@@ -165,6 +163,7 @@ async function run() {
       email: 'paciente@navora.com',
       password: 'outrasenha',
       name: 'Outro Paciente',
+      phone: '21977777777',
       acceptedPrivacyPolicy: true,
       privacyPolicyVersion: '2026-10-22',
     }),
@@ -175,22 +174,16 @@ async function run() {
 
   const tokenUser = await authService.validateToken(login.access_token);
   const me = await patientsService.me(tokenUser);
-  assert.equal(me.patientCode, 'PAT-100', 'GET /patients/me retorna profile');
+  assert.equal(me.user.phone, '21999999999', 'GET /patients/me retorna a conta');
   assert.equal(Object.prototype.hasOwnProperty.call(me.user, 'passwordHash'), false, 'GET /patients/me nao serializa passwordHash');
 
   const updated = await patientsService.updateMe(tokenUser, {
     name: 'Paciente Atualizado',
     phone: '21888888888',
-    birthDate: null,
     accessibility: { preferElevator: true, needsStretcher: false },
   });
   assert.equal(updated.user.name, 'Paciente Atualizado', 'PUT /patients/me atualiza User');
-  assert.equal(updated.birthDate, null, 'PUT /patients/me permite limpar birthDate');
   assert.deepEqual(updated.accessibility, { preferElevator: true, needsStretcher: false }, 'PUT /patients/me atualiza accessibility');
-  assert.equal(updated.notes, 'Alergia a dipirona', 'PUT /patients/me sem notes mantem as observacoes');
-
-  const notesCleared = await patientsService.updateMe(tokenUser, { notes: '   ' });
-  assert.equal(notesCleared.notes, null, 'PUT /patients/me com notes vazio limpa as observacoes');
 
   const accessibility = await patientsService.updateAccessibility(tokenUser, {
     wheelchair: true,
@@ -222,7 +215,7 @@ async function run() {
   const deleted = await patientsService.deleteMe(tokenUser, 'senha123');
   assert.equal(deleted.deleted, true, 'DELETE /patients/me confirma exclusao');
   assert.equal(users.length, 0, 'exclusao apaga o User');
-  assert.equal(patientProfiles.length, 0, 'exclusao apaga o PatientProfile (saude, observacoes, contato)');
+  assert.equal(patientProfiles.length, 0, 'exclusao apaga o PatientProfile (acessibilidade, contato)');
   assert.deepEqual(deletedNotificationsFor, [tokenUser.id], 'exclusao apaga as notificacoes do paciente');
   await expectError('login depois de excluir', UnauthorizedException, () =>
     authService.login({ email: 'paciente@navora.com', password: 'senha123' }),

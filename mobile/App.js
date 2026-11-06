@@ -3,17 +3,10 @@ import { Alert, AppState, BackHandler, Platform } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import SplashScreen from './src/screens/SplashScreen';
 import LoginScreen from './src/screens/LoginScreen';
-import HomeStartScreen from './src/screens/HomeStartScreen';
 import HelpChoiceScreen from './src/screens/HelpChoiceScreen';
 import CareAreaChoiceScreen from './src/screens/CareAreaChoiceScreen';
 import ExternalRouteScreen from './src/screens/ExternalRouteScreen';
 import ArrivalPreparationScreen from './src/screens/ArrivalPreparationScreen';
-import ProfileChoiceScreen from './src/screens/ProfileChoiceScreen';
-import PatientAccessChoiceScreen from './src/screens/PatientAccessChoiceScreen';
-import PatientIdentificationScreen from './src/screens/PatientIdentificationScreen';
-import PatientLoginScreen from './src/screens/PatientLoginScreen';
-import PatientQuickRegisterScreen from './src/screens/PatientQuickRegisterScreen';
-import PatientAccessibilitySetupScreen from './src/screens/PatientAccessibilitySetupScreen';
 import PatientHomeScreen from './src/screens/PatientHomeScreen';
 import AssistantScreen from './src/screens/AssistantScreen';
 import SearchScreen from './src/screens/SearchScreen';
@@ -38,7 +31,7 @@ import ForgotPasswordScreen from './src/screens/ForgotPasswordScreen';
 import ResetPasswordScreen from './src/screens/ResetPasswordScreen';
 import BeaconDiagnosticsScreen from './src/screens/BeaconDiagnosticsScreen';
 import { initialHelpRequests } from './src/data/helpRequests';
-import { AppProvider } from './src/context/AppContext';
+import { AppProvider, translateWithSavedLanguage } from './src/context/AppContext';
 import {
   canAccessDestination,
   destinations as fallbackDestinations,
@@ -48,26 +41,24 @@ import {
   getReceptionDestination,
   hospitalAreas as fallbackAreas,
 } from './src/data/routes';
-import { isAuthError, navoraApi } from './src/services/api';
+import { isAuthError, isNetworkError, navoraApi } from './src/services/api';
 import { getAuthToken, removeAuthToken } from './src/services/authToken';
 import { indoorLocationService, indoorLog, isBeaconDiagnosticsEnabled } from './src/services/indoorLocationService';
 import { deriveNavigationProgress } from './src/services/navigationAdapter';
 import { hospitalDetectionService } from './src/services/hospitalDetectionService';
+import { startVisitorAccessMonitor, stopVisitorAccessMonitor } from './src/services/visitorAccessMonitor';
+import { clearActiveVisit, clearLegacyRememberedVisitor, loadActiveVisit, saveActiveVisit } from './src/services/visitorStorage';
+import { clearActiveCall } from './src/services/activeCallStorage';
+import { clearRouteHistory, recordRoute } from './src/services/routeHistoryStorage';
+import { clearFavorites } from './src/services/favoritesStorage';
+import { isRoutePreview } from './src/components/ActiveRouteBar';
 
 const screens = {
   Splash: SplashScreen,
-  HomeStart: HomeStartScreen,
   HelpChoice: HelpChoiceScreen,
   CareAreaChoice: CareAreaChoiceScreen,
   ExternalRoute: ExternalRouteScreen,
   ArrivalPreparation: ArrivalPreparationScreen,
-  ProfileChoice: ProfileChoiceScreen,
-  PatientAccessChoice: PatientAccessChoiceScreen,
-  PatientIdentification: PatientIdentificationScreen,
-  PatientLogin: PatientLoginScreen,
-  PatientQuickRegister: PatientQuickRegisterScreen,
-  PatientQuickAccess: PatientQuickRegisterScreen,
-  PatientAccessibilitySetup: PatientAccessibilitySetupScreen,
   PatientHome: PatientHomeScreen,
   Login: LoginScreen,
   Home: PatientHomeScreen,
@@ -100,6 +91,11 @@ const screens = {
 
 const mobileScreens = new Set(Object.keys(screens));
 
+// Login obrigatório (decisão da usuária, 29/10): paciente e visitante só usam
+// o app com conta — SOS e pedido de visita inclusive. Sem sessão, qualquer
+// tela fora desta lista vira o Login.
+const PUBLIC_SCREENS = new Set(['Splash', 'Login', 'PatientRegister', 'ForgotPassword', 'ResetPassword']);
+
 export default function App() {
   const [screenStack, setScreenStack] = useState(['Splash']);
   const [routeParams, setRouteParams] = useState({});
@@ -120,6 +116,9 @@ export default function App() {
 
   const [navigationSource, setNavigationSource] = useState('fallback');
   const [navigationLoaded, setNavigationLoaded] = useState(false);
+  // Sessão/visita salva já conferida ao abrir o app (com ou sem sucesso).
+  // Junto com navigationLoaded, diz ao splash que ele pode terminar.
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   const [hospitalDetection, setHospitalDetection] = useState(() =>
     hospitalDetectionService.getSnapshot()
@@ -130,8 +129,17 @@ export default function App() {
   ]);
 
   const lastIndoorResolutionRef = useRef(null);
+  // Visita em andamento recuperada do celular ao abrir o app (visitorStorage):
+  // o fim do splash leva direto pra Home do visitante em vez do Login.
+  const restoredVisitRef = useRef(false);
+  const splashDoneRef = useRef(false);
 
-  const screen = screenStack[screenStack.length - 1];
+  const isLoggedIn = Boolean(userProfile?.hasAccount);
+  const requestedScreen = screenStack[screenStack.length - 1];
+  const screen =
+    PUBLIC_SCREENS.has(requestedScreen) || isLoggedIn
+      ? requestedScreen
+      : 'Login';
 
   const CurrentScreen = screens[screen] || SplashScreen;
 
@@ -173,10 +181,34 @@ export default function App() {
   useEffect(() => {
     let active = true;
 
+    const restoreVisit = async () => {
+      const saved = await loadActiveVisit();
+      if (!active || !saved) return false;
+
+      restoredVisitRef.current = true;
+      setUserProfile({ ...saved.visitor, hasAccount: true, authSource: 'api' });
+      setVisitorAccessRequest(saved.request);
+      startVisitorAccessMonitor({
+        request: saved.request,
+        onUpdate: setVisitorAccessRequest,
+      });
+
+      // Se o splash já acabou, vai direto pra visita.
+      if (splashDoneRef.current) {
+        setScreenStack(['Home']);
+      }
+      return true;
+    };
+
     const restoreSession = async () => {
+      // LGPD: o antigo "Lembrar meus dados" do visitante (com nascimento) sai do celular.
+      clearLegacyRememberedVisitor();
+
       const token = await getAuthToken();
 
       if (!token) {
+        // Visita de antes do login obrigatório (ou sessão encerrada): não volta.
+        await clearActiveVisit();
         return;
       }
 
@@ -200,19 +232,40 @@ export default function App() {
           authSource: 'api',
           hasAccount: true,
         });
+
+        // Visita em andamento desta conta: volta direto pra ela.
+        await restoreVisit();
       } catch (error) {
         if (isAuthError(error)) {
           await removeAuthToken();
+          await clearActiveVisit();
         }
       }
     };
 
-    restoreSession();
+    restoreSession()
+      .catch(() => {})
+      .finally(() => {
+        if (active) setSessionChecked(true);
+      });
 
     return () => {
       active = false;
     };
   }, []);
+
+  // Guarda a visita em andamento no celular a cada mudança; some quando ela
+  // termina (saveActiveVisit apaga se o status for final ou se expirou).
+  useEffect(() => {
+    if (userProfile?.type !== 'visitor') return;
+    saveActiveVisit(userProfile, visitorAccessRequest);
+  }, [userProfile, visitorAccessRequest]);
+
+  // Histórico de rotas (só no celular): registra a rota iniciada e marca
+  // como concluída quando ela chega ao destino. Prévia não entra.
+  useEffect(() => {
+    if (activeRoute && !isRoutePreview(activeRoute)) recordRoute(activeRoute);
+  }, [activeRoute]);
 
   const navigate = (
     nextScreen,
@@ -233,7 +286,7 @@ export default function App() {
       const safeStack =
         stack.length
           ? stack
-          : ['HomeStart'];
+          : ['Login'];
 
       if (
         safeStack[
@@ -556,7 +609,11 @@ export default function App() {
         detectionState
       );
 
-      setUserProfile(profile);
+      // Troca unidade/modo sem perder a conta logada.
+      setUserProfile((current) => ({
+        ...(current || {}),
+        ...profile,
+      }));
       setActiveRoute(null);
 
       setVisitorAccessRequest(
@@ -612,43 +669,11 @@ export default function App() {
     return detectionState;
   };
 
-  const handleProfileDraft = ({
-    type = 'patient',
-
-    area =
-      userProfile?.area ||
-      'private',
-  }) => {
-    const areaData =
-      getCurrentAreaById(
-        area
-      );
-
-    setUserProfile({
-      type,
-
-      profile:
-        type === 'visitor'
-          ? 'VISITOR'
-          : 'PATIENT',
-
-      area: areaData.id,
-      entry: areaData.entry,
-      entryLabel:
-        areaData.entryLabel,
-
-      hasAccount: false,
-
-      arrivalStatus:
-        'OUTSIDE',
-
-      visitorAccess:
-        'NONE',
-    });
-  };
-
+  // mode: 'visitor' quando a pessoa entrou com "Visitante" marcado no Login
+  // (mesma conta; muda só o modo de uso do app).
   const handlePatientReady = (
-    patient
+    patient,
+    mode = 'patient'
   ) => {
     const area =
       getCurrentAreaById(
@@ -661,9 +686,11 @@ export default function App() {
       patient?.apiUser ||
       patient?.user;
 
+    const isVisitorMode = mode === 'visitor';
+
     setUserProfile({
-      type: 'patient',
-      profile: 'PATIENT',
+      type: isVisitorMode ? 'visitor' : 'patient',
+      profile: isVisitorMode ? 'VISITOR' : 'PATIENT',
 
       id: patient?.id,
 
@@ -687,12 +714,6 @@ export default function App() {
       phone:
         apiUser?.phone ||
         patient?.phone,
-
-      patientCode:
-        patient?.patientCode,
-
-      birthDate:
-        patient?.birthDate,
 
       name:
         patient?.name ||
@@ -735,14 +756,6 @@ export default function App() {
       emergencyContact:
         patient?.emergencyContact,
 
-      notes:
-        patient?.notes,
-
-      cpf:
-        patient?.cpf ||
-        patient?.document ||
-        null,
-
       arrivalStatus:
         'OUTSIDE',
 
@@ -767,28 +780,28 @@ export default function App() {
           'private'
       );
 
-    setUserProfile({
+    setUserProfile((current) => ({
+      // Conta logada (id, e-mail, contato de emergência, acessibilidade...).
+      ...(current || {}),
+
       type: 'visitor',
       profile: 'VISITOR',
 
       name:
         visitor.name ||
+        current?.name ||
         'Visitante',
 
       fullName:
         visitor.fullName ||
         visitor.name ||
+        current?.fullName ||
         'Visitante Navora',
 
       phone:
         visitor.phone ||
+        current?.phone ||
         null,
-
-      birthDate:
-        visitor.birthDate ||
-        null,
-
-      cpf: '',
 
       area: area.id,
       entry: area.entry,
@@ -815,41 +828,12 @@ export default function App() {
 
       visitorAccess:
         'NONE',
-    });
+    }));
 
     setActiveRoute(null);
 
     setVisitorAccessRequest(
       null
-    );
-  };
-
-  const handleLoginSuccess = (
-    selectedUserType
-  ) => {
-    const profile =
-      buildProfile(
-        selectedUserType
-      );
-
-    const detectionState =
-      hospitalDetectionService.confirmArrival(
-        profile.area
-      );
-
-    setHospitalDetection(
-      detectionState
-    );
-
-    setUserProfile(profile);
-
-    setRouteParams({});
-
-    setScreenStack(
-      profile.type ===
-        'visitor'
-        ? ['VisitorEntry']
-        : ['PatientHome']
     );
   };
 
@@ -877,6 +861,17 @@ export default function App() {
     setVisitorAccessRequest(
       null
     );
+
+    // Sair encerra a visita guardada no celular (os dados de "lembrar"
+    // continuam — esses a pessoa apaga no próprio formulário).
+    stopVisitorAccessMonitor();
+    clearActiveVisit();
+    // Chamado em andamento tambem e deste usuario: nao fica para o proximo.
+    clearActiveCall();
+    restoredVisitRef.current = false;
+    // Histórico e favoritos podem revelar dado de saúde: saem junto com a pessoa.
+    clearRouteHistory();
+    clearFavorites();
 
     setIdentificationDrafts({
       patient: {},
@@ -980,8 +975,11 @@ export default function App() {
       );
     };
 
+  // startNow: a pessoa já confirmou antes (ex.: "Iniciar rota autorizada");
+  // sem ele a rota abre como prévia e só começa no "Iniciar rota" do mapa.
   const startRouteDirect = (
-    destination
+    destination,
+    { startNow = false } = {}
   ) => {
     const nextDestination =
       destination ||
@@ -1030,7 +1028,18 @@ export default function App() {
         nextDestination.time ||
         '2 min',
 
+      // Padrões inventados ficam marcados pra barra de rota não exibi-los.
+      distanceIsFallback:
+        !nextDestination.distance ||
+        Boolean(nextDestination.distanceIsFallback),
+
+      timeIsFallback:
+        !nextDestination.time ||
+        Boolean(nextDestination.timeIsFallback),
+
       status: 'active',
+
+      confirmed: startNow,
 
       area:
         nextDestination.area,
@@ -1156,7 +1165,8 @@ export default function App() {
 
             onPress: () =>
               startRouteDirect(
-                reception
+                reception,
+                { startNow: true }
               ),
           },
 
@@ -1171,7 +1181,8 @@ export default function App() {
     }
 
     startRouteDirect(
-      nextDestination
+      nextDestination,
+      { startNow: Boolean(context.startNow) }
     );
   };
 
@@ -1223,6 +1234,12 @@ export default function App() {
           context
             .visitorAccessRequestId ||
           visitorAccessRequest?.id,
+
+        // Codigo secreto do pedido: sem ele o backend nao aceita a liberacao.
+        visitor_access_token:
+          context
+            .visitorAccessToken ||
+          visitorAccessRequest?.accessToken,
 
         accessibility:
           getAccessibilityPayload(
@@ -1278,9 +1295,12 @@ export default function App() {
           return;
         }
 
-        setActiveRoute(
-          result.data
-        );
+        setActiveRoute({
+          ...result.data,
+
+          confirmed:
+            Boolean(context.startNow),
+        });
 
         navigate(
           'Navigation',
@@ -1430,7 +1450,8 @@ export default function App() {
       if (
         !activeRoute ||
         activeRoute.status !==
-          'active'
+          'active' ||
+        isRoutePreview(activeRoute)
       ) {
         return {
           recalculated: false,
@@ -1577,6 +1598,9 @@ export default function App() {
 
         visitor_access_request_id:
           visitorAccessRequest?.id,
+
+        visitor_access_token:
+          visitorAccessRequest?.accessToken,
 
         accessibility:
           getAccessibilityPayload(),
@@ -2412,8 +2436,20 @@ export default function App() {
         });
 
         return syncedRequest;
-      } catch {
-        return fallbackRequest;
+      } catch (error) {
+        // O pedido NAO chegou a recepcao: nao deixar o visitante esperando uma
+        // liberacao que nunca vai vir.
+        // (a tela de espera ja foi aberta de forma otimista; volta para o inicio)
+        setVisitorAccessRequest(null);
+        setRouteParams({});
+        setScreenStack(['Home']);
+        Alert.alert(
+          await translateWithSavedLanguage('visitorRequest.notSentTitle'),
+          await translateWithSavedLanguage(
+            isNetworkError(error) ? 'visitorRequest.notSentOffline' : 'visitorRequest.notSent'
+          )
+        );
+        return null;
       }
     };
 
@@ -2425,6 +2461,22 @@ export default function App() {
     setScreenStack([
       'Home',
     ]);
+  };
+
+  // "Iniciar rota" na prévia do mapa: a partir daqui é rota em andamento.
+  const handleConfirmRoute = () => {
+    setActiveRoute((current) =>
+      current
+        ? { ...current, confirmed: true }
+        : current
+    );
+  };
+
+  // "Voltar" na prévia: descarta a rota e volta pra onde a pessoa estava.
+  const handleCancelRoutePreview = () => {
+    setActiveRoute(null);
+
+    goBack();
   };
 
   /*
@@ -2439,11 +2491,15 @@ export default function App() {
       <AppProvider>
         <SafeAreaProvider>
           <SplashScreen
-            onSplashFinish={() =>
+            ready={navigationLoaded && sessionChecked}
+            onSplashFinish={() => {
+              splashDoneRef.current = true;
               setScreenStack([
-                'Login',
-              ])
-            }
+                restoredVisitRef.current
+                  ? 'Home'
+                  : 'Login',
+              ]);
+            }}
           />
         </SafeAreaProvider>
       </AppProvider>
@@ -2451,19 +2507,20 @@ export default function App() {
   }
 
   return (
-    <AppProvider>
+    <AppProvider liveRoute={activeRoute}>
       <SafeAreaProvider>
         {screen === 'Login' ? (
           <LoginScreen
             navigate={navigate}
 
-            onLoginSuccess={
-              handleLoginSuccess
-            }
-
-            onPatientReady={(patient) => {
-              handlePatientReady(patient);
-              setScreenStack(['PatientHome']);
+            onPatientReady={(patient, mode) => {
+              handlePatientReady(patient, mode);
+              setRouteParams({});
+              setScreenStack([
+                mode === 'visitor'
+                  ? 'VisitorEntry'
+                  : 'PatientHome',
+              ]);
             }}
 
             onCreateAccount={() => {
@@ -2561,10 +2618,6 @@ export default function App() {
               recalculateActiveRouteFromBeacon
             }
 
-            onProfileDraft={
-              handleProfileDraft
-            }
-
             onPatientReady={
               handlePatientReady
             }
@@ -2573,21 +2626,8 @@ export default function App() {
               handleVisitorReady
             }
 
-            patientIdentificationDraft={
-              identificationDrafts.patient
-            }
-
             visitorIdentificationDraft={
               identificationDrafts.visitor
-            }
-
-            onPatientIdentificationDraftChange={(
-              patch
-            ) =>
-              updateIdentificationDraft(
-                'PATIENT',
-                patch
-              )
             }
 
             onVisitorIdentificationDraftChange={(
@@ -2627,6 +2667,14 @@ export default function App() {
 
             onEndRoute={
               handleEndRoute
+            }
+
+            onConfirmRoute={
+              handleConfirmRoute
+            }
+
+            onCancelRoutePreview={
+              handleCancelRoutePreview
             }
 
             onLogout={

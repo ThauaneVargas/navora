@@ -1,13 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Animated,
   Image,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -15,11 +12,14 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import KeyboardAwareScrollView from '../components/KeyboardAwareScrollView';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { FontAwesome, MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as SecureStore from 'expo-secure-store';
 import { navoraApi, isNetworkError } from '../services/api';
 import { getAuthToken, saveAuthToken } from '../services/authToken';
+import { useApp } from '../context/AppContext';
+import LanguagePicker from '../components/LanguagePicker';
 
 const REMEMBERED_EMAIL_KEY = 'navora.login.remembered_email';
 
@@ -37,48 +37,40 @@ async function clearRememberedEmail() {
   try { await SecureStore.deleteItemAsync(REMEMBERED_EMAIL_KEY); } catch {}
 }
 
-const COLORS = {
-  burgundy: '#980027',
-  burgundyDark: '#7D001F',
-  burgundyLight: '#FFF6F8',
-  background: '#FFFFFF',
-  backgroundSoft: '#FBFBFC',
-  text: '#202124',
-  secondary: '#696B70',
-  placeholder: '#92959B',
-  border: '#E4E4E6',
-  inputText: '#36383D',
-};
 
 const PROFILE_OPTIONS = [
   {
     key: 'PATIENT',
     icon: 'account-heart-outline',
-    title: 'Paciente',
+    titleKey: 'common.patient',
   },
   {
     key: 'VISITOR',
     icon: 'account-group-outline',
-    title: 'Visitante',
+    titleKey: 'common.visitor',
   },
 ];
 
 const shadow = {
-  shadowColor: COLORS.burgundyDark,
+  shadowColor: '#7D001F',
   shadowOffset: { width: 0, height: 4 },
   shadowOpacity: 0.06,
   shadowRadius: 8,
   elevation: 2,
 };
 
-const GOOGLE_LOGO = require('../../assets/images/logo google.png');
 
-export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, navigate }) => {
+// Paciente e visitante entram com a mesma conta (e-mail + senha). O cartão
+// escolhido só decide o modo de uso: Paciente -> Início; Visitante -> pedido de
+// visita. Sem conta não há acesso (decisão da usuária, 29/10).
+export const LoginScreen = ({ onPatientReady, onCreateAccount, navigate }) => {
+  const styles = useThemeStyles();
+  const { appColors: colors, t } = useApp();
   const { width, height } = useWindowDimensions();
   const stageMaxWidth = Math.min(width, 430);
   const compact = height < 720;
   const [selectedProfile, setSelectedProfile] = useState('PATIENT');
-  const [emailOrCpf, setEmailOrCpf] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberData, setRememberData] = useState(false);
@@ -89,7 +81,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
   useEffect(() => {
     loadRememberedEmail().then((saved) => {
       if (saved) {
-        setEmailOrCpf(saved);
+        setEmail(saved);
         setRememberData(true);
       }
     });
@@ -115,36 +107,33 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
     setSelectedProfile(profile);
   };
 
-  const handleLogin = async () => {
-    if (selectedProfile === 'VISITOR') {
-      onLoginSuccess?.('visitor');
-      return;
-    }
+  const mode = selectedProfile === 'VISITOR' ? 'visitor' : 'patient';
 
-    if (!emailOrCpf || !password) {
-      Alert.alert('Atenção', 'Preencha e-mail ou senha.');
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert(t('common.attention'), t('login.fillFields'));
       return;
     }
 
     setLoading(true);
 
     try {
-      const auth = await navoraApi.login({ email: emailOrCpf.trim(), password });
+      const auth = await navoraApi.login({ email: email.trim(), password });
 
       if (!auth?.access_token) {
-        Alert.alert('Erro', 'Resposta inválida do servidor.');
+        Alert.alert(t('common.error'), t('login.invalidResponse'));
         return;
       }
 
       if (auth.user?.role !== 'PATIENT') {
-        Alert.alert('Acesso negado', 'Este aplicativo é exclusivo para pacientes.');
+        Alert.alert(t('common.accessDenied'), t('login.patientsOnly'));
         return;
       }
 
       await saveAuthToken(auth.access_token);
 
       if (rememberData) {
-        await saveRememberedEmail(emailOrCpf.trim());
+        await saveRememberedEmail(email.trim());
       } else {
         await clearRememberedEmail();
       }
@@ -156,25 +145,25 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
         apiUser: auth.user,
         authSource: 'api',
         hasAccount: true,
-      });
+      }, mode);
     } catch (error) {
       if (isNetworkError(error)) {
         if (error?.timeout) {
-          Alert.alert('Servidor demorou demais', 'O servidor está inicializando. Aguarde alguns segundos e tente novamente.');
+          Alert.alert(t('login.serverSlowTitle'), t('login.serverSlow'));
         } else {
-          Alert.alert('Sem conexão', 'Não foi possível conectar ao servidor. Verifique sua internet e tente novamente.');
+          Alert.alert(t('common.noConnection'), t('login.cannotConnect'));
         }
         return;
       }
       if (error?.status === 401 || error?.status === 403) {
-        Alert.alert('Acesso negado', 'E-mail ou senha incorretos. Verifique seus dados e tente novamente.');
+        Alert.alert(t('common.accessDenied'), t('login.wrongCredentials'));
         return;
       }
       if (error?.status >= 500) {
-        Alert.alert('Erro no servidor', 'O servidor encontrou um problema. Tente novamente em instantes.');
+        Alert.alert(t('login.serverErrorTitle'), t('login.serverError'));
         return;
       }
-      Alert.alert('Erro', `Não foi possível entrar agora (${error?.status || 'erro desconhecido'}). Tente novamente.`);
+      Alert.alert(t('common.error'), t('login.genericError', { status: error?.status || t('login.unknownError') }));
     } finally {
       setLoading(false);
     }
@@ -182,22 +171,6 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
 
   const handleForgotPassword = () => {
     navigate?.('ForgotPassword');
-  };
-
-  const handleGoogleLogin = () => {
-    Alert.alert(
-      'Login com Google',
-      'Em breve disponível. Configure os Client IDs do Google para ativar.',
-      [{ text: 'OK' }]
-    );
-  };
-
-  const handleSocialLogin = (provider) => {
-    if (provider === 'Google') {
-      handleGoogleLogin();
-    } else {
-      Alert.alert(provider, 'Login com Apple ainda não está disponível neste ambiente.');
-    }
   };
 
   const handleBiometricLogin = async () => {
@@ -208,26 +181,26 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
     try {
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       if (!hasHardware) {
-        Alert.alert('Autenticação biométrica', 'Este aparelho não possui hardware biométrico compatível.');
+        Alert.alert(t('login.biometricTitle'), t('login.biometricNoHardware'));
         return;
       }
 
       const isEnrolled = await LocalAuthentication.isEnrolledAsync();
       if (!isEnrolled) {
-        Alert.alert('Autenticação biométrica', 'Nenhuma biometria está cadastrada neste aparelho.');
+        Alert.alert(t('login.biometricTitle'), t('login.biometricNotEnrolled'));
         return;
       }
 
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Autenticação biométrica',
-        cancelLabel: 'Cancelar',
-        fallbackLabel: 'Usar senha',
+        promptMessage: t('login.biometricTitle'),
+        cancelLabel: t('common.cancel'),
+        fallbackLabel: t('login.usePassword'),
         disableDeviceFallback: false,
       });
 
       if (!result.success) {
         if (result.error !== 'user_cancel' && result.error !== 'system_cancel') {
-          Alert.alert('Autenticação biométrica', 'Não foi possível autenticar com biometria.');
+          Alert.alert(t('login.biometricTitle'), t('login.biometricFailed'));
         }
         return;
       }
@@ -235,15 +208,15 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
       const storedToken = await getAuthToken();
       if (!storedToken) {
         Alert.alert(
-          'Autenticação biométrica',
-          'Entre com sua senha uma vez para vincular sua conta neste dispositivo.'
+          t('login.biometricTitle'),
+          t('login.biometricLinkFirst')
         );
         return;
       }
 
       const patient = await navoraApi.getMyPatientProfile();
       if (!patient) {
-        Alert.alert('Sessão expirada', 'Sua sessão expirou. Entre com sua senha.');
+        Alert.alert(t('login.sessionExpiredTitle'), t('login.sessionExpired'));
         return;
       }
 
@@ -251,36 +224,39 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
         ...patient,
         authSource: 'biometric',
         hasAccount: true,
-      });
+      }, mode);
     } catch (error) {
       if (isNetworkError(error)) {
-        Alert.alert('Sem conexão', 'Verifique sua internet e tente novamente.');
+        Alert.alert(t('common.noConnection'), t('common.checkInternet'));
         return;
       }
       if (error?.status === 401 || error?.status === 403) {
-        Alert.alert('Sessão expirada', 'Sua sessão expirou. Entre com sua senha.');
+        Alert.alert(t('login.sessionExpiredTitle'), t('login.sessionExpired'));
         return;
       }
-      Alert.alert('Autenticação biométrica', 'Não foi possível autenticar com biometria.');
+      Alert.alert(t('login.biometricTitle'), t('login.biometricFailed'));
     } finally {
       setBiometricLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView
+        <KeyboardAwareScrollView
+          // flexGrow (e não minHeight = altura da janela): a tela não "balança"
+          // pra cima e pra baixo à toa; só rola quando o teclado abre ou não cabe.
           contentContainerStyle={[
             styles.scrollContent,
-            { minHeight: height, paddingVertical: compact ? 10 : 16 },
+            { paddingVertical: compact ? 10 : 16 },
           ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          bounces={false}
+          overScrollMode="never"
         >
+          {/* Idioma no rodapé (29/10): com login obrigatório, quem não fala português
+              precisa trocar antes de se cadastrar — Configurações só abre logado. */}
           <View style={[styles.stage, { maxWidth: stageMaxWidth }]}>
             <View style={[styles.brandBlock, compact && styles.brandBlockCompact]}>
               <Image
@@ -292,7 +268,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
 
             <View style={styles.header}>
               <Text style={[styles.title, compact && styles.titleCompact]}>
-                Entrar no <Text style={styles.titleAccent}>Navora</Text>
+                {t('login.title')} <Text style={styles.titleAccent}>Navora</Text>
               </Text>
             </View>
 
@@ -311,9 +287,9 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
             <View style={styles.form}>
               <LoginInput
                 icon="account-outline"
-                placeholder="E-mail ou CPF"
-                value={emailOrCpf}
-                onChangeText={setEmailOrCpf}
+                placeholder={t('login.email')}
+                value={email}
+                onChangeText={setEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 editable={!loading}
@@ -321,7 +297,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
 
               <LoginInput
                 icon="lock-outline"
-                placeholder="Senha"
+                placeholder={t('login.password')}
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry={!showPassword}
@@ -332,12 +308,12 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
                     disabled={loading}
                     style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
                     accessibilityRole="button"
-                    accessibilityLabel={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                    accessibilityLabel={showPassword ? t('login.hidePassword') : t('login.showPassword')}
                   >
                     <MaterialCommunityIcons
                       name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                       size={18}
-                      color={COLORS.secondary}
+                      color={colors.muted}
                     />
                   </Pressable>
                 }
@@ -356,7 +332,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
                       <MaterialCommunityIcons name="check" size={12} color="#FFFFFF" />
                     ) : null}
                   </View>
-                  <Text style={styles.rememberText}>Lembrar meus dados</Text>
+                  <Text style={styles.rememberText}>{t('login.remember')}</Text>
                 </Pressable>
 
                 <Pressable
@@ -364,7 +340,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
                   disabled={loading}
                   style={({ pressed }) => [styles.forgotButton, pressed && styles.pressed]}
                 >
-                  <Text style={styles.forgotText}>Esqueci minha senha &gt;</Text>
+                  <Text style={styles.forgotText}>{t('login.forgot')} &gt;</Text>
                 </Pressable>
               </View>
 
@@ -382,7 +358,7 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
                 ) : (
                   <>
                     <MaterialCommunityIcons name="login" size={18} color="#FFFFFF" />
-                    <Text style={styles.loginButtonText}>ENTRAR</Text>
+                    <Text style={styles.loginButtonText}>{t('login.enter')}</Text>
                   </>
                 )}
               </Pressable>
@@ -397,35 +373,14 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
                 ]}
               >
                 {biometricLoading ? (
-                  <ActivityIndicator color={COLORS.burgundy} size="small" />
+                  <ActivityIndicator color={colors.primary} size="small" />
                 ) : (
                   <>
-                    <MaterialCommunityIcons name="fingerprint" size={24} color={COLORS.burgundy} />
-                    <Text style={styles.biometricText}>Entrar com biometria</Text>
+                    <MaterialCommunityIcons name="fingerprint" size={24} color={colors.primary} />
+                    <Text style={styles.biometricText}>{t('login.biometric')}</Text>
                   </>
                 )}
               </Pressable>
-            </View>
-
-            <View style={styles.dividerRow}>
-              <View style={styles.divider} />
-              <Text style={styles.dividerText}>ou continue com</Text>
-              <View style={styles.divider} />
-            </View>
-
-            <View style={styles.socialRow}>
-              <SocialLoginButton
-                icon="google"
-                label="Google"
-                disabled={loading || biometricLoading}
-                onPress={() => handleSocialLogin('Google')}
-              />
-              <SocialLoginButton
-                icon="apple"
-                label="Apple"
-                disabled={loading}
-                onPress={() => handleSocialLogin('Apple')}
-              />
             </View>
 
             <Pressable
@@ -433,91 +388,90 @@ export const LoginScreen = ({ onLoginSuccess, onPatientReady, onCreateAccount, n
               disabled={loading}
               style={({ pressed }) => [styles.signupRow, pressed && styles.pressed]}
             >
-              <Text style={styles.signupText}>Ainda não tem uma conta? </Text>
-              <Text style={styles.signupLink}>Cadastre-se</Text>
+              <Text style={styles.signupText}>{t('login.noAccount')}</Text>
+              <Text style={styles.signupLink}>{t('login.signUp')}</Text>
             </Pressable>
+
+            <LanguagePicker compact style={styles.languagePicker} />
           </View>
-        </ScrollView>
+        </KeyboardAwareScrollView>
       </SafeAreaView>
-    </KeyboardAvoidingView>
+    </View>
   );
 };
 
-const ProfileSelectorCard = ({ profile, selected, disabled, onPress }) => (
-  <Pressable
-    onPress={onPress}
-    disabled={disabled}
-    style={({ pressed }) => [
-      styles.profileCard,
-      selected && styles.profileCardSelected,
-      pressed && !disabled && styles.profileCardPressed,
-    ]}
-  >
-    <View style={[styles.profileIconWrap, selected && styles.profileIconWrapSelected]}>
-      <MaterialCommunityIcons
-        name={profile.icon}
-        size={28}
-        color={selected ? COLORS.burgundy : COLORS.secondary}
-      />
-    </View>
-    <Text style={[styles.profileTitle, selected && styles.profileTitleSelected]}>
-      {profile.title}
-    </Text>
-    {selected ? (
-      <View style={styles.selectedBadge}>
-        <MaterialCommunityIcons name="check" size={11} color="#FFFFFF" />
+const ProfileSelectorCard = ({ profile, selected, disabled, onPress }) => {
+  const styles = useThemeStyles();
+  const { appColors: colors, t } = useApp();
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={disabled}
+      style={({ pressed }) => [
+        styles.profileCard,
+        selected && styles.profileCardSelected,
+        pressed && !disabled && styles.profileCardPressed,
+      ]}
+    >
+      <View style={[styles.profileIconWrap, selected && styles.profileIconWrapSelected]}>
+        <MaterialCommunityIcons
+          name={profile.icon}
+          size={28}
+          color={selected ? colors.primary : colors.muted}
+        />
       </View>
-    ) : null}
-  </Pressable>
-);
+      <Text style={[styles.profileTitle, selected && styles.profileTitleSelected]}>
+        {t(profile.titleKey)}
+      </Text>
+      {selected ? (
+        <View style={styles.selectedBadge}>
+          <MaterialCommunityIcons name="check" size={11} color="#FFFFFF" />
+        </View>
+      ) : null}
+    </Pressable>
+  );
+};
 
-const LoginInput = ({ icon, rightAction, ...inputProps }) => (
-  <View style={styles.inputBox}>
-    <MaterialCommunityIcons name={icon} size={19} color={COLORS.burgundy} />
-    <TextInput
-      style={styles.input}
-      placeholderTextColor={COLORS.placeholder}
-      selectionColor={COLORS.burgundy}
-      {...inputProps}
-    />
-    {rightAction}
-  </View>
-);
+const LoginInput = ({ icon, rightAction, ...inputProps }) => {
+  const styles = useThemeStyles();
+  const { appColors: colors } = useApp();
+  return (
+    <View style={styles.inputBox}>
+      <MaterialCommunityIcons name={icon} size={19} color={colors.primary} />
+      <TextInput
+        style={styles.input}
+        placeholderTextColor={colors.lightText}
+        selectionColor={colors.primary}
+        {...inputProps}
+      />
+      {rightAction}
+    </View>
+  );
+};
 
-const SocialLoginButton = ({ icon, label, disabled, onPress }) => (
-  <Pressable
-    onPress={onPress}
-    disabled={disabled}
-    style={({ pressed }) => [
-      styles.socialButton,
-      pressed && !disabled && styles.socialButtonPressed,
-      disabled && styles.disabled,
-    ]}
-  >
-    {icon === 'google' ? (
-      <Image source={GOOGLE_LOGO} style={styles.socialIconImage} resizeMode="contain" />
-    ) : (
-      <FontAwesome name="apple" size={22} color="#000000" />
-    )}
-    <Text style={styles.socialText}>{label}</Text>
-  </Pressable>
-);
+// Estilos acompanham o tema (claro/escuro); antes a tela tinha uma paleta
+// própria, sempre clara.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
 
-const styles = StyleSheet.create({
+const createStyles = (colors) => StyleSheet.create({
+  // Fundo rosado suave (o mesmo do cabeçalho/rodapé).
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.bar,
   },
 
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.bar,
   },
 
   scrollContent: {
     flexGrow: 1,
     alignItems: 'center',
-    backgroundColor: COLORS.background,
+    backgroundColor: colors.bar,
   },
 
   stage: {
@@ -555,7 +509,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    color: COLORS.text,
+    color: colors.text,
     fontSize: 26,
     lineHeight: 31,
     fontWeight: '800',
@@ -568,7 +522,7 @@ const styles = StyleSheet.create({
   },
 
   titleAccent: {
-    color: COLORS.burgundy,
+    color: colors.primary,
   },
 
   profileGrid: {
@@ -577,13 +531,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
 
+  // Fora do selecionado: branco levemente rosado (branco puro sobre o fundo
+  // rosado ficava "muito branco"). O perfil escolhido ganha fundo rosado
+  // (iconBg) + borda bordô, pra ficar claro qual está marcado.
   profileCard: {
     flex: 1,
     height: 92,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.background,
+    borderColor: colors.barBorder,
+    backgroundColor: colors.surfaceAlt,
     paddingHorizontal: 10,
     paddingVertical: 10,
     alignItems: 'center',
@@ -592,9 +549,9 @@ const styles = StyleSheet.create({
   },
 
   profileCardSelected: {
-    borderWidth: 1.3,
-    borderColor: COLORS.burgundy,
-    backgroundColor: COLORS.burgundyLight,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    backgroundColor: colors.iconBg,
   },
 
   profileCardPressed: {
@@ -607,7 +564,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.backgroundSoft,
+    backgroundColor: colors.background,
     marginBottom: 4,
   },
 
@@ -616,7 +573,7 @@ const styles = StyleSheet.create({
   },
 
   profileTitle: {
-    color: COLORS.text,
+    color: colors.text,
     fontSize: 13,
     lineHeight: 16,
     fontWeight: '700',
@@ -624,7 +581,7 @@ const styles = StyleSheet.create({
   },
 
   profileTitleSelected: {
-    color: COLORS.burgundy,
+    color: colors.primary,
   },
 
   selectedBadge: {
@@ -634,7 +591,7 @@ const styles = StyleSheet.create({
     width: 18,
     height: 18,
     borderRadius: 9,
-    backgroundColor: COLORS.burgundy,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -647,8 +604,8 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.background,
+    borderColor: colors.barBorder,
+    backgroundColor: colors.surfaceAlt,
     paddingHorizontal: 13,
     flexDirection: 'row',
     alignItems: 'center',
@@ -658,7 +615,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     height: '100%',
-    color: COLORS.inputText,
+    color: colors.text,
     fontSize: 13,
     fontWeight: '500',
     paddingVertical: 0,
@@ -693,20 +650,20 @@ const styles = StyleSheet.create({
     height: 17,
     borderRadius: 4,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.background,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
   },
 
   checkboxChecked: {
-    borderColor: COLORS.burgundy,
-    backgroundColor: COLORS.burgundy,
+    borderColor: colors.primary,
+    backgroundColor: colors.primary,
   },
 
   rememberText: {
-    color: COLORS.text,
+    color: colors.text,
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '600',
@@ -718,7 +675,7 @@ const styles = StyleSheet.create({
   },
 
   forgotText: {
-    color: COLORS.burgundy,
+    color: colors.primary,
     fontSize: 11,
     lineHeight: 14,
     fontWeight: '800',
@@ -727,7 +684,7 @@ const styles = StyleSheet.create({
   loginButton: {
     height: 48,
     borderRadius: 14,
-    backgroundColor: COLORS.burgundy,
+    backgroundColor: colors.primary,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -736,7 +693,7 @@ const styles = StyleSheet.create({
   },
 
   loginButtonPressed: {
-    backgroundColor: COLORS.burgundyDark,
+    backgroundColor: colors.primaryDark,
     transform: [{ scale: 0.99 }],
   },
 
@@ -752,8 +709,8 @@ const styles = StyleSheet.create({
     height: 46,
     borderRadius: 11,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.background,
+    borderColor: colors.barBorder,
+    backgroundColor: colors.surfaceAlt,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -761,68 +718,12 @@ const styles = StyleSheet.create({
   },
 
   biometricButtonPressed: {
-    backgroundColor: COLORS.burgundyLight,
+    backgroundColor: colors.surfaceAlt,
     transform: [{ scale: 0.99 }],
   },
 
   biometricText: {
-    color: COLORS.burgundy,
-    fontSize: 12,
-    lineHeight: 16,
-    fontWeight: '800',
-  },
-
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginTop: 12,
-    marginBottom: 9,
-  },
-
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: COLORS.border,
-  },
-
-  dividerText: {
-    color: COLORS.secondary,
-    fontSize: 10,
-    lineHeight: 13,
-    fontWeight: '600',
-  },
-
-  socialRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-
-  socialButton: {
-    flex: 1,
-    height: 46,
-    borderRadius: 11,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.background,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-
-  socialButtonPressed: {
-    backgroundColor: COLORS.burgundyLight,
-    transform: [{ scale: 0.99 }],
-  },
-
-  socialIconImage: {
-    width: 22,
-    height: 22,
-  },
-
-  socialText: {
-    color: COLORS.text,
+    color: colors.primary,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '800',
@@ -837,15 +738,21 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
 
+  languagePicker: {
+    justifyContent: 'center',
+    marginTop: 14,
+    marginBottom: 6,
+  },
+
   signupText: {
-    color: COLORS.secondary,
+    color: colors.muted,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '600',
   },
 
   signupLink: {
-    color: COLORS.burgundy,
+    color: colors.primary,
     fontSize: 12,
     lineHeight: 16,
     fontWeight: '900',

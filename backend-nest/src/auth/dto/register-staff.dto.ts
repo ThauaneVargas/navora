@@ -1,4 +1,5 @@
-import { IsEmail, IsEnum, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsString } from 'class-validator';
+import { StrongPassword } from '../../common/strong-password';
 
 export enum StaffRole {
   ADMIN = 'ADMIN',
@@ -12,8 +13,7 @@ export class RegisterStaffDto {
   @IsEmail()
   email: string;
 
-  @IsString()
-  @MinLength(8)
+  @StrongPassword()
   password: string;
 
   @IsEnum(StaffRole)

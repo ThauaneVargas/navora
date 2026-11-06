@@ -6,66 +6,52 @@ import Header from '../components/Header';
 import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import { isNetworkError, navoraApi } from '../services/api';
+import { localeFor } from '../i18n';
 
-const DEMO_NOTIFICATIONS = [
-  {
-    id: 'demo-1',
-    category: 'Navegação',
-    icon: 'routes',
-    title: 'Rota recalculada',
-    description: 'Encontramos um caminho mais curto ate Tomografia.',
-    createdAt: new Date().toISOString(),
-    read: false,
-  },
-  {
-    id: 'demo-2',
-    category: 'Acesso',
-    icon: 'account-group-outline',
-    title: 'Local movimentado',
-    description: 'A recepção está com maior movimento neste momento.',
-    createdAt: new Date().toISOString(),
-    read: false,
-  },
-  {
-    id: 'demo-3',
-    category: 'Ajuda-SOS',
-    icon: 'hand-heart-outline',
-    title: 'Ajuda recebida',
-    description: 'Seu pedido de apoio foi recebido pela equipe.',
-    createdAt: new Date(Date.now() - 7 * 60000).toISOString(),
-    read: true,
-  },
-];
+// Antes, sem notificação real, a tela mostrava 3 notificações de exemplo como
+// se fossem do usuário ("Rota recalculada até Tomografia" etc.). Agora mostra o
+// estado vazio. Título e texto de cada notificação vêm do servidor (português).
 
-function formatTime(isoString) {
-  if (!isoString) return '';
-  const date = new Date(isoString);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return 'Agora';
-  if (diffMin < 60) return `${diffMin} min`;
-  const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `${diffH}h`;
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+// O servidor manda a categoria como texto ("Navegacao", "Acesso", "Ajuda-SOS"),
+// sem acento — o filtro antigo procurava "Navegação" e nunca achava.
+const normalize = (value) =>
+  String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+function categoryId(category) {
+  const value = normalize(category);
+  if (value.startsWith('naveg')) return 'navigation';
+  if (value.startsWith('acess')) return 'access';
+  if (value.startsWith('ajuda') || value.includes('sos')) return 'help';
+  return 'other';
 }
 
-const FILTERS = ['Todas', 'Acesso', 'Navegação', 'Ajuda-SOS'];
+const FILTERS = ['all', 'access', 'navigation', 'help'];
+
+function formatTime(isoString, t, language) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const diffMin = Math.floor((Date.now() - date.getTime()) / 60000);
+  if (diffMin < 1) return t('notifications.now');
+  if (diffMin < 60) return `${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH} h`;
+  return date.toLocaleDateString(localeFor(language), { day: '2-digit', month: '2-digit' });
+}
 
 export default function NotificationsScreen({ navigate, goBack }) {
-  const { appColors } = useApp();
+  const { appColors, t, language } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState('Todas');
+  const [activeFilter, setActiveFilter] = useState('all');
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const data = await navoraApi.getNotifications();
-      setNotifications(Array.isArray(data) && data.length > 0 ? data : DEMO_NOTIFICATIONS);
+      setNotifications(Array.isArray(data) ? data : []);
     } catch {
-      setNotifications(DEMO_NOTIFICATIONS);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
@@ -76,7 +62,7 @@ export default function NotificationsScreen({ navigate, goBack }) {
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
   const filtered = useMemo(
-    () => activeFilter === 'Todas' ? notifications : notifications.filter((n) => n.category === activeFilter),
+    () => (activeFilter === 'all' ? notifications : notifications.filter((n) => categoryId(n.category) === activeFilter)),
     [activeFilter, notifications]
   );
 
@@ -94,9 +80,7 @@ export default function NotificationsScreen({ navigate, goBack }) {
     const prev = notifications;
     setNotifications((cur) => cur.filter((n) => n.id !== id && n.id !== String(id)));
     try {
-      if (!String(id).startsWith('demo-')) {
-        await navoraApi.deleteNotification(id);
-      }
+      await navoraApi.deleteNotification(id);
     } catch (err) {
       if (!isNetworkError(err)) setNotifications(prev);
     }
@@ -105,19 +89,16 @@ export default function NotificationsScreen({ navigate, goBack }) {
   const confirmClear = () => {
     if (!notifications.length) return;
     Alert.alert(
-      'Limpar notificações',
-      'Tem certeza que deseja remover todas as notificações?',
+      t('notifications.clearTitle'),
+      t('notifications.clearConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Limpar', style: 'destructive', onPress: async () => {
+          text: t('notifications.clear'), style: 'destructive', onPress: async () => {
             const prev = notifications;
             setNotifications([]);
             try {
-              await Promise.all(
-                prev.filter((n) => !String(n.id).startsWith('demo-'))
-                  .map((n) => navoraApi.deleteNotification(n.id))
-              );
+              await Promise.all(prev.map((n) => navoraApi.deleteNotification(n.id)));
             } catch {
               // best-effort
             }
@@ -129,16 +110,16 @@ export default function NotificationsScreen({ navigate, goBack }) {
 
   return (
     <Screen>
-      <Header title="Notificações" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title={t('notifications.title')} centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={styles.titleRow}>
         <View style={styles.titleCopy}>
-          <Text style={styles.title}>Atualizações do Navora</Text>
-          <Text style={styles.sub}>Alertas de rota, apoio, agenda e acessibilidade.</Text>
+          <Text style={styles.title}>{t('notifications.headerTitle')}</Text>
+          <Text style={styles.sub}>{t('notifications.headerSub')}</Text>
         </View>
         <View style={styles.counter}>
           <Text style={styles.counterValue}>{unreadCount}</Text>
-          <Text style={styles.counterLabel}>não lidas</Text>
+          <Text style={styles.counterLabel}>{t('notifications.unread')}</Text>
         </View>
       </View>
 
@@ -146,18 +127,20 @@ export default function NotificationsScreen({ navigate, goBack }) {
         <Pressable
           onPress={markAllAsRead}
           disabled={!unreadCount}
+          accessibilityRole="button"
           style={({ pressed }) => [styles.actionButton, !unreadCount && styles.disabled, pressed && styles.pressed]}
         >
           <MaterialCommunityIcons name="check-all" size={17} color={appColors.primary} />
-          <Text style={styles.actionText}>Marcar todas como lidas</Text>
+          <Text style={styles.actionText}>{t('notifications.markAllRead')}</Text>
         </Pressable>
         <Pressable
           onPress={confirmClear}
           disabled={!notifications.length}
+          accessibilityRole="button"
           style={({ pressed }) => [styles.actionButton, styles.actionDanger, !notifications.length && styles.disabled, pressed && styles.pressed]}
         >
           <MaterialCommunityIcons name="trash-can-outline" size={17} color={appColors.danger} />
-          <Text style={styles.actionDangerText}>Limpar notificações</Text>
+          <Text style={styles.actionDangerText}>{t('notifications.clearTitle')}</Text>
         </Pressable>
       </View>
 
@@ -166,9 +149,13 @@ export default function NotificationsScreen({ navigate, goBack }) {
           <Pressable
             key={filter}
             onPress={() => setActiveFilter(filter)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: activeFilter === filter }}
             style={({ pressed }) => [styles.filter, activeFilter === filter && styles.filterActive, pressed && styles.pressed]}
           >
-            <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>{filter}</Text>
+            <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>
+              {t(`notifications.filter_${filter}`)}
+            </Text>
           </Pressable>
         ))}
       </View>
@@ -184,6 +171,8 @@ export default function NotificationsScreen({ navigate, goBack }) {
               onDelete={() => handleDelete(item.id)}
               appColors={appColors}
               styles={styles}
+              t={t}
+              language={language}
             />
           ))}
         </View>
@@ -192,8 +181,8 @@ export default function NotificationsScreen({ navigate, goBack }) {
           <View style={styles.emptyIcon}>
             <MaterialCommunityIcons name="bell-check-outline" size={34} color={appColors.primary} />
           </View>
-          <Text style={styles.emptyTitle}>Nenhuma notificação</Text>
-          <Text style={styles.emptyText}>Quando houver novidades, elas aparecerão aqui.</Text>
+          <Text style={styles.emptyTitle}>{t('notifications.emptyTitle')}</Text>
+          <Text style={styles.emptyText}>{t('notifications.emptyText')}</Text>
         </View>
       )}
     </Screen>
@@ -234,7 +223,7 @@ function SkeletonList({ appColors }) {
   );
 }
 
-function NotificationCard({ item, onDelete, appColors, styles }) {
+function NotificationCard({ item, onDelete, appColors, styles, t, language }) {
   return (
     <View style={[styles.card, !item.read && styles.unreadCard, shadows.card]}>
       <View style={styles.iconBox}>
@@ -242,13 +231,13 @@ function NotificationCard({ item, onDelete, appColors, styles }) {
       </View>
       <View style={styles.copy}>
         <View style={styles.topLine}>
-          <Text style={styles.type}>{item.category}</Text>
+          <Text style={styles.type}>{t(`notifications.filter_${categoryId(item.category)}`)}</Text>
           <View style={styles.statusRow}>
             {!item.read ? <View style={styles.unreadDot} /> : null}
             <Text style={[styles.readStatus, !item.read && styles.unreadStatus]}>
-              {item.read ? 'Lida' : 'Não lida'}
+              {item.read ? t('notifications.read') : t('notifications.notRead')}
             </Text>
-            <Text style={styles.time}>{formatTime(item.createdAt)}</Text>
+            <Text style={styles.time}>{formatTime(item.createdAt, t, language)}</Text>
           </View>
         </View>
         <Text style={styles.cardTitle}>{item.title}</Text>
@@ -257,7 +246,7 @@ function NotificationCard({ item, onDelete, appColors, styles }) {
       <Pressable
         onPress={onDelete}
         accessibilityRole="button"
-        accessibilityLabel={`Excluir ${item.title}`}
+        accessibilityLabel={t('notifications.deleteA11y', { title: item.title })}
         style={({ pressed }) => [styles.deleteButton, pressed && styles.pressed]}
       >
         <MaterialCommunityIcons name="close" size={18} color={appColors.muted} />

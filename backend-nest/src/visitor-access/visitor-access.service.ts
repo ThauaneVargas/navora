@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { UserRole, VisitorAccessRequest, VisitorAccessStatus } from '@prisma/client';
-import { Buffer } from 'buffer';
-import { createHash, randomBytes, timingSafeEqual } from 'crypto';
+import { randomBytes } from 'crypto';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { mapVisitorAccessToApi } from '../common/api-mappers';
+import { hashSecretToken, secretTokenMatches } from '../common/secret-token';
 import { PrismaService } from '../database/prisma.service';
 import { AuthorizeVisitorAccessDto } from './dto/authorize-visitor-access.dto';
 import { CreateVisitorAccessDto } from './dto/create-visitor-access.dto';
@@ -32,7 +32,7 @@ export class VisitorAccessService {
     return mapVisitorAccessToApi(request);
   }
 
-  async create(payload: CreateVisitorAccessDto) {
+  async create(payload: CreateVisitorAccessDto, user?: AuthenticatedUser) {
     const area = this.normalizeArea(payload);
     const entrance = payload.entrance || payload.entry || this.defaultEntrance(area.areaId);
     const entry = payload.entry || entrance;
@@ -40,8 +40,8 @@ export class VisitorAccessService {
     const accessToken = randomBytes(24).toString('hex');
     const request = await this.prisma.visitorAccessRequest.create({
       data: {
-        accessTokenHash: hashToken(accessToken),
-        visitorName: payload.visitor_name ?? 'Visitante Navora',
+        accessTokenHash: hashSecretToken(accessToken),
+        visitorName: payload.visitor_name?.trim() || user?.name || 'Visitante Navora',
         areaId: area.areaId,
         area: area.areaName,
         areaName: area.areaName,
@@ -52,16 +52,23 @@ export class VisitorAccessService {
         requestedDestination: payload.requested_destination,
         reason: payload.reason ?? 'Visita',
         accessibility: payload.accessibility ?? 'Nao',
-        status: this.normalizeStatus(payload.status ?? VisitorAccessStatus.PENDING),
+        // Todo pedido nasce pendente: so a recepcao aprova (PATCH com JWT).
+        // O campo `status` do corpo e ignorado de proposito — antes, mandar
+        // "APPROVED" aqui liberava a area sem ninguem autorizar.
+        status: VisitorAccessStatus.PENDING,
         beacon: payload.beacon || payload.current_beacon || null,
         destinationId: destination?.id,
+        companions: sanitizeCompanions(payload.companions),
+        groupTotal: payload.group_total ?? 1,
+        visitCode: payload.visit_code || null,
+        assistanceRequest: payload.assistance_request || null,
       },
     });
     // O código só sai aqui, uma vez; o banco guarda apenas o hash.
     return { ...mapVisitorAccessToApi(request), access_token: accessToken };
   }
 
-  async approve(requestId: number, payload: AuthorizeVisitorAccessDto) {
+  async approve(requestId: number, payload: AuthorizeVisitorAccessDto, actor?: AuthenticatedUser) {
     const request = await this.find(requestId);
     const minutes = this.resolvePermissionMinutes(payload);
     const route = payload.authorizedRoute ?? payload.authorized_route ?? payload.allowed_route ?? this.defaultRoute(request);
@@ -80,12 +87,14 @@ export class VisitorAccessService {
         releaseType: payload.release_type,
         deniedReason: null,
         denialReason: null,
+        decidedById: actor?.id ?? null,
+        decidedAt: authorizedAt,
       },
     });
     return mapVisitorAccessToApi(updated);
   }
 
-  async deny(requestId: number, payload: DenyVisitorAccessDto) {
+  async deny(requestId: number, payload: DenyVisitorAccessDto, actor?: AuthenticatedUser) {
     await this.find(requestId);
     const reason = payload.deniedReason || payload.denial_reason;
     const updated = await this.prisma.visitorAccessRequest.update({
@@ -99,6 +108,8 @@ export class VisitorAccessService {
         allowedTime: null,
         permissionMinutes: null,
         releaseType: null,
+        decidedById: actor?.id ?? null,
+        decidedAt: new Date(),
       },
     });
     return mapVisitorAccessToApi(updated);
@@ -176,10 +187,7 @@ export class VisitorAccessService {
   }
 
   private tokenMatches(storedHash: string | null, token?: string) {
-    if (!storedHash || !token) return false;
-    const given = Buffer.from(hashToken(token), 'hex');
-    const stored = Buffer.from(storedHash, 'hex');
-    return given.length === stored.length && timingSafeEqual(given, stored);
+    return secretTokenMatches(storedHash, token);
   }
 
   private async find(requestId: number) {
@@ -249,6 +257,12 @@ export class VisitorAccessService {
   }
 }
 
-function hashToken(token: string) {
-  return createHash('sha256').update(token).digest('hex');
+// Guarda so nome e tipo de cada acompanhante, com tamanho limitado — o resto
+// do objeto vindo do app (ids internos etc.) nao vai para o banco.
+function sanitizeCompanions(companions?: Array<{ name?: unknown; type?: unknown }>) {
+  if (!Array.isArray(companions)) return [];
+  return companions.slice(0, 10).map((companion) => ({
+    name: typeof companion?.name === 'string' ? companion.name.trim().slice(0, 80) : '',
+    type: typeof companion?.type === 'string' ? companion.type.slice(0, 20) : 'adult',
+  }));
 }

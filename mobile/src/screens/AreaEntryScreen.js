@@ -1,11 +1,14 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
-import { colors, shadows } from '../theme/colors';
+import { shadows } from '../theme/colors';
+import { useApp } from '../context/AppContext';
 import { hospitalAreas, getAreaById, getReceptionDestination } from '../data/routes';
 
 export default function AreaEntryScreen({ navigate, onAreaProfileSelect, onStartRoute, navigationData, navigationSource = 'fallback' }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   const areas = navigationSource === 'api' ? navigationData?.areas || hospitalAreas : hospitalAreas;
   const chooseProfile = (area, type) => onAreaProfileSelect?.({ area, type });
   const goReception = () => {
@@ -48,6 +51,8 @@ export default function AreaEntryScreen({ navigate, onAreaProfileSelect, onStart
 }
 
 function AreaCard({ area: sourceArea, onChoose }) {
+  const { appColors: colors } = useApp();
+  const styles = useThemeStyles();
   const area = sourceArea || getAreaById('private');
   const welcome = `Bem-vindo à ${area.name}`;
   const routing = 'Suas rotas serão direcionadas apenas para o ambiente hospitalar confirmado.';
@@ -77,7 +82,14 @@ function AreaCard({ area: sourceArea, onChoose }) {
   );
 }
 
-const styles = StyleSheet.create({
+// Estilos acompanham o tema (claro/escuro); antes usavam a paleta fixa do
+// tema claro e não mudavam no modo noturno.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+const createStyles = (colors) => StyleSheet.create({
   hero: { marginTop: 12, marginBottom: 14 },
   brandMark: {
     width: 56,

@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { CallStatus, CallType, UserRole, VisitorAccessStatus } from '@prisma/client';
+import { beaconHealth } from '../common/beacon-health';
 import { PrismaService } from '../database/prisma.service';
 
 type CountGroup<K extends string> = Record<K, string> & { _count: { _all: number } };
@@ -18,8 +19,7 @@ export class DashboardService {
       approvedVisitors,
       deniedVisitors,
       closedCalls,
-      beaconsOnline,
-      beaconsTotal,
+      beacons,
       sectorsTotal,
       destinationsTotal,
       patientUsers,
@@ -27,7 +27,6 @@ export class DashboardService {
       callStatusGroups,
       callTypeGroups,
       visitorStatusGroups,
-      beaconStatusGroups,
     ] = await Promise.all([
       this.prisma.callRequest.count(),
       this.prisma.callRequest.count({ where: { status: { notIn: [CallStatus.CLOSED, CallStatus.CANCELED] } } }),
@@ -41,8 +40,9 @@ export class DashboardService {
       this.prisma.visitorAccessRequest.count({ where: { status: VisitorAccessStatus.APPROVED } }),
       this.prisma.visitorAccessRequest.count({ where: { status: VisitorAccessStatus.DENIED } }),
       this.prisma.callRequest.count({ where: { status: CallStatus.CLOSED } }),
-      this.prisma.beacon.count({ where: { status: 'Online' } }),
-      this.prisma.beacon.count(),
+      this.prisma.beacon.findMany({
+        select: { status: true, battery: true, lastSignalAt: true, hardwareModel: true, ibeaconUuid: true },
+      }),
       this.prisma.sector.count(),
       this.prisma.destination.count(),
       this.prisma.user.count({ where: { role: UserRole.PATIENT } }),
@@ -50,8 +50,16 @@ export class DashboardService {
       this.prisma.callRequest.groupBy({ by: ['status'], _count: { _all: true } }),
       this.prisma.callRequest.groupBy({ by: ['callType'], _count: { _all: true } }),
       this.prisma.visitorAccessRequest.groupBy({ by: ['status'], _count: { _all: true } }),
-      this.prisma.beacon.groupBy({ by: ['status'], _count: { _all: true } }),
     ]);
+
+    const now = new Date();
+    const beaconStatuses = beacons.map((beacon) => beaconHealth(beacon, now).status);
+    const beaconsTotal = beaconStatuses.length;
+    const beaconsOnline = beaconStatuses.filter((status) => status === 'Online').length;
+    const beaconStatusCounts = beaconStatuses.reduce<Record<string, number>>((counts, status) => {
+      counts[status] = (counts[status] || 0) + 1;
+      return counts;
+    }, {});
 
     return {
       source: 'api',
@@ -73,7 +81,7 @@ export class DashboardService {
       callStatusCounts: this.toCountMap(callStatusGroups, 'status'),
       callTypeCounts: this.toCountMap(callTypeGroups, 'callType'),
       visitorStatusCounts: this.toCountMap(visitorStatusGroups, 'status'),
-      beaconStatusCounts: this.toCountMap(beaconStatusGroups, 'status'),
+      beaconStatusCounts,
       simulated: {
         peopleInHospital: true,
         flow: true,

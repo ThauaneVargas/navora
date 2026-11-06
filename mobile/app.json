@@ -10,8 +10,12 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.navora.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      },
       "config": {
         "googleMapsApiKey": "AIzaSyDCmuG1j9cHkWDUKm17061ECLmdjlgqGiw"
       }
@@ -21,7 +25,6 @@
         "foregroundImage": "./assets/images/icone_app_adaptive.png",
         "backgroundColor": "#FFFFFF"
       },
-      "edgeToEdge": true,
       "package": "com.navora.app",
       "config": {
         "googleMaps": {
@@ -35,7 +38,26 @@
     "plugins": [
       "expo-asset",
       "expo-font",
-      "expo-location",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "O Navora usa sua localização só na tela \"Como chegar ao hospital\", para mostrar o caminho até a entrada. Ela não é guardada."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "O Navora acessa suas fotos só quando você escolhe uma foto para o seu perfil.",
+          "cameraPermission": "O Navora usa a câmera só quando você tira uma foto para o seu perfil.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "O Navora usa o Face ID para você entrar na sua conta sem digitar a senha."
+        }
+      ],
       "expo-secure-store",
       "expo-status-bar",
       [
@@ -53,7 +75,10 @@
           "neverForLocation": false,
           "bluetoothAlwaysPermission": "O Navora usa o Bluetooth para reconhecer os pontos de referência do hospital e mostrar onde você está. Só funciona com o app aberto."
         }
-      ]
+      ],
+      "./plugins/withShortCmakeStaging",
+      "./plugins/withReleaseMinifyOff",
+      "./plugins/withNoAutofillHighlight"
     ]
   }
 }

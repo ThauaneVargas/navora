@@ -24,10 +24,16 @@ export class BeaconsService {
       return { detected: false };
     }
 
-    await this.prisma.beacon.update({
-      where: { code: beacon.code },
-      data: { lastSignalAt: new Date() },
-    });
+    // So a leitura BLE real (uuid/major/minor) conta como sinal de vida. O
+    // modo simulado do app manda so o codigo e nao pode marcar um aparelho
+    // fisico como "Online".
+    const fromRealBle = !(payload.beaconCode || payload.beacon_code);
+    if (fromRealBle) {
+      await this.prisma.beacon.update({
+        where: { code: beacon.code },
+        data: { lastSignalAt: new Date() },
+      });
+    }
     this.logger.debug(`beacon_identified code=${beacon.code} origin_node_code=${beacon.navigationNode?.code ?? 'null'}`);
     return {
       detected: true,

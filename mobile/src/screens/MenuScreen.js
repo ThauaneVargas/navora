@@ -1,24 +1,25 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, Pressable, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
-import { colors } from '../theme/colors';
+import HeaderIconButton from '../components/HeaderIconButton';
+
 import { useApp } from '../context/AppContext';
 import { isBeaconDiagnosticsEnabled } from '../services/indoorLocationService';
+import { toneColors } from '../theme/tones';
 
 const menuItems = [
   // Só na versão de desenvolvimento ou no APK de teste (calibração dos beacons físicos).
-  ...(isBeaconDiagnosticsEnabled() ? [{ title: 'Diagnóstico de beacons', subtitle: 'Versão de teste — calibração', icon: 'access-point', screen: 'BeaconDiagnostics' }] : []),
-  { title: 'Meu perfil', subtitle: 'Dados pessoais e acessos', icon: 'account-outline', screen: 'Profile' },
-  { title: 'Como chegar ao hospital', subtitle: 'Rota ate a entrada principal', icon: 'map-marker-distance', screen: 'ExternalRoute' },
-  { title: 'Acessibilidade', subtitle: 'Rotas adaptadas', icon: 'wheelchair-accessibility', screen: 'Accessibility' },
-  { title: 'Rotas de emergencia', subtitle: 'Saidas seguras', icon: 'exit-run', screen: 'EmergencyRoutes' },
-  { title: 'Histórico de rotas', subtitle: 'Últimos destinos', icon: 'history', screen: 'RouteHistory' },
-  { title: 'Notificações', subtitle: 'Avisos do Navora', icon: 'bell-outline', screen: 'Notifications' },
-  { title: 'Configurações', subtitle: 'Preferências do app', icon: 'cog-outline', screen: 'Settings' },
-  { title: 'Privacidade', subtitle: 'Dados e permissões', icon: 'shield-lock-outline', screen: 'Privacy' },
-  { title: 'Sair', subtitle: 'Encerrar sessão', icon: 'logout', screen: 'HomeStart', danger: true },
+  ...(isBeaconDiagnosticsEnabled() ? [{ titleKey: 'menu.beaconDiagnostics', subtitleKey: 'menu.beaconDiagnosticsSub', icon: 'access-point', screen: 'BeaconDiagnostics', tone: 'blue' }] : []),
+  { titleKey: 'menu.profile', subtitleKey: 'menu.profileSub', icon: 'account-circle-outline', screen: 'Profile' },
+  { titleKey: 'menu.howToGet', subtitleKey: 'menu.howToGetSub', icon: 'sign-direction', screen: 'ExternalRoute', tone: 'teal' },
+  { titleKey: 'menu.accessibility', subtitleKey: 'menu.accessibilitySub', icon: 'wheelchair-accessibility', screen: 'Accessibility', tone: 'blue' },
+  { titleKey: 'menu.emergencyRoutes', subtitleKey: 'menu.emergencyRoutesSub', icon: 'exit-run', screen: 'EmergencyRoutes', tone: 'green' },
+  { titleKey: 'menu.routeHistory', subtitleKey: 'menu.routeHistorySub', icon: 'history', screen: 'RouteHistory', tone: 'violet' },
+  { titleKey: 'menu.notifications', subtitleKey: 'menu.notificationsSub', icon: 'bell-outline', screen: 'Notifications', tone: 'amber' },
+  { titleKey: 'menu.settings', subtitleKey: 'menu.settingsSub', icon: 'cog-outline', screen: 'Settings' },
+  { titleKey: 'menu.privacy', subtitleKey: 'menu.privacySub', icon: 'shield-lock-outline', screen: 'Privacy', tone: 'teal' },
+  { titleKey: 'menu.logout', subtitleKey: 'menu.logoutSub', icon: 'logout', screen: 'Login', danger: true },
 ];
 
 function menuShadow(themeColors, isDark) {
@@ -35,6 +36,7 @@ function MenuItem({
   icon,
   title,
   subtitle,
+  tone,
   onPress,
   danger = false,
   noArrow = false,
@@ -43,9 +45,11 @@ function MenuItem({
   isDark,
   style,
 }) {
-  const iconColor = danger ? appColors.danger : appColors.primary;
+  const styles = useThemeStyles();
+  const toned = toneColors(tone, appColors, isDark);
+  const iconColor = danger ? appColors.danger : toned.fg;
   const backgroundColor = danger ? (isDark ? '#2A171B' : '#FFF7F8') : appColors.surface;
-  const iconBg = danger ? (isDark ? '#3A1A20' : '#FFE8EC') : appColors.iconBg;
+  const iconBg = danger ? (isDark ? '#3A1A20' : '#FFE8EC') : toned.bg;
 
   return (
     <Pressable
@@ -90,8 +94,8 @@ function MenuItem({
 }
 
 export default function MenuScreen({ navigate, goBack, onLogout }) {
-  const insets = useSafeAreaInsets();
-  const { isDark, toggleTheme, appColors } = useApp();
+  const styles = useThemeStyles();
+  const { isDark, toggleTheme, appColors, t } = useApp();
 
   const handlePress = (item) => {
     if (item.danger) {
@@ -105,36 +109,13 @@ export default function MenuScreen({ navigate, goBack, onLogout }) {
 
   return (
     <Screen scroll={false} padded={false}>
-      <View style={[styles.container, { backgroundColor: appColors.background, paddingTop: insets.top }]}>
-        <View style={[styles.header, { borderBottomColor: appColors.border }]}>
-          <Pressable
-            onPress={() => goBack?.()}
-            style={({ pressed }) => [
-              styles.headerButton,
-              { backgroundColor: appColors.surface, borderColor: appColors.border },
-              menuShadow(appColors, isDark),
-              pressed && styles.pressed,
-            ]}
-          >
-            <MaterialCommunityIcons name="chevron-left" size={27} color={isDark ? appColors.text : appColors.primaryDark} />
-          </Pressable>
+      <View style={[styles.container, { backgroundColor: appColors.background }]}>
+        <View style={[styles.header, { backgroundColor: appColors.bar, borderBottomColor: appColors.barBorder }]}>
+          <HeaderIconButton icon="back" onPress={() => goBack?.()} accessibilityLabel={t('header.back')} />
 
-          <Text style={[styles.headerTitle, { color: appColors.text }]}>Menu</Text>
+          <Text style={[styles.headerTitle, { color: appColors.text }]}>{t('menu.title')}</Text>
 
-          <Pressable
-            onPress={() => navigate('Notifications')}
-            style={({ pressed }) => [
-              styles.headerButton,
-              { backgroundColor: appColors.surface, borderColor: appColors.border },
-              menuShadow(appColors, isDark),
-              pressed && styles.pressed,
-            ]}
-          >
-            <MaterialCommunityIcons name="bell-outline" size={22} color={isDark ? appColors.text : appColors.primaryDark} />
-            <View style={[styles.badge, { backgroundColor: appColors.primary }]}>
-              <Text style={styles.badgeText}>2</Text>
-            </View>
-          </Pressable>
+          <HeaderIconButton icon="bell" onPress={() => navigate('Notifications')} accessibilityLabel={t('header.openNotifications')} />
         </View>
 
         <ScrollView
@@ -142,13 +123,13 @@ export default function MenuScreen({ navigate, goBack, onLogout }) {
           keyboardShouldPersistTaps="handled"
           contentContainerStyle={[
             styles.scrollContent,
-            { paddingBottom: insets.bottom + 36 },
+            { paddingBottom: 36 },
           ]}
         >
           <MenuItem
             icon={isDark ? 'weather-night' : 'white-balance-sunny'}
-            title="Modo noturno"
-            subtitle="Melhor para uso a noite"
+            title={t('settings.darkMode')}
+            subtitle={t('menu.darkModeSub')}
             onPress={toggleTheme}
             noArrow
             appColors={appColors}
@@ -168,7 +149,7 @@ export default function MenuScreen({ navigate, goBack, onLogout }) {
           <MenuItem
             icon="navigation-variant"
             title="Navora"
-            subtitle="Navegação hospitalar inteligente e segura."
+            subtitle={t('menu.tagline')}
             onPress={() => navigate('Home')}
             appColors={appColors}
             isDark={isDark}
@@ -176,10 +157,11 @@ export default function MenuScreen({ navigate, goBack, onLogout }) {
 
           {menuItems.map((item, index) => (
             <MenuItem
-              key={item.title}
+              key={item.titleKey}
               icon={item.icon}
-              title={item.title}
-              subtitle={item.subtitle}
+              title={t(item.titleKey)}
+              subtitle={t(item.subtitleKey)}
+              tone={item.tone}
               danger={item.danger}
               onPress={() => handlePress(item)}
               appColors={appColors}
@@ -193,50 +175,39 @@ export default function MenuScreen({ navigate, goBack, onLogout }) {
   );
 }
 
-const styles = StyleSheet.create({
+// Estilos acompanham o tema (claro/escuro); antes usavam a paleta fixa do
+// tema claro e não mudavam no modo noturno.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+const createStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
   },
+  // Mesmas medidas do cabeçalho das outras telas (Header/AppHeader).
   header: {
-    minHeight: 58,
-    paddingHorizontal: 20,
+    minHeight: 64,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     borderBottomWidth: 1,
   },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-  },
   headerTitle: {
     position: 'absolute',
-    left: 74,
-    right: 74,
-    bottom: 19,
+    left: 72,
+    right: 72,
+    top: 8,
+    bottom: 8,
     textAlign: 'center',
-    fontSize: 18,
-    fontWeight: '900',
-  },
-  badge: {
-    position: 'absolute',
-    top: -2,
-    right: -2,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  badgeText: {
-    color: '#FFFFFF',
-    fontSize: 9,
+    textAlignVertical: 'center',
+    lineHeight: 48,
+    fontSize: 17,
     fontWeight: '900',
   },
   scrollContent: {

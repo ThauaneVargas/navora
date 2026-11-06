@@ -1,4 +1,5 @@
 import React, {
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -6,6 +7,7 @@ import React, {
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,10 +26,24 @@ import {
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
+import HelpRequestSheet from '../components/HelpRequestSheet';
+import SosStatusSheet from '../components/SosStatusSheet';
+import {
+  getActiveCall,
+  isTerminalCallStatus,
+  saveActiveCall,
+  updateActiveCall,
+} from '../services/activeCallStorage';
+import { getReceptionPhone } from '../data/hospitalContacts';
+import { useRouteBarSpace } from '../components/ActiveRouteBar';
 
 import {
   shadows,
 } from '../theme/colors';
+
+import {
+  toneColors,
+} from '../theme/tones';
 
 import {
   useApp,
@@ -38,8 +54,29 @@ import {
 } from '../data/routes';
 
 import {
+  isAuthError,
+  isNetworkError,
   navoraApi,
 } from '../services/api';
+
+
+// Acessibilidade do perfil -> o que a equipe precisa levar no SOS
+// (codigos em backend-nest/src/calls/call-codes.ts).
+const NEED_BY_ACCESSIBILITY_KEY = {
+  wheelchair: 'wheelchair',
+  needsStretcher: 'stretcher',
+  mobilityDifficulty: 'mobility',
+  visualImpairment: 'visual',
+  hearingImpairment: 'hearing',
+  needsCompanion: 'companion',
+};
+
+// SOS tenta 3 vezes antes de desistir (rede instavel no hospital); o resto, 2.
+const SEND_ATTEMPTS = { sos: 3, default: 2 };
+const RETRY_DELAYS_MS = [2000, 4000];
+const STATUS_POLL_MS = 5000;
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 
 export default function HelpScreen({
@@ -48,14 +85,20 @@ export default function HelpScreen({
   userType = 'patient',
   userProfile,
   onCreateHelpRequest,
+  onLogout,
 }) {
   const insets =
     useSafeAreaInsets();
+
+  // Espaço da barra "Rota em andamento" (aparece acima das abas).
+  const routeBarSpace =
+    useRouteBarSpace();
 
   const {
     appColors,
     currentLocation:
       fallbackLocation,
+    t,
   } = useApp();
 
   const styles =
@@ -76,6 +119,57 @@ export default function HelpScreen({
     submittingKind,
     setSubmittingKind,
   ] = useState(null);
+
+  const [
+    requestSheetVisible,
+    setRequestSheetVisible,
+  ] = useState(false);
+
+  // Chamado em andamento (sobrevive a troca de tela: activeCallStorage).
+  const [activeCall, setActiveCall] = useState(null);
+  const [statusSheetVisible, setStatusSheetVisible] = useState(false);
+
+  const areaId = userProfile?.area || 'private';
+  const receptionPhone = getReceptionPhone(areaId);
+
+  useEffect(() => {
+    let alive = true;
+    getActiveCall().then((call) => {
+      if (alive && call) setActiveCall(call);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // Acompanha o andamento enquanto a tela esta aberta e o chamado nao acabou.
+  const activeCallId = activeCall?.id;
+  const activeCallToken = activeCall?.token;
+  const activeCallDone = isTerminalCallStatus(activeCall?.status);
+  useEffect(() => {
+    if (!activeCallId || !activeCallToken || activeCallDone) return undefined;
+    let alive = true;
+    const poll = async () => {
+      try {
+        const remote = await navoraApi.getCallStatus(activeCallId, activeCallToken);
+        if (!alive || !remote) return;
+        const next = await updateActiveCall({ status: remote.status });
+        if (alive && next) setActiveCall(next);
+      } catch (error) {
+        // 404: chamado nao existe mais (ou codigo invalido) -> para de acompanhar.
+        if (alive && error?.status === 404) {
+          const next = await updateActiveCall({ status: 'CANCELED' });
+          setActiveCall(next);
+        }
+      }
+    };
+    poll();
+    const timer = setInterval(poll, STATUS_POLL_MS);
+    return () => {
+      alive = false;
+      clearInterval(timer);
+    };
+  }, [activeCallId, activeCallToken, activeCallDone]);
 
 
   const currentLocation = {
@@ -100,17 +194,24 @@ export default function HelpScreen({
       : 'Paciente';
 
 
+  // Sem pedido ainda: antes mostrava "Aguardando atendimento – Solicitada
+  // há 2 min", um pedido que não existia.
   const latestRequest =
-    lastRequest || {
-      title:
-        'Aguardando atendimento',
-
-      subtitle:
-        routeParams.type ===
-        'sos'
-          ? 'Solicitação urgente em andamento'
-          : 'Solicitada há 2 min',
-    };
+    (activeCall && {
+      title: t(`help.status_${activeCall.status || 'PENDING'}`),
+      subtitle: t('help.protocol', { id: activeCall.id }),
+    }) ||
+    lastRequest || (
+      routeParams.type === 'sos'
+        ? {
+            title: t('help.waiting'),
+            subtitle: t('help.urgentInProgress'),
+          }
+        : {
+            title: t('help.noRequestTitle'),
+            subtitle: t('help.noRequestSub'),
+          }
+    );
 
 
   const submit = async (
@@ -217,18 +318,54 @@ export default function HelpScreen({
         isSos
           ? 'CRITICAL'
           : 'MEDIUM',
+
+      caller_phone:
+        userProfile?.phone ||
+        undefined,
+
+      needs:
+        Object.entries(NEED_BY_ACCESSIBILITY_KEY)
+          .filter(([key]) => userProfile?.accessibility?.[key])
+          .map(([, code]) => code),
     };
 
 
+    const send = () =>
+      isSos
+        ? navoraApi.createSos(payload)
+        : navoraApi.createHelpRequest(payload);
+
+    // Rede instavel: tenta de novo sozinho antes de desistir. So repete erro
+    // de conexao (erro do servidor nao melhora repetindo).
+    const sendWithRetry = async () => {
+      const attempts = SEND_ATTEMPTS[kind] || SEND_ATTEMPTS.default;
+      for (let attempt = 1; ; attempt += 1) {
+        try {
+          return await send();
+        } catch (error) {
+          if (!isNetworkError(error) || attempt >= attempts) throw error;
+          await wait(RETRY_DELAYS_MS[attempt - 1] || 4000);
+        }
+      }
+    };
+
     try {
       const apiResponse =
-        isSos
-          ? await navoraApi.createSos(
-              payload
-            )
-          : await navoraApi.createHelpRequest(
-              payload
-            );
+        await sendWithRetry();
+
+      if (apiResponse?.id && apiResponse?.access_token) {
+        const tracked = {
+          id: apiResponse.id,
+          token: apiResponse.access_token,
+          kind: isSos ? 'sos' : 'help',
+          status: apiResponse.status || 'PENDING',
+        };
+        await saveActiveCall(tracked);
+        setActiveCall((await getActiveCall()) || tracked);
+        // Abre direto o andamento (Enviado -> Recebido -> ...) em todo pedido:
+        // sem isso, ajuda e "Falar com a recepção" pareciam não fazer nada.
+        setStatusSheetVisible(true);
+      }
 
 
       const request =
@@ -242,18 +379,41 @@ export default function HelpScreen({
       setLastRequest({
         title:
           isSos
-            ? 'SOS enviado'
-            : 'Aguardando atendimento',
+            ? t('help.sosSent')
+            : t('help.waiting'),
 
         subtitle:
           request?.id
-            ? `Protocolo ${request.id}`
-            : 'Solicitada agora',
+            ? t('help.protocol', { id: request.id })
+            : t('help.requestedNow'),
       });
-    } catch {
+    } catch (error) {
+      const callReceptionButton = receptionPhone
+        ? [{ text: t('help.callReception'), onPress: () => Linking.openURL(`tel:${receptionPhone}`).catch(() => {}) }]
+        : [];
+
+      // Chamado exige login: sessão vencida (30 dias) recusa o envio. Avisa e leva
+      // ao Login, sem esconder a ligação para a recepção.
+      if (isAuthError(error)) {
+        Alert.alert(
+          t('help.sessionExpiredTitle'),
+          t('help.sessionExpired'),
+          [
+            ...callReceptionButton,
+            { text: t('help.loginAgain'), onPress: () => onLogout?.() },
+          ]
+        );
+        return;
+      }
+
       Alert.alert(
-        'Não foi possível enviar',
-        'Confira a conexão e tente novamente. Se for urgente, procure a recepção imediatamente.'
+        t('help.sendFailedTitle'),
+        t('help.sendFailed'),
+        [
+          ...callReceptionButton,
+          { text: t('help.tryAgain'), onPress: () => submit(kind, reason) },
+          { text: t('common.close'), style: 'cancel' },
+        ]
       );
     } finally {
       setSubmittingKind(
@@ -265,17 +425,17 @@ export default function HelpScreen({
 
   const confirmSos = () => {
     Alert.alert(
-      'Acionar SOS?',
-      'Use o SOS apenas em situação urgente. A equipe receberá sua localização atual.',
+      t('help.confirmSosTitle'),
+      t('help.confirmSos'),
       [
         {
-          text: 'Cancelar',
+          text: t('common.cancel'),
           style: 'cancel',
         },
 
         {
           text:
-            'Acionar SOS',
+            t('help.triggerSos'),
 
           style:
             'destructive',
@@ -292,11 +452,9 @@ export default function HelpScreen({
 
 
   const actions = {
+    // Pergunta o motivo e confirma antes de enviar (HelpRequestSheet).
     help: () =>
-      submit(
-        'help',
-        'Preciso de ajuda'
-      ),
+      setRequestSheetVisible(true),
 
     sos:
       confirmSos,
@@ -309,16 +467,27 @@ export default function HelpScreen({
         'Accessibility'
       ),
 
+    // Pergunta antes: ligar agora (quando há número) ou pedir que alguém venha.
     reception: () =>
-      submit(
-        'reception',
-        'Contato com recepção'
+      Alert.alert(
+        t('help.receptionChoiceTitle'),
+        t('help.receptionChoice'),
+        [
+          ...(receptionPhone
+            ? [{ text: t('help.callReception'), onPress: () => Linking.openURL(`tel:${receptionPhone}`).catch(() => {}) }]
+            : []),
+          { text: t('help.askSomeoneCome'), onPress: () => submit('reception', 'Contato com recepção') },
+          { text: t('common.cancel'), style: 'cancel' },
+        ]
       ),
 
+    // Com chamado em andamento, abre o acompanhamento; sem, as notificacoes.
     request: () =>
-      navigate(
-        'Notifications'
-      ),
+      activeCall
+        ? setStatusSheetVisible(true)
+        : navigate(
+            'Notifications'
+          ),
   };
 
 
@@ -336,7 +505,8 @@ export default function HelpScreen({
         {/* CABEÇALHO PADRÃO */}
 
         <Header
-          title="Ajuda e SOS"
+          fullBleed
+          title={t('help.title')}
           centerTitle
           onMenu={() =>
             navigate('Menu')
@@ -362,7 +532,7 @@ export default function HelpScreen({
                 Math.max(
                   insets.bottom,
                   14
-                ) + 104,
+                ) + 104 + routeBarSpace,
             },
           ]}
         >
@@ -378,7 +548,7 @@ export default function HelpScreen({
                 styles.heroTitle
               }
             >
-              Como podemos ajudar?
+              {t('help.howCanWeHelp')}
             </Text>
 
             <Text
@@ -386,7 +556,7 @@ export default function HelpScreen({
                 styles.sectionText
               }
             >
-              Escolha a opção que melhor se aplica à sua necessidade.
+              {t('help.chooseOption')}
             </Text>
           </View>
 
@@ -398,8 +568,8 @@ export default function HelpScreen({
           >
             <ActionTile
               icon="headphones"
-              title="Preciso de ajuda"
-              subtitle="Falar com a equipe"
+              title={t('help.needHelp')}
+              subtitle={t('help.needHelpSub')}
               onPress={
                 actions.help
               }
@@ -415,8 +585,8 @@ export default function HelpScreen({
 
             <ActionTile
               icon="alarm-light-outline"
-              title="SOS - Emergência"
-              subtitle="Atendimento imediato"
+              title={t('help.sos')}
+              subtitle={t('help.sosSub')}
               emergency
               onPress={
                 actions.sos
@@ -443,7 +613,7 @@ export default function HelpScreen({
                 styles.sectionTitle
               }
             >
-              Ajuda rápida
+              {t('help.quickHelp')}
             </Text>
 
             <Text
@@ -451,7 +621,7 @@ export default function HelpScreen({
                 styles.sectionText
               }
             >
-              Acesso rápido para as necessidades mais comuns.
+              {t('help.quickHelpSub')}
             </Text>
           </View>
 
@@ -462,8 +632,9 @@ export default function HelpScreen({
             }
           >
             <SmallTile
-              icon="map-marker-outline"
-              title="Estou perdido"
+              icon="compass-outline"
+              title={t('help.lost')}
+              tone="amber"
               onPress={
                 actions.lost
               }
@@ -475,7 +646,8 @@ export default function HelpScreen({
 
             <SmallTile
               icon="wheelchair-accessibility"
-              title="Acessibilidade"
+              title={t('help.accessibility')}
+              tone="blue"
               onPress={
                 actions.accessibility
               }
@@ -488,8 +660,9 @@ export default function HelpScreen({
 
 
           <WideTile
-            icon="account-group-outline"
-            title="Falar com a recepção"
+            icon="face-agent"
+            title={t('help.talkToReception')}
+            tone="teal"
             onPress={
               actions.reception
             }
@@ -514,7 +687,7 @@ export default function HelpScreen({
                 styles.sectionTitle
               }
             >
-              Sua solicitação
+              {t('help.yourRequest')}
             </Text>
 
             <Text
@@ -522,7 +695,7 @@ export default function HelpScreen({
                 styles.sectionText
               }
             >
-              Acompanhe o status do seu pedido de ajuda.
+              {t('help.yourRequestSub')}
             </Text>
           </View>
 
@@ -532,7 +705,7 @@ export default function HelpScreen({
               actions.request
             }
             accessibilityRole="button"
-            accessibilityLabel="Abrir status da solicitação"
+            accessibilityLabel={t('help.openRequestStatus')}
             style={({ pressed }) => [
               styles.statusCard,
 
@@ -605,6 +778,26 @@ export default function HelpScreen({
           active="Help"
           navigate={navigate}
         />
+
+        <SosStatusSheet
+          visible={statusSheetVisible}
+          call={activeCall}
+          receptionPhone={receptionPhone}
+          onClose={() =>
+            setStatusSheetVisible(false)
+          }
+        />
+
+        <HelpRequestSheet
+          visible={requestSheetVisible}
+          locationName={currentLocation.name}
+          onClose={() =>
+            setRequestSheetVisible(false)
+          }
+          onSend={(reason) =>
+            submit('help', reason)
+          }
+        />
       </View>
     </Screen>
   );
@@ -653,7 +846,9 @@ function ActionTile({
         {loading ? (
           <ActivityIndicator
             color={
-              appColors.primary
+              emergency
+                ? '#FFFFFF'
+                : appColors.primary
             }
           />
         ) : (
@@ -661,7 +856,9 @@ function ActionTile({
             name={icon}
             size={23}
             color={
-              appColors.primary
+              emergency
+                ? '#FFFFFF'
+                : appColors.primary
             }
           />
         )}
@@ -690,9 +887,11 @@ function ActionTile({
           </Text>
 
           <Text
-            style={
-              styles.tileSubtitle
-            }
+            style={[
+              styles.tileSubtitle,
+              emergency &&
+                styles.emergencySubtitle,
+            ]}
           >
             {subtitle}
           </Text>
@@ -714,10 +913,14 @@ function ActionTile({
 function SmallTile({
   icon,
   title,
+  tone,
   onPress,
   appColors,
   styles,
 }) {
+  const { isDark } = useApp();
+  const toned = toneColors(tone, appColors, isDark);
+
   return (
     <Pressable
       onPress={onPress}
@@ -735,15 +938,19 @@ function SmallTile({
       ]}
     >
       <View
-        style={
-          styles.smallIconWrap
-        }
+        style={[
+          styles.smallIconWrap,
+          {
+            backgroundColor:
+              toned.bg,
+          },
+        ]}
       >
         <MaterialCommunityIcons
           name={icon}
           size={22}
           color={
-            appColors.primary
+            toned.fg
           }
         />
       </View>
@@ -771,11 +978,15 @@ function SmallTile({
 function WideTile({
   icon,
   title,
+  tone,
   loading,
   onPress,
   appColors,
   styles,
 }) {
+  const { isDark } = useApp();
+  const toned = toneColors(tone, appColors, isDark);
+
   return (
     <Pressable
       onPress={onPress}
@@ -795,14 +1006,18 @@ function WideTile({
       ]}
     >
       <View
-        style={
-          styles.smallIconWrap
-        }
+        style={[
+          styles.smallIconWrap,
+          {
+            backgroundColor:
+              toned.bg,
+          },
+        ]}
       >
         {loading ? (
           <ActivityIndicator
             color={
-              appColors.primary
+              toned.fg
             }
           />
         ) : (
@@ -810,7 +1025,7 @@ function WideTile({
             name={icon}
             size={23}
             color={
-              appColors.primary
+              toned.fg
             }
           />
         )}
@@ -853,7 +1068,9 @@ function Chevron({
         name="chevron-right"
         size={20}
         color={
-          appColors.primary
+          active
+            ? '#FFFFFF'
+            : appColors.primary
         }
       />
     </View>
@@ -950,13 +1167,13 @@ function createStyles(
         'space-between',
     },
 
+    // SOS precisa se destacar de longe: vermelho cheio, texto branco.
     actionTileEmergency: {
       backgroundColor:
-        appColors.surfaceAlt,
+        appColors.danger,
 
       borderColor:
-        appColors.borderStrong ||
-        appColors.border,
+        appColors.danger,
     },
 
     tileIconWrap: {
@@ -974,7 +1191,7 @@ function createStyles(
 
     tileIconEmergency: {
       backgroundColor:
-        appColors.iconBg,
+        'rgba(255, 255, 255, 0.2)',
     },
 
     tileBottom: {
@@ -1000,8 +1217,12 @@ function createStyles(
     },
 
     emergencyText: {
+      color: '#FFFFFF',
+    },
+
+    emergencySubtitle: {
       color:
-        appColors.primaryDark,
+        'rgba(255, 255, 255, 0.88)',
     },
 
     tileSubtitle: {
@@ -1198,7 +1419,7 @@ function createStyles(
 
     chevronActive: {
       backgroundColor:
-        appColors.iconBg,
+        'rgba(255, 255, 255, 0.2)',
     },
 
     pressed: {

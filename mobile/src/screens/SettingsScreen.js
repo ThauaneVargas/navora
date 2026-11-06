@@ -5,9 +5,10 @@ import Screen from '../components/Screen';
 import Header from '../components/Header';
 import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
+import LanguagePicker from '../components/LanguagePicker';
 
 export default function SettingsScreen({ navigate, goBack }) {
-  const { appColors, isDark, toggleTheme } = useApp();
+  const { appColors, isDark, toggleTheme, t } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
 
   const [prefs, setPrefs] = useState({
@@ -21,14 +22,20 @@ export default function SettingsScreen({ navigate, goBack }) {
 
   return (
     <Screen>
-      <Header title="Configurações" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+      <Header title={t('settings.title')} centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
-      <SectionLabel label="Aparência" styles={styles} />
+      <SectionLabel label={t('language.title')} styles={styles} />
+      <View style={[styles.group, styles.languageGroup, shadows.card]}>
+        <Text style={styles.rowSub}>{t('language.subtitle')}</Text>
+        <LanguagePicker />
+      </View>
+
+      <SectionLabel label={t('settings.appearance')} styles={styles} />
       <View style={[styles.group, shadows.card]}>
         <SettingRow
           icon={isDark ? 'weather-night' : 'white-balance-sunny'}
-          title="Modo noturno"
-          subtitle="Inverte as cores da interface"
+          title={t('settings.darkMode')}
+          subtitle={t('settings.darkModeSub')}
           styles={styles}
           appColors={appColors}
           trailing={
@@ -42,12 +49,12 @@ export default function SettingsScreen({ navigate, goBack }) {
         />
       </View>
 
-      <SectionLabel label="Notificações" styles={styles} />
+      <SectionLabel label={t('settings.notifications')} styles={styles} />
       <View style={[styles.group, shadows.card]}>
         <SettingRow
           icon="routes"
-          title="Alertas de rota"
-          subtitle="Avisos de recálculo e desvios"
+          title={t('settings.routeAlerts')}
+          subtitle={t('settings.routeAlertsSub')}
           styles={styles}
           appColors={appColors}
           last={false}
@@ -62,8 +69,8 @@ export default function SettingsScreen({ navigate, goBack }) {
         />
         <SettingRow
           icon="alarm-light-outline"
-          title="Vibração no SOS"
-          subtitle="Vibrar ao enviar ou receber SOS"
+          title={t('settings.sosVibration')}
+          subtitle={t('settings.sosVibrationSub')}
           styles={styles}
           appColors={appColors}
           last={false}
@@ -78,8 +85,8 @@ export default function SettingsScreen({ navigate, goBack }) {
         />
         <SettingRow
           icon="volume-high"
-          title="Orientação por voz"
-          subtitle="Falar instruções durante a navegação"
+          title={t('settings.voiceGuidance')}
+          subtitle={t('settings.voiceGuidanceSub')}
           styles={styles}
           appColors={appColors}
           last
@@ -94,12 +101,12 @@ export default function SettingsScreen({ navigate, goBack }) {
         />
       </View>
 
-      <SectionLabel label="Dados e conexão" styles={styles} />
+      <SectionLabel label={t('settings.dataConnection')} styles={styles} />
       <View style={[styles.group, shadows.card]}>
         <SettingRow
           icon="wifi-off"
-          title="Modo offline"
-          subtitle="Usar dados locais quando sem internet"
+          title={t('settings.offlineMode')}
+          subtitle={t('settings.offlineModeSub')}
           styles={styles}
           appColors={appColors}
           last={false}
@@ -114,8 +121,8 @@ export default function SettingsScreen({ navigate, goBack }) {
         />
         <SettingRow
           icon="shield-lock-outline"
-          title="Privacidade"
-          subtitle="Dados, localização e consentimentos"
+          title={t('settings.privacy')}
+          subtitle={t('settings.privacySub')}
           styles={styles}
           appColors={appColors}
           last
@@ -123,19 +130,19 @@ export default function SettingsScreen({ navigate, goBack }) {
         />
       </View>
 
-      <SectionLabel label="Sobre o app" styles={styles} />
+      <SectionLabel label={t('settings.about')} styles={styles} />
       <View style={[styles.group, shadows.card]}>
         <SettingRow
           icon="information-outline"
           title="Navora"
-          subtitle="Navegação hospitalar inteligente"
+          subtitle={t('settings.appTagline')}
           styles={styles}
           appColors={appColors}
           last={false}
         />
         <SettingRow
           icon="tag-outline"
-          title="Versão"
+          title={t('settings.version')}
           subtitle="1.0.0"
           styles={styles}
           appColors={appColors}
@@ -179,6 +186,10 @@ function SettingRow({ icon, title, subtitle, trailing, onPress, last, noChevron,
 }
 
 const createStyles = (colors) => StyleSheet.create({
+  languageGroup: {
+    padding: 16,
+    gap: 12,
+  },
   sectionLabel: {
     color: colors.muted,
     fontSize: 11,

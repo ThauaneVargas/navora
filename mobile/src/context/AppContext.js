@@ -1,5 +1,37 @@
-import React, { createContext, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import * as SecureStore from 'expo-secure-store';
 import { getColors } from '../theme/colors';
+import { DEFAULT_LANGUAGE, isSupportedLanguage, translate } from '../i18n';
+
+// Preferências do aparelho (idioma e modo noturno): guardadas no celular pra
+// não voltarem ao padrão toda vez que o app abre.
+const PREFS_KEY = 'navora.preferences';
+
+async function loadPreferences() {
+  try {
+    if (!(await SecureStore.isAvailableAsync())) return null;
+    const raw = await SecureStore.getItemAsync(PREFS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Traducao fora dos componentes (ex.: avisos do App.js, que fica fora do
+// AppProvider): usa o idioma salvo nas preferencias.
+export async function translateWithSavedLanguage(key, params) {
+  const saved = await loadPreferences();
+  return translate(isSupportedLanguage(saved?.language) ? saved.language : DEFAULT_LANGUAGE, key, params);
+}
+
+async function savePreferences(preferences) {
+  try {
+    if (!(await SecureStore.isAvailableAsync())) return;
+    await SecureStore.setItemAsync(PREFS_KEY, JSON.stringify(preferences));
+  } catch {
+    // Sem cofre (web): vale só nesta sessão.
+  }
+}
 
 const AppContext = createContext(null);
 
@@ -49,8 +81,35 @@ const defaultActiveRoute = {
   source: 'fallback',
 };
 
-export function AppProvider({ children }) {
+// liveRoute: a rota REAL em andamento (estado do App.js), ou null. Diferente
+// de activeRoute abaixo, que é um exemplo usado como reserva pelas telas de mapa.
+export function AppProvider({ children, liveRoute = null }) {
   const [themeMode, setThemeMode] = useState('light');
+  const [language, setLanguageState] = useState(DEFAULT_LANGUAGE);
+  const [preferencesLoaded, setPreferencesLoaded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    loadPreferences().then((saved) => {
+      if (!active) return;
+      if (saved?.themeMode === 'dark' || saved?.themeMode === 'light') setThemeMode(saved.themeMode);
+      if (isSupportedLanguage(saved?.language)) setLanguageState(saved.language);
+      setPreferencesLoaded(true);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (preferencesLoaded) savePreferences({ themeMode, language });
+  }, [preferencesLoaded, themeMode, language]);
+
+  const setLanguage = useCallback((code) => {
+    if (isSupportedLanguage(code)) setLanguageState(code);
+  }, []);
+
+  const t = useCallback((key, params) => translate(language, key, params), [language]);
   const [userProfile, setUserProfileState] = useState(defaultUserProfile);
   const [currentLocation, setCurrentLocation] = useState(defaultCurrentLocation);
   const [activeRoute, setActiveRoute] = useState(defaultActiveRoute);
@@ -105,6 +164,10 @@ export function AppProvider({ children }) {
       isDark,
       appColors: getColors(isDark),
       toggleTheme: () => setThemeMode((current) => (current === 'dark' ? 'light' : 'dark')),
+      language,
+      setLanguage,
+      t,
+      liveRoute,
       userProfile,
       setArea,
       setProfileType,
@@ -117,7 +180,7 @@ export function AppProvider({ children }) {
       userPreferences,
       activeRoute,
     }),
-    [themeMode, isDark, userProfile, currentLocation, userPreferences, activeRoute]
+    [themeMode, isDark, language, setLanguage, t, liveRoute, userProfile, currentLocation, userPreferences, activeRoute]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
@@ -131,6 +194,10 @@ export function useApp() {
       isDark: false,
       appColors: getColors(false),
       toggleTheme: () => {},
+      language: DEFAULT_LANGUAGE,
+      setLanguage: () => {},
+      t: (key, params) => translate(DEFAULT_LANGUAGE, key, params),
+      liveRoute: null,
       userProfile: defaultUserProfile,
       setArea: () => {},
       setProfileType: () => {},

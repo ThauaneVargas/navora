@@ -84,6 +84,7 @@ export class NavigationRoutingService {
       current_area_code: payload.current_area_code,
       current_beacon_code: payload.current_beacon_code,
       visitor_access_request_id: payload.visitor_access_request_id,
+      visitor_access_token: payload.visitor_access_token,
     });
 
     if (access.decision === AccessDecision.BLOCK || access.decision === AccessDecision.REQUIRE_AUTHORIZATION) {

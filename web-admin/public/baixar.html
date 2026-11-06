@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Baixar o Navora</title>
+  <meta name="description" content="Baixe o app Navora para se orientar dentro do hospital.">
+  <!--
+    Página de download do APK (piloto Android, fora da loja).
+    1) Depois do build no EAS (`npx eas-cli build -p android --profile apk`),
+       cole o link do APK em "navora-apk-url" abaixo. Vazio = página avisa
+       que o download ainda não está disponível.
+    2) Gere o QR Code desta página para imprimir na recepção:
+       npm run qr-download -- https://<endereço do painel>/baixar.html
+       (cria public/baixar-qr.svg, que aparece aqui e na impressão).
+  -->
+  <meta name="navora-apk-url" content="">
+  <style>
+    :root {
+      --bg: #FAF7F8; --surface: #FFFFFF; --text: #171417; --muted: #5F5A62;
+      --primary: #980027; --border: #E8E3E5; --soft: #F5E8EB;
+      color-scheme: light;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text);
+      font: 18px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    main { max-width: 560px; margin: 0 auto; padding: 32px max(20px, env(safe-area-inset-left)) 40px; display: grid; gap: 20px; }
+    .brand { color: var(--primary); font-weight: 800; font-size: 30px; margin: 0; }
+    h1 { margin: 0; font-size: 28px; line-height: 1.25; }
+    .lead { margin: 4px 0 0; color: var(--muted); }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 24px; padding: 24px; }
+    .download { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 64px; border-radius: 18px;
+      background: var(--primary); color: #FFFFFF; font-weight: 800; font-size: 20px; text-decoration: none; }
+    .download:focus-visible, a:focus-visible { outline: 3px solid var(--text); outline-offset: 3px; }
+    .notice { margin: 0; padding: 14px 16px; border-radius: 16px; background: var(--soft); }
+    h2 { margin: 0 0 8px; font-size: 20px; }
+    ol { margin: 0; padding-left: 24px; }
+    li + li { margin-top: 8px; }
+    .qr { text-align: center; }
+    .qr img { width: 220px; height: 220px; }
+    .muted { color: var(--muted); font-size: 16px; margin: 0; }
+    a { color: var(--primary); }
+    [hidden] { display: none !important; }
+    @media print {
+      body { background: #FFFFFF; font-size: 20px; }
+      .download, .screen-only { display: none !important; }
+      .card { border: 0; padding: 0; }
+      .qr img { width: 9cm; height: 9cm; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="brand">Navora</p>
+      <h1>Baixe o app do hospital</h1>
+      <p class="lead">Ache seu caminho, peça ajuda e acompanhe sua visita pelo celular.</p>
+    </header>
+
+    <section class="card">
+      <a class="download" id="download" href="#" hidden>
+        <span aria-hidden="true">⬇</span> Baixar o Navora (Android)
+      </a>
+      <p class="notice" id="unavailable" hidden>O download ainda não está disponível. Peça ajuda na recepção.</p>
+      <p class="notice" id="iphone" hidden>Por enquanto o Navora é só para celulares Android. A versão para iPhone está a caminho.</p>
+    </section>
+
+    <section class="card">
+      <h2>Como instalar</h2>
+      <ol>
+        <li>Toque em <strong>Baixar o Navora</strong>.</li>
+        <li>Quando terminar, toque no arquivo baixado (ou abra em <strong>Downloads</strong>).</li>
+        <li>Se o celular avisar que não pode instalar, toque em <strong>Configurações</strong> e ligue <strong>Permitir desta fonte</strong>. Depois volte.</li>
+        <li>Toque em <strong>Instalar</strong> e depois em <strong>Abrir</strong>.</li>
+        <li>Crie sua conta com nome, telefone, e-mail e senha.</li>
+      </ol>
+      <p class="muted screen-only" style="margin-top:12px">Baixe só por esta página. Dúvidas? Fale com a recepção.</p>
+    </section>
+
+    <section class="card qr" id="qr-card" hidden>
+      <h2>Para outra pessoa baixar: aponte a câmera do celular aqui</h2>
+      <img id="qr" src="baixar-qr.svg" alt="QR Code para abrir esta página e baixar o Navora">
+    </section>
+
+    <p class="muted screen-only"><a href="privacidade.html">Política de privacidade</a></p>
+  </main>
+
+  <script>
+    (function () {
+      var apk = document.querySelector('meta[name="navora-apk-url"]').content.trim();
+      var isIphone = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      var download = document.getElementById('download');
+
+      if (isIphone) {
+        document.getElementById('iphone').hidden = false;
+      } else if (apk) {
+        download.href = apk;
+        download.hidden = false;
+      } else {
+        document.getElementById('unavailable').hidden = false;
+      }
+
+      // O QR só aparece depois de gerado (npm run qr-download).
+      var qr = document.getElementById('qr');
+      var card = document.getElementById('qr-card');
+      qr.addEventListener('load', function () { card.hidden = false; });
+      if (qr.complete && qr.naturalWidth) card.hidden = false;
+    })();
+  </script>
+</body>
+</html>

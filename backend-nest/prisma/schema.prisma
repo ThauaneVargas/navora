@@ -136,6 +136,15 @@ model User {
   active               Boolean   @default(true)
   passwordResetToken   String?   @unique @map("password_reset_token")
   passwordResetExpires DateTime? @map("password_reset_expires")
+  // Tokens emitidos antes desta data sao recusados (troca/redefinicao de senha).
+  passwordChangedAt    DateTime? @map("password_changed_at")
+  // Tentativas erradas do codigo de recuperacao; na 5a o codigo e descartado.
+  passwordResetAttempts Int      @default(0) @map("password_reset_attempts")
+  // Regra de seguranca: funcionarios (RECEPTION/ADMIN) nunca sao excluidos,
+  // apenas desativados, para preservar a auditoria do que fizeram no sistema.
+  // Um trigger no PostgreSQL bloqueia DELETE desses usuarios.
+  deactivatedAt        DateTime? @map("deactivated_at")
+  deactivatedById      Int?      @map("deactivated_by_id")
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
 
@@ -144,19 +153,44 @@ model User {
   checkIns       CheckIn[]
   notifications  Notification[]
 
+  deactivatedBy      User?  @relation("UserDeactivatedBy", fields: [deactivatedById], references: [id], onDelete: Restrict)
+  deactivatedUsers   User[] @relation("UserDeactivatedBy")
+  statusChanges      UserStatusChange[] @relation("UserStatusChangeTarget")
+  statusChangesMade  UserStatusChange[] @relation("UserStatusChangeActor")
+  visitorDecisions   VisitorAccessRequest[] @relation("VisitorAccessDecidedBy")
+  callRequests       CallRequest[]          @relation("CallRequestUser")
+
   @@map("users")
+}
+
+enum UserStatusAction {
+  DEACTIVATED
+  REACTIVATED
+}
+
+// Historico imutavel de ativacoes/desativacoes de usuarios do painel.
+model UserStatusChange {
+  id            Int              @id @default(autoincrement())
+  userId        Int              @map("user_id")
+  action        UserStatusAction
+  reason        String?
+  performedById Int              @map("performed_by_id")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  user        User @relation("UserStatusChangeTarget", fields: [userId], references: [id], onDelete: Restrict)
+  performedBy User @relation("UserStatusChangeActor", fields: [performedById], references: [id], onDelete: Restrict)
+
+  @@index([userId])
+  @@map("user_status_changes")
 }
 
 model PatientProfile {
   id               Int      @id @default(autoincrement())
   userId           Int      @unique @map("user_id")
-  patientCode      String?  @unique @map("patient_code")
-  birthDate        DateTime? @map("birth_date")
+  // LGPD (minimização, 29/10): CPF, data de nascimento e observações (alergias)
+  // saíram do cadastro e do banco — não eram usados para nada.
   accessibility    Json     @default("{}")
   emergencyContact String?  @map("emergency_contact")
-  // "Observações importantes" do cadastro (alergias, restrições...). Antes era
-  // digitado no app e descartado — não havia onde guardar.
-  notes            String?
   // LGPD: quando e em qual versão da política o paciente deu o consentimento
   // (dados de saúde são sensíveis — art. 11 exige consentimento específico).
   privacyConsentAt     DateTime? @map("privacy_consent_at")
@@ -203,6 +237,21 @@ model CallRequest {
   createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime   @updatedAt @map("updated_at")
 
+  // Telefone de quem pediu (do perfil, quando tem conta).
+  callerPhone String?    @map("caller_phone")
+  // Necessidades de acessibilidade: codigos em CALL_NEEDS (calls/call-codes.ts).
+  // O app nao pergunta mais "o que esta acontecendo" (dado de saude; 29/10).
+  needs       Json       @default("[]")
+  // Hash do codigo secreto com que o celular acompanha o chamado.
+  accessTokenHash String? @map("access_token_hash")
+
+  // Conta que abriu o chamado (login obrigatorio desde 29/10). Nulo = chamado
+  // de antes da regra ou de conta excluida depois.
+  userId      Int?       @map("user_id")
+  user        User?      @relation("CallRequestUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([updatedAt])
   @@map("call_requests")
 }
 
@@ -232,13 +281,22 @@ model VisitorAccessRequest {
   // Hash (SHA-256) do código secreto devolvido só pro celular que criou o
   // pedido. Sem ele, só a recepção/admin leem o pedido (ids são sequenciais).
   accessTokenHash      String?             @map("access_token_hash")
+  // Grupo informado pelo visitante no app: [{ name, type }] (type: adult/child...).
+  companions           Json                @default("[]")
+  groupTotal           Int                 @default(1) @map("group_total")
+  visitCode            String?             @map("visit_code")
+  assistanceRequest    String?             @map("assistance_request")
   authorizedAt         DateTime?           @map("authorized_at")
   expiresAt            DateTime?           @map("expires_at")
   finishedAt           DateTime?           @map("finished_at")
+  // Funcionario que autorizou ou negou a solicitacao (auditoria).
+  decidedById          Int?                @map("decided_by_id")
+  decidedAt            DateTime?           @map("decided_at")
   createdAt            DateTime            @default(now()) @map("created_at")
   updatedAt            DateTime            @updatedAt @map("updated_at")
 
   destination Destination? @relation(fields: [destinationId], references: [id])
+  decidedBy   User?        @relation("VisitorAccessDecidedBy", fields: [decidedById], references: [id], onDelete: Restrict)
   checkIns CheckIn[]
 
   @@map("visitor_access_requests")

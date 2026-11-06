@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useApp } from '../context/AppContext';
 import {
   ActivityIndicator,
   Alert,
@@ -10,9 +11,14 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import CenteredFormScreen from '../components/CenteredFormScreen';
+import PasswordRules from '../components/PasswordRules';
 import { navoraApi, isNetworkError } from '../services/api';
+import { isStrongPassword, stripSpaces } from '../utils/masks';
 
-export default function ResetPasswordScreen({ navigate, goBack }) {
+export default function ResetPasswordScreen({ navigate, goBack, routeParams = {} }) {
+  const { appColors: colors, t } = useApp();
+  const styles = useThemeStyles();
+  const [email, setEmail] = useState(routeParams.email || '');
   const [token, setToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,29 +27,33 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
   const [done, setDone] = useState(false);
 
   const handleReset = async () => {
-    if (!token.trim()) {
-      Alert.alert('Atenção', 'Digite o código de recuperação recebido por e-mail.');
+    if (!email.trim().includes('@')) {
+      Alert.alert(t('common.attention'), t('forgot.invalidEmail'));
       return;
     }
-    if (newPassword.length < 6) {
-      Alert.alert('Atenção', 'A nova senha deve ter pelo menos 6 caracteres.');
+    if (!/^\d{6}$/.test(token.trim())) {
+      Alert.alert(t('common.attention'), t('reset.codeRequired'));
+      return;
+    }
+    if (!isStrongPassword(newPassword)) {
+      Alert.alert(t('password.weakTitle'), t('password.weak'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Atenção', 'As senhas não coincidem.');
+      Alert.alert(t('common.attention'), t('reset.mismatch'));
       return;
     }
 
     setLoading(true);
     try {
-      await navoraApi.resetPassword(token.trim(), newPassword);
+      await navoraApi.resetPassword(email.trim().toLowerCase(), token.trim(), newPassword);
       setDone(true);
     } catch (error) {
       if (isNetworkError(error)) {
-        Alert.alert('Sem conexão', 'Verifique sua internet e tente novamente.');
+        Alert.alert(t('common.noConnection'), t('common.checkInternet'));
         return;
       }
-      Alert.alert('Código inválido', 'O código informado é inválido ou já expirou. Solicite um novo link de recuperação.');
+      Alert.alert(t('reset.invalidCodeTitle'), t('reset.invalidCode'));
     } finally {
       setLoading(false);
     }
@@ -51,46 +61,38 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
 
   if (done) {
     return (
-      <CenteredFormScreen>
-        <View style={styles.card}>
-          <View style={styles.iconRing}>
-            <MaterialCommunityIcons name="check-circle-outline" size={44} color="#980027" />
-          </View>
-          <Text style={styles.title}>Senha atualizada!</Text>
-          <Text style={styles.body}>Sua senha foi redefinida com sucesso. Faça login com a nova senha.</Text>
-          <Pressable onPress={() => goBack?.()} style={({ pressed }) => [styles.btn, pressed && styles.pressed]}>
-            <Text style={styles.btnText}>Ir para o login</Text>
-          </Pressable>
+      <CenteredFormScreen title={t('reset.title')} onBack={() => goBack?.()}>
+        <View style={styles.iconTile}>
+          <MaterialCommunityIcons name="check-circle-outline" size={36} color={colors.primary} />
         </View>
+        <Text style={styles.title}>{t('reset.doneTitle')}</Text>
+        <Text style={styles.body}>{t('reset.done')}</Text>
+        <Pressable onPress={() => goBack?.()} style={({ pressed }) => [styles.btn, pressed && styles.pressed]}>
+          <Text style={styles.btnText}>{t('reset.goToLogin')}</Text>
+        </Pressable>
       </CenteredFormScreen>
     );
   }
 
   return (
-    <CenteredFormScreen>
-      <View style={styles.card}>
-        <Pressable onPress={() => goBack?.()} style={styles.back}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#980027" />
-          <Text style={styles.backText}>Voltar</Text>
-        </Pressable>
-
-        <View style={styles.iconRing}>
-          <MaterialCommunityIcons name="lock-open-outline" size={38} color="#980027" />
+    <CenteredFormScreen title={t('reset.title')} onBack={() => goBack?.()}>
+        <View style={styles.iconTile}>
+          <MaterialCommunityIcons name="lock-open-outline" size={34} color={colors.primary} />
         </View>
 
-        <Text style={styles.title}>Nova senha</Text>
         <Text style={styles.body}>
-          Digite o código de recuperação recebido por e-mail e escolha uma nova senha.
+          {t('reset.intro')}
         </Text>
 
         <View style={styles.inputBox}>
-          <MaterialCommunityIcons name="key-outline" size={19} color="#980027" />
+          <MaterialCommunityIcons name="email-outline" size={19} color={colors.primary} />
           <TextInput
             style={styles.input}
-            placeholder="Código de recuperação"
-            placeholderTextColor="#92959B"
-            value={token}
-            onChangeText={setToken}
+            placeholder={t('forgot.emailPlaceholder')}
+            placeholderTextColor={colors.lightText}
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
             autoCapitalize="none"
             autoCorrect={false}
             editable={!loading}
@@ -98,35 +100,54 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
         </View>
 
         <View style={styles.inputBox}>
-          <MaterialCommunityIcons name="lock-outline" size={19} color="#980027" />
+          <MaterialCommunityIcons name="key-outline" size={19} color={colors.primary} />
           <TextInput
             style={styles.input}
-            placeholder="Nova senha"
-            placeholderTextColor="#92959B"
+            placeholder={t('reset.codePlaceholder')}
+            placeholderTextColor={colors.lightText}
+            value={token}
+            onChangeText={(value) => setToken(value.replace(/\D/g, '').slice(0, 6))}
+            keyboardType="number-pad"
+            maxLength={6}
+            autoComplete="one-time-code"
+            textContentType="oneTimeCode"
+            editable={!loading}
+          />
+        </View>
+
+        <View style={styles.inputBox}>
+          <MaterialCommunityIcons name="lock-outline" size={19} color={colors.primary} />
+          <TextInput
+            style={styles.input}
+            placeholder={t('reset.newPassword')}
+            placeholderTextColor={colors.lightText}
             value={newPassword}
-            onChangeText={setNewPassword}
+            onChangeText={(value) => setNewPassword(stripSpaces(value))}
             secureTextEntry={!showPass}
+            maxLength={72}
             editable={!loading}
           />
           <Pressable onPress={() => setShowPass((v) => !v)} hitSlop={8}>
-            <MaterialCommunityIcons name={showPass ? 'eye-off-outline' : 'eye-outline'} size={18} color="#92959B" />
+            <MaterialCommunityIcons name={showPass ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.lightText} />
           </Pressable>
         </View>
+        <PasswordRules value={newPassword} />
 
         <View style={[styles.inputBox, confirmPassword && newPassword !== confirmPassword && styles.inputBoxError]}>
-          <MaterialCommunityIcons name="lock-check-outline" size={19} color="#980027" />
+          <MaterialCommunityIcons name="lock-check-outline" size={19} color={colors.primary} />
           <TextInput
             style={styles.input}
-            placeholder="Confirmar nova senha"
-            placeholderTextColor="#92959B"
+            placeholder={t('reset.confirmPassword')}
+            placeholderTextColor={colors.lightText}
             value={confirmPassword}
-            onChangeText={setConfirmPassword}
+            onChangeText={(value) => setConfirmPassword(stripSpaces(value))}
+            maxLength={72}
             secureTextEntry={!showPass}
             editable={!loading}
           />
         </View>
         {confirmPassword && newPassword !== confirmPassword ? (
-          <Text style={styles.errorText}>As senhas não coincidem.</Text>
+          <Text style={styles.errorText}>{t('reset.mismatch')}</Text>
         ) : null}
 
         <Pressable
@@ -136,37 +157,42 @@ export default function ResetPasswordScreen({ navigate, goBack }) {
         >
           {loading
             ? <ActivityIndicator color="#FFFFFF" size="small" />
-            : <Text style={styles.btnText}>Redefinir senha</Text>
+            : <Text style={styles.btnText}>{t('reset.submit')}</Text>
           }
         </Pressable>
-      </View>
     </CenteredFormScreen>
   );
 }
 
-const styles = StyleSheet.create({
-  card: { gap: 14 },
-  back: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  backText: { color: '#980027', fontSize: 14, fontWeight: '800' },
-  iconRing: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: '#FFF6F8', borderWidth: 1, borderColor: '#FFD2D7',
+// Estilos acompanham o tema (claro/escuro); antes usavam a paleta fixa do
+// tema claro e não mudavam no modo noturno.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+// Mesmo visual da Esqueci minha senha (ForgotPasswordScreen).
+const createStyles = (colors) => StyleSheet.create({
+  iconTile: {
+    width: 68, height: 68, borderRadius: 22,
+    backgroundColor: colors.iconBg,
     alignItems: 'center', justifyContent: 'center', alignSelf: 'center',
   },
-  title: { color: '#202124', fontSize: 24, fontWeight: '900', textAlign: 'center' },
-  body: { color: '#696B70', fontSize: 14, lineHeight: 21, textAlign: 'center' },
+  title: { color: colors.text, fontSize: 22, fontWeight: '900', textAlign: 'center' },
+  body: { color: colors.muted, fontSize: 15, lineHeight: 22, fontWeight: '600', textAlign: 'center' },
   inputBox: {
-    height: 48, borderRadius: 12, borderWidth: 1, borderColor: '#E4E4E6',
-    paddingHorizontal: 13, flexDirection: 'row', alignItems: 'center', gap: 9,
+    height: 56, borderRadius: 16, borderWidth: 1, borderColor: colors.border,
+    backgroundColor: colors.surfaceAlt,
+    paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 10,
   },
-  input: { flex: 1, color: '#36383D', fontSize: 14, paddingVertical: 0 },
-  inputBoxError: { borderColor: '#C0392B' },
-  errorText: { color: '#C0392B', fontSize: 12, fontWeight: '700', marginTop: -8 },
+  input: { flex: 1, color: colors.text, fontSize: 16, paddingVertical: 0 },
+  inputBoxError: { borderColor: colors.danger },
+  errorText: { color: colors.danger, fontSize: 13, fontWeight: '700', marginTop: -8 },
   btn: {
-    height: 50, borderRadius: 14, backgroundColor: '#980027',
+    height: 56, borderRadius: 16, backgroundColor: colors.primaryStrong,
     alignItems: 'center', justifyContent: 'center',
   },
-  btnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
+  btnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
   pressed: { opacity: 0.76 },
   disabled: { opacity: 0.68 },
 });

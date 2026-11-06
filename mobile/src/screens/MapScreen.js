@@ -1,40 +1,31 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Animated, Image, PanResponder, View, Text, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
+import { Alert, Animated, PanResponder, View, Text, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
 import BottomTabs from '../components/BottomTabs';
-import { colors, radii, shadows, spacing, typography } from '../theme/colors';
+import { isRoutePreview } from '../components/ActiveRouteBar';
+import { radii, shadows, spacing, typography } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import { deriveNavigationProgress, normalizeRouteCoordinates } from '../services/navigationAdapter';
 
-const logo = require('../../assets/images/navora_symbol.png');
 
-const NAV_COLORS = {
-  burgundy: '#980027',
-  burgundyDark: '#7D001F',
-  burgundyLight: '#FFF5F7',
-  background: '#F8F9FB',
-  surface: '#FFFFFF',
-  text: '#111827',
-  secondary: '#667085',
-  border: '#E7E9EE',
-};
-
-const HOSPITAL_FLOORS = ['Térreo', '2º Andar', '3º Andar', '4º Andar'];
+// Ids dos andares; o nome mostrado vem de t('map.floor_<id>').
+const HOSPITAL_FLOORS = ['ground', '2', '3', '4'];
 
 // Array vazio compartilhado: um `[]` novo a cada render fazia o useMemo do
 // routeMap recalcular o mapa inteiro em toda renderização.
 const EMPTY_LIST = [];
 
-export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute, navigationProgress: selectedProgress, onEndRoute }) {
-  const { activeRoute: fallbackRoute, appColors, isDark } = useApp();
+export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute, navigationProgress: selectedProgress, onEndRoute, onConfirmRoute, onCancelRoutePreview }) {
+  const styles = useThemeStyles();
+  const { activeRoute: fallbackRoute, appColors, isDark, t } = useApp();
   const { width, height } = useWindowDimensions();
   const activeRoute = selectedRoute || fallbackRoute;
   const pan = useRef(new Animated.ValueXY()).current;
   const [zoom, setZoom] = useState(1);
   const [selectedFloor, setSelectedFloor] = useState(null);
-  const [staticFloor, setStaticFloor] = useState('Térreo');
+  const [staticFloor, setStaticFloor] = useState('ground');
   const routeNodes = Array.isArray(activeRoute?.nodes) ? activeRoute.nodes : EMPTY_LIST;
   const routeEdges = Array.isArray(activeRoute?.edges) ? activeRoute.edges : EMPTY_LIST;
   const useDynamicRoute = activeRoute?.source === 'api' && activeRoute?.routeFound !== false && routeNodes.length > 0;
@@ -54,13 +45,15 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
   const currentStep = navigationProgress.currentStep;
   const nextStep = navigationProgress.nextStep;
   const arrived = navigationProgress.arrived;
+  // Prévia: mostra distância/tempo e o caminho; só vira rota com "Iniciar rota".
+  const preview = isRoutePreview(activeRoute);
   const instructionText = arrived
-    ? getArrivalInstruction(activeRoute, currentStep)
-    : currentStep?.instruction || nextStep?.instruction || (activeRoute?.source === 'api' ? 'Sem orientação disponível para esta rota.' : 'Continue pelo corredor principal e vire à direita.');
+    ? getArrivalInstruction(activeRoute, currentStep, t)
+    : currentStep?.instruction || nextStep?.instruction || (activeRoute?.source === 'api' ? t('map.noGuidance') : t('map.offlineGuidance'));
   const compact = height < 720 || width < 380;
   const mapViewportHeight = Math.max(compact ? 330 : 360, Math.min(500, Math.round(height * (compact ? 0.48 : 0.54))));
-  const remainingDistance = arrived ? '0 m' : activeRoute.distance || 'Distância indisponível';
-  const remainingTime = arrived ? '0 min' : activeRoute.eta || activeRoute.time || 'Tempo indisponível';
+  const remainingDistance = arrived ? '0 m' : activeRoute.distance || t('map.distanceUnavailable');
+  const remainingTime = arrived ? '0 min' : activeRoute.eta || activeRoute.time || t('map.timeUnavailable');
   const stepDistance = arrived ? '0 m' : currentStep?.distance ? `${Math.round(currentStep.distance)} m` : remainingDistance;
   const progressPercent = getProgressPercent(navigationProgress);
 
@@ -97,25 +90,25 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
 
   const selectFloor = () => {
     Alert.alert(
-      'Selecionar andar',
+      t('map.selectFloor'),
       null,
       [
         ...HOSPITAL_FLOORS.map((floor) => ({
-          text: floor,
+          text: t(`map.floor_${floor}`),
           onPress: () => setStaticFloor(floor),
         })),
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
       ]
     );
   };
 
   const confirmEndRoute = () => {
     Alert.alert(
-      'Encerrar navegação?',
-      'Sua rota atual será finalizada.',
+      t('map.endTitle'),
+      t('map.endText'),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Encerrar rota', style: 'destructive', onPress: () => onEndRoute?.() },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('map.endRoute'), style: 'destructive', onPress: () => onEndRoute?.() },
       ]
     );
   };
@@ -123,55 +116,34 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
   if (!activeRoute) {
     return (
       <Screen withBottomTabs>
-        <Header title="Navegar" subtitle="Escolha um destino para iniciar" centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
+        <Header title={t('map.title')} subtitle={t('map.subtitle')} centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
         <View style={[styles.emptyRouteState, styles.emptyRouteCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
           <MaterialCommunityIcons name="map-search-outline" size={38} color={appColors.primary} />
-          <Text style={[styles.emptyRouteTitle, { color: appColors.text }]}>Nenhuma rota ativa</Text>
-          <Text style={[styles.emptyRouteText, { color: appColors.muted }]}>Busque um setor, servico ou destino para visualizar a rota 2D.</Text>
+          <Text style={[styles.emptyRouteTitle, { color: appColors.text }]}>{t('map.emptyTitle')}</Text>
+          <Text style={[styles.emptyRouteText, { color: appColors.muted }]}>{t('map.emptyText')}</Text>
           <Pressable onPress={() => navigate('Search')} style={({ pressed }) => [styles.primaryButton, pressed && styles.pressed, shadows.soft]}>
             <MaterialCommunityIcons name="magnify" size={18} color="#FFFFFF" />
-            <Text style={styles.primaryText}>Buscar destino</Text>
+            <Text style={styles.primaryText}>{t('map.searchDestination')}</Text>
           </Pressable>
         </View>
-        <BottomTabs active="Navigate" navigate={navigate} />
+        <BottomTabs active="Navigate" navigate={navigate} hideRouteBar />
       </Screen>
     );
   }
 
   return (
     <Screen withBottomTabs>
-      <View style={styles.topHeader}>
-        <Pressable
-          onPress={() => goBack?.()}
-          accessibilityRole="button"
-          accessibilityLabel="Voltar"
-          style={({ pressed }) => [styles.headerButton, { backgroundColor: appColors.surface, borderColor: appColors.border }, pressed && styles.pressed, shadows.card]}
-        >
-          <MaterialCommunityIcons name="chevron-left" size={25} color={appColors.primary} />
-        </Pressable>
-        <View style={styles.headerBrand}>
-          <Image source={logo} style={styles.headerLogo} resizeMode="contain" />
-          <Text style={[styles.headerBrandText, { color: appColors.primary }]}>NAVORA</Text>
-        </View>
-        <Pressable
-          onPress={() => navigate('Menu')}
-          accessibilityRole="button"
-          accessibilityLabel="Abrir menu"
-          style={({ pressed }) => [styles.headerButton, { backgroundColor: appColors.surface, borderColor: appColors.border }, pressed && styles.pressed, shadows.card]}
-        >
-          <MaterialCommunityIcons name="menu" size={22} color={appColors.text} />
-        </Pressable>
-      </View>
+      <Header title={t('map.title')} subtitle={t('map.subtitle')} centerTitle onBack={() => goBack?.()} onMenu={() => navigate('Menu')} />
 
       <View style={[styles.routeCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
         <View style={styles.routeCopy}>
-          <Text style={[styles.label, { color: appColors.muted }]}>Rota para</Text>
+          <Text style={[styles.label, { color: appColors.muted }]}>{t('map.routeTo')}</Text>
           <Text style={[styles.routeTitle, { color: appColors.text }]} numberOfLines={1}>{activeRoute.destination}</Text>
           <Text style={[styles.routePath, { color: appColors.text }]} numberOfLines={1}>
             {activeRoute.origin} {'->'} {activeRoute.destination}
           </Text>
           <Text style={[styles.routeMetaText, { color: appColors.muted }]} numberOfLines={1}>
-            {remainingDistance} - aproximadamente {remainingTime}
+            {t('map.approx', { distance: remainingDistance, time: remainingTime })}
           </Text>
         </View>
       </View>
@@ -199,9 +171,9 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
         ) : blockedApiRoute ? (
           <View style={styles.emptyRouteState}>
             <MaterialCommunityIcons name="map-marker-off-outline" size={34} color={appColors.primary} />
-            <Text style={[styles.emptyRouteTitle, { color: appColors.text }]}>Rota indisponível</Text>
+            <Text style={[styles.emptyRouteTitle, { color: appColors.text }]}>{t('map.unavailableTitle')}</Text>
             <Text style={[styles.emptyRouteText, { color: appColors.muted }]}>
-              {activeRoute?.reason || 'Não foi possível montar uma rota segura para este destino.'}
+              {activeRoute?.reason || t('map.unavailableText')}
             </Text>
           </View>
         ) : (
@@ -219,12 +191,12 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
               },
             ]}
           >
-            <Room style={styles.roomReception} label="Recepção" appColors={appColors} isDark={isDark} />
-            <Room style={styles.roomLab} label="Laboratorio" appColors={appColors} isDark={isDark} />
-            <Room style={styles.roomBathroom} label="Banheiro" appColors={appColors} isDark={isDark} />
-            <Room style={styles.roomExam} label="Imagem" appColors={appColors} isDark={isDark} />
-            <Room style={styles.roomTomography} label="Tomografia" appColors={appColors} isDark={isDark} />
-            <Room style={styles.roomElevator} label="Elevador" appColors={appColors} isDark={isDark} />
+            <Room style={styles.roomReception} label={t('map.room_reception')} appColors={appColors} isDark={isDark} />
+            <Room style={styles.roomLab} label={t('map.room_lab')} appColors={appColors} isDark={isDark} />
+            <Room style={styles.roomBathroom} label={t('map.room_bathroom')} appColors={appColors} isDark={isDark} />
+            <Room style={styles.roomExam} label={t('map.room_imaging')} appColors={appColors} isDark={isDark} />
+            <Room style={styles.roomTomography} label={t('map.room_ct')} appColors={appColors} isDark={isDark} />
+            <Room style={styles.roomElevator} label={t('map.room_elevator')} appColors={appColors} isDark={isDark} />
 
             <View style={[styles.corridorHorizontal, { backgroundColor: isDark ? '#23232B' : '#FFFFFF' }]} />
             <View style={[styles.corridorVertical, { backgroundColor: isDark ? '#23232B' : '#FFFFFF' }]} />
@@ -236,7 +208,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
               <View style={styles.blueDot} />
             </View>
             <View style={styles.currentLabel}>
-              <Text style={styles.currentLabelText}>Você está aqui</Text>
+              <Text style={styles.currentLabelText}>{t('map.youAreHere')}</Text>
             </View>
             <View style={styles.pinDestination}>
               <MaterialCommunityIcons name="map-marker" size={34} color={appColors.primary} />
@@ -251,7 +223,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
           <Pressable
             onPress={selectFloor}
             accessibilityRole="button"
-            accessibilityLabel="Selecionar andar"
+            accessibilityLabel={t('map.selectFloor')}
             style={({ pressed }) => [
               styles.floorPill,
               { backgroundColor: appColors.surface, borderColor: appColors.border },
@@ -259,16 +231,18 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
             ]}
           >
             <MaterialCommunityIcons name="layers-outline" size={15} color={appColors.primary} />
-            <Text style={[styles.floorPillText, { color: appColors.text }]}>{staticFloor}</Text>
+            <Text style={[styles.floorPillText, { color: appColors.text }]}>{t(`map.floor_${staticFloor}`)}</Text>
             <MaterialCommunityIcons name="chevron-down" size={14} color={appColors.muted} />
           </Pressable>
         )}
 
         <View style={styles.controls}>
-          <Control icon="plus" label="Aproximar" onPress={zoomIn} appColors={appColors} />
-          <Control icon="minus" label="Afastar" onPress={zoomOut} appColors={appColors} />
+          <Control icon="plus" label={t('map.zoomIn')} onPress={zoomIn} appColors={appColors} />
+          <Control icon="minus" label={t('map.zoomOut')} onPress={zoomOut} appColors={appColors} />
           <Pressable
             onPress={resetMap}
+            accessibilityRole="button"
+            accessibilityLabel={t('map.recenter')}
             style={({ pressed }) => [
               styles.controlButton,
               { backgroundColor: appColors.surface, borderColor: appColors.border },
@@ -286,7 +260,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
         </View>
         <View style={styles.instructionCopy}>
           <Text style={[styles.instructionTitle, { color: appColors.text }]}>
-            {arrived ? 'Você chegou' : 'Próxima orientação'}
+            {arrived ? t('map.arrivedTitle') : t('map.nextGuidance')}
           </Text>
           <Text style={[styles.instructionText, { color: appColors.muted }]}>
             {arrived ? activeRoute.destination : instructionText}
@@ -295,31 +269,54 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
         {!arrived ? (
           <View style={styles.nextDistance}>
             <Text style={[styles.distance, { color: appColors.primary }]}>{stepDistance}</Text>
-            <Text style={[styles.distanceCaption, { color: appColors.muted }]}>até a próxima orientação</Text>
+            <Text style={[styles.distanceCaption, { color: appColors.muted }]}>{t('map.untilNext')}</Text>
           </View>
         ) : null}
       </View>
 
+      {preview ? null : (
       <View style={[styles.progressCard, { backgroundColor: appColors.surface, borderColor: appColors.border }, shadows.card]}>
         <View style={styles.progressHeader}>
-          <Text style={[styles.progressLabel, { color: appColors.muted }]}>Progresso da rota</Text>
+          <Text style={[styles.progressLabel, { color: appColors.muted }]}>{t('map.progress')}</Text>
           <View style={styles.progressMeta}>
-            <Text style={[styles.progressDistance, { color: appColors.text }]}>{remainingDistance} restantes</Text>
-            <Text style={[styles.progressTime, { color: appColors.muted }]}>aprox. {remainingTime}</Text>
+            <Text style={[styles.progressDistance, { color: appColors.text }]}>{t('map.remaining', { distance: remainingDistance })}</Text>
+            <Text style={[styles.progressTime, { color: appColors.muted }]}>{t('map.approxTime', { time: remainingTime })}</Text>
           </View>
         </View>
         <View style={[styles.progressTrack, { backgroundColor: appColors.border }]}>
           <View style={[styles.progressFill, { backgroundColor: appColors.primary, width: `${progressPercent}%` }]} />
         </View>
       </View>
+      )}
 
-      {arrived ? (
+      {preview ? (
+        <>
+          <Pressable
+            onPress={() => onConfirmRoute?.()}
+            accessibilityRole="button"
+            accessibilityLabel={t('map.startRouteA11y', { destination: activeRoute.destination })}
+            style={({ pressed }) => [styles.finishButton, pressed && styles.pressed, shadows.soft]}
+          >
+            <MaterialCommunityIcons name="navigation-variant" size={19} color="#FFFFFF" />
+            <Text style={styles.finishText}>{t('map.startRoute')}</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => onCancelRoutePreview?.()}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.endButton, { borderColor: appColors.border }, pressed && styles.pressed]}
+          >
+            <MaterialCommunityIcons name="chevron-left" size={18} color={appColors.primary} />
+            <Text style={[styles.endButtonText, { color: appColors.primary }]}>{t('header.back')}</Text>
+          </Pressable>
+        </>
+      ) : arrived ? (
         <Pressable
           onPress={confirmEndRoute}
           style={({ pressed }) => [styles.finishButton, pressed && styles.pressed, shadows.soft]}
         >
           <MaterialCommunityIcons name="check-circle-outline" size={19} color="#FFFFFF" />
-          <Text style={styles.finishText}>Finalizar navegação</Text>
+          <Text style={styles.finishText}>{t('map.finish')}</Text>
         </Pressable>
       ) : (
         <>
@@ -333,7 +330,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
           ]}
         >
           <MaterialCommunityIcons name="lifebuoy" size={18} color={appColors.primary} />
-          <Text style={[styles.softButtonText, { color: appColors.primary }]}>Estou perdido</Text>
+          <Text style={[styles.softButtonText, { color: appColors.primary }]}>{t('map.lost')}</Text>
         </Pressable>
         <Pressable
           onPress={() => navigate('Search')}
@@ -344,7 +341,7 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
           ]}
         >
           <MaterialCommunityIcons name="swap-horizontal" size={18} color={appColors.text} />
-          <Text style={[styles.softButtonText, { color: appColors.text }]}>Trocar destino</Text>
+          <Text style={[styles.softButtonText, { color: appColors.text }]}>{t('map.changeDestination')}</Text>
         </Pressable>
       </View>
 
@@ -353,17 +350,19 @@ export default function MapScreen({ navigate, goBack, activeRoute: selectedRoute
         style={({ pressed }) => [styles.endButton, { borderColor: appColors.primary }, pressed && styles.pressed]}
       >
         <MaterialCommunityIcons name="close" size={18} color={appColors.primary} />
-        <Text style={[styles.endButtonText, { color: appColors.primary }]}>Encerrar rota</Text>
+        <Text style={[styles.endButtonText, { color: appColors.primary }]}>{t('map.endRoute')}</Text>
       </Pressable>
         </>
       )}
 
-      <BottomTabs active="Navigate" navigate={navigate} />
+      <BottomTabs active="Navigate" navigate={navigate} hideRouteBar />
     </Screen>
   );
 }
 
 function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFloorChange, routeMap, zoom = 1, pan, panHandlers }) {
+  const styles = useThemeStyles();
+  const { t } = useApp();
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
   const visibleNodes = routeMap.nodesByFloor.get(activeFloor) || [];
   const visibleLines = routeMap.lines.filter((line) => line.floor === activeFloor);
@@ -375,7 +374,7 @@ function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFl
     <View style={styles.dynamicMap}>
       <View style={styles.mapHeader}>
         <View>
-          <Text style={[styles.mapKicker, { color: appColors.primary }]}>Rota esquematica</Text>
+          <Text style={[styles.mapKicker, { color: appColors.primary }]}>{t('map.schematic')}</Text>
           <Text style={[styles.mapFloorTitle, { color: appColors.text }]}>{activeFloor}</Text>
         </View>
         {floors.length > 1 ? (
@@ -394,7 +393,7 @@ function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFl
                 </Text>
                 {floor === originFloor || floor === destinationFloor ? (
                   <Text style={[styles.floorTabBadge, { color: floor === activeFloor ? '#FFFFFF' : appColors.primary }]}>
-                    {floor === originFloor ? 'O' : 'D'}
+                    {floor === originFloor ? t('map.originBadge') : t('map.destinationBadge')}
                   </Text>
                 ) : null}
               </Pressable>
@@ -404,10 +403,10 @@ function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFl
       </View>
 
       {routeMap.redirected ? (
-        <View style={[styles.redirectPill, { backgroundColor: isDark ? '#2A2430' : '#FFF6F7', borderColor: appColors.border }]}>
+        <View style={[styles.redirectPill, { backgroundColor: isDark ? '#2A2430' : appColors.surfaceAlt, borderColor: appColors.border }]}>
           <MaterialCommunityIcons name="call-split" size={15} color={appColors.primary} />
           <Text style={[styles.redirectText, { color: appColors.primary }]} numberOfLines={1}>
-            Orientacao ajustada para {routeMap.destinationLabel}
+            {t('map.redirected', { label: routeMap.destinationLabel })}
           </Text>
         </View>
       ) : null}
@@ -415,7 +414,7 @@ function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFl
       {arrived ? (
         <View style={[styles.arrivalBanner, { backgroundColor: appColors.primary }]}>
           <MaterialCommunityIcons name="check-circle" size={18} color="#FFFFFF" />
-          <Text style={styles.arrivalBannerText}>Você chegou ao destino</Text>
+          <Text style={styles.arrivalBannerText}>{t('map.arrivedBanner')}</Text>
         </View>
       ) : null}
 
@@ -463,7 +462,7 @@ function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFl
               {floorTransfers[0].fromFloor} {'->'} {floorTransfers[0].toFloor}
             </Text>
             <Text style={[styles.transferText, { color: appColors.muted }]} numberOfLines={2}>
-              {floorTransfers[0].instruction || `Continua em ${floorTransfers[0].toFloor}.`}
+              {floorTransfers[0].instruction || t('map.continuesOn', { floor: floorTransfers[0].toFloor })}
             </Text>
           </View>
         </View>
@@ -473,6 +472,7 @@ function DynamicRouteMap({ activeFloor, arrived, appColors, floors, isDark, onFl
 }
 
 function RouteLine({ line, mapSize, appColors }) {
+  const styles = useThemeStyles();
   if (!mapSize.width || !mapSize.height) return null;
 
   const x1 = (line.from.normalizedX / 100) * mapSize.width;
@@ -485,7 +485,7 @@ function RouteLine({ line, mapSize, appColors }) {
   const backgroundColor = line.status === 'traversed'
     ? '#9CA3AF'
     : line.status === 'current'
-      ? NAV_COLORS.burgundy
+      ? appColors.primary
       : '#D6D8DE';
   const opacity = line.status === 'remaining' ? 0.78 : 0.95;
   const height = line.status === 'current' ? 7 : 5;
@@ -509,10 +509,12 @@ function RouteLine({ line, mapSize, appColors }) {
 }
 
 function RouteNode({ appColors, isDark, node }) {
+  const styles = useThemeStyles();
+  const { t } = useApp();
   const roleStyle = node.visualRole === 'origin'
-    ? { backgroundColor: NAV_COLORS.burgundy, borderColor: '#FFFFFF' }
+    ? { backgroundColor: appColors.primary, borderColor: '#FFFFFF' }
     : node.visualRole === 'destination'
-      ? { backgroundColor: NAV_COLORS.burgundy, borderColor: '#FFFFFF' }
+      ? { backgroundColor: appColors.primary, borderColor: '#FFFFFF' }
       : { backgroundColor: isDark ? '#2A2A34' : '#FFFFFF', borderColor: appColors.border };
   const icon = node.visualRole === 'origin'
     ? 'crosshairs-gps'
@@ -552,7 +554,7 @@ function RouteNode({ appColors, isDark, node }) {
             },
           ]}
         >
-          {node.visualRole === 'origin' ? 'Você está aqui' : node.visualRole === 'destination' ? node.label : node.label}
+          {node.visualRole === 'origin' ? t('map.youAreHere') : node.label}
         </Text>
       ) : null}
     </View>
@@ -625,10 +627,10 @@ function buildRouteMap(activeRoute, nodes, edges, navigationProgress) {
   };
 }
 
-function getArrivalInstruction(activeRoute, currentStep) {
+function getArrivalInstruction(activeRoute, currentStep, t) {
   if (currentStep?.type === 'ARRIVAL' && currentStep.instruction) return currentStep.instruction;
-  if (activeRoute?.source === 'api') return 'Você chegou ao destino.';
-  return 'Destino alcançado. Ative o modo espera quando estiver pronto.';
+  if (activeRoute?.source === 'api') return t('map.arrivedApi');
+  return t('map.arrivedOffline');
 }
 
 function iconForNodeType(type) {
@@ -646,6 +648,7 @@ function shortFloor(floor) {
 }
 
 function Room({ style, label, appColors, isDark }) {
+  const styles = useThemeStyles();
   return (
     <View
       style={[
@@ -663,6 +666,7 @@ function Room({ style, label, appColors, isDark }) {
 }
 
 function Control({ icon, label, onPress, appColors }) {
+  const styles = useThemeStyles();
   return (
     <Pressable
       onPress={onPress}
@@ -691,40 +695,14 @@ function getProgressPercent(navigationProgress) {
   return Math.max(12, Math.min(100, Math.round((current / (total - 1)) * 100)));
 }
 
-const styles = StyleSheet.create({
-  topHeader: {
-    minHeight: 50,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 2,
-  },
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: NAV_COLORS.surface,
-    borderWidth: 1,
-    borderColor: NAV_COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerBrand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  headerLogo: {
-    width: 24,
-    height: 24,
-  },
-  headerBrandText: {
-    color: NAV_COLORS.burgundy,
-    fontSize: 14,
-    lineHeight: 18,
-    fontWeight: '900',
-    letterSpacing: 4,
-  },
+// Estilos acompanham o tema (claro/escuro); antes usavam a paleta fixa do
+// tema claro e não mudavam no modo noturno.
+function useThemeStyles() {
+  const { appColors } = useApp();
+  return useMemo(() => createStyles(appColors), [appColors]);
+}
+
+const createStyles = (colors) => StyleSheet.create({
   routeCard: {
     minHeight: 76,
     borderRadius: radii.lg,
@@ -988,7 +966,7 @@ const styles = StyleSheet.create({
     top: 206,
     height: 58,
     borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   corridorVertical: {
     position: 'absolute',
@@ -997,7 +975,7 @@ const styles = StyleSheet.create({
     left: 258,
     width: 58,
     borderRadius: 24,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.surface,
   },
   room: {
     position: 'absolute',
@@ -1063,7 +1041,7 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: NAV_COLORS.burgundy,
+    backgroundColor: colors.primary,
     borderWidth: 3,
     borderColor: '#FFFFFF',
   },
@@ -1073,7 +1051,7 @@ const styles = StyleSheet.create({
     bottom: 114,
     minHeight: 26,
     borderRadius: 13,
-    backgroundColor: NAV_COLORS.burgundy,
+    backgroundColor: colors.primary,
     paddingHorizontal: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1094,7 +1072,7 @@ const styles = StyleSheet.create({
     maxWidth: 112,
     minHeight: 24,
     borderRadius: 12,
-    backgroundColor: NAV_COLORS.burgundy,
+    backgroundColor: colors.primary,
     paddingHorizontal: 9,
     alignItems: 'center',
     justifyContent: 'center',

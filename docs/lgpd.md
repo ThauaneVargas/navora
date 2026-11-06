@@ -1,24 +1,26 @@
 # Navora — LGPD e segurança
 
-Atualizado em 22/10/2026. Este documento descreve **o que o sistema faz hoje** com dados pessoais e **o que ainda falta** para operar com pacientes reais. Não é parecer jurídico: os itens marcados como "decisão" precisam de validação com o hospital e, de preferência, com um advogado.
+Atualizado em 29/10/2026 (cadastro mínimo e login obrigatório). Este documento descreve **o que o sistema faz hoje** com dados pessoais e **o que ainda falta** para operar com pacientes reais. Não é parecer jurídico: os itens marcados como "decisão" precisam de validação com o hospital e, de preferência, com um advogado.
 
 ## 1. Que dados existem e onde
 
 | Dado | Quem informa | Onde fica | Sensível? |
 |---|---|---|---|
-| Nome, e-mail, telefone | paciente (cadastro) | `users` | não |
+| Nome, e-mail, telefone (obrigatórios) | paciente/visitante (cadastro — mesma conta) | `users` | não |
 | Senha | paciente | `users.password_hash` (bcrypt, nunca em texto) | — |
-| Data de nascimento, CPF (`patient_code`) | paciente, opcional | `patient_profiles` | não (mas é identificador forte) |
-| Acessibilidade (cadeirante, deficiência visual/auditiva, acompanhante…) | paciente | `patient_profiles.accessibility` | **sim — saúde (art. 5º, II)** |
-| Observações (alergias, restrições) | paciente | `patient_profiles.notes` | **sim — saúde** |
-| Contato de emergência | paciente | `patient_profiles.emergency_contact` e em cada chamado | dado de terceiro |
+| ~~Data de nascimento, CPF, observações (alergias)~~ | — | **removidos em 29/10**, inclusive o que já estava gravado (migration `20261029170000_remove_unused_personal_data`) | — |
+| Acessibilidade (cadeirante, deficiência visual/auditiva, acompanhante…) — opcional | paciente | `patient_profiles.accessibility` | **sim — saúde (art. 5º, II)** |
+| Contato de emergência (telefone) — opcional | paciente | `patient_profiles.emergency_contact` e em cada chamado | dado de terceiro |
 | Consentimento (data + versão da política) | sistema | `patient_profiles.privacy_consent_at` / `privacy_policy_version` | — |
-| Pedidos de ajuda / SOS (nome, local, contato de emergência) | paciente ou visitante | `call_requests` | pode revelar saúde |
-| Pedido de visita (nome do visitante, destino, motivo) | visitante, sem conta | `visitor_access_requests` | pode revelar internação de terceiro |
+| Pedidos de ajuda / SOS (nome, local, telefone, contato de emergência, se precisa de cadeira/maca) — **só com login** desde 29/10, ligado à conta (`call_requests.user_id`). Não pergunta mais "o que está acontecendo" | paciente ou visitante | `call_requests` | pode revelar saúde |
+| Pedido de visita (nome do visitante, destino, motivo) — **só com login** desde 29/10 | visitante (mesma conta do paciente) | `visitor_access_requests` | pode revelar internação de terceiro |
 | Check-ins (nome, documento, observações) | recepção | `check_ins` | pode conter saúde |
 | Localização interna | beacon Bluetooth | **não é guardada** por pessoa — o servidor só registra que o beacon foi visto (`beacons.last_signal_at`) | — |
 | GPS ("Como chegar") | celular | só no aparelho, enquanto a tela está aberta | — |
 | Foto de perfil | paciente | só no aparelho (`profilePhotoService`) | — |
+| ~~Dados do visitante guardados no celular ("Lembrar meus dados")~~ | — | **removido em 29/10** (o visitante tem conta); o app apaga o que restou no aparelho ao abrir | — |
+| Histórico de rotas (destinos iniciados) | sistema | só no aparelho (`routeHistoryStorage`), últimas 12; "Sair" apaga — o destino pode revelar saúde | pode revelar saúde |
+| Visita em andamento (pedido + código secreto) | sistema | só no aparelho, até a visita terminar/expirar/ser negada (ou 24 h sem resposta); "Sair" apaga | — |
 
 Hospedagem: Render (backend e Postgres), região **Oregon, EUA** (confirmado no painel em 23/10 — o `backend-nest/render.yaml` diz `ohio`, mas os serviços reais foram criados em Oregon). Isso é **transferência internacional** (art. 33) — está informado na política do app; ver "decisões" abaixo.
 
@@ -30,10 +32,13 @@ Hospedagem: Render (backend e Postgres), região **Oregon, EUA** (confirmado no 
 
 **Transparência (art. 6º, VI e art. 9º)**
 - Tela Privacidade reescrita em 22/10. A versão anterior afirmava coisas falsas: "beacons Wi-Fi" (são Bluetooth), "dados armazenados de forma criptografada no servidor" (não há criptografia própria em repouso), um e-mail `privacidade@navora.com.br` que não existe, e "histórico salvo no dispositivo" (a tela de histórico é só exemplo).
-- Visitante (sem conta) vê um aviso antes de enviar o pedido de visita.
+- Visitante vê um aviso antes de enviar o pedido de visita.
+- **Minimização (art. 6º, III), 29/10:** cadastro só com nome, e-mail, telefone e senha; contato de emergência e acessibilidade opcionais. CPF, nascimento, observações (alergias) e "o que está acontecendo" no SOS saíram do app e do banco (o que estava gravado foi apagado pela migration).
+- **Base legal com login obrigatório:** como todo SOS/pedido agora vem de uma conta que aceitou a política, o consentimento cobre o dado de saúde (acessibilidade) que vai junto. Risco aceito pela usuária: quem não tem conta (ou está com a sessão vencida) não manda SOS pelo app — o app oferece "Ligar para a recepção" (falta o número do hospital) e manda entrar de novo.
 
 **Direitos do titular (art. 18)**
 - Acesso e correção: "Meu perfil" (já existia, `PUT /patients/me`).
+- Eliminação também pela web, sem o app: `excluir-conta.html` (servida com o painel; e-mail + senha; exigência do Google Play), desde 29/10.
 - Eliminação e revogação do consentimento: botão **Excluir minha conta** na tela Privacidade → `DELETE /patients/me` (pede a senha de novo). Apaga `users`, `patient_profiles`, `notifications`; desliga `check_ins` da conta. Chamados de SOS/ajuda já feitos **ficam** (registro de atendimento do hospital) — está dito na política.
 
 **Segurança (art. 46) — corrigido em 22/10**
@@ -46,9 +51,9 @@ Hospedagem: Render (backend e Postgres), região **Oregon, EUA** (confirmado no 
 ## 3. Pendências — o que fazer antes de paciente real
 
 **Produção (precisa do merge desta branch)**
-1. Fazer o merge → as migrations `add_visitor_access_token` e `add_patient_privacy_consent` rodam sozinhas no deploy.
-2. **Trocar a senha das contas demo em produção**: rodar o seed contra a produção com `SEED_DEMO_PASSWORD=<senha forte>` — ou apagar `paciente@`, `recepcao@`, `admin@navora.com` e criar contas reais da equipe (`POST /auth/register-staff`).
-3. No painel do Render: tirar a regra de acesso `0.0.0.0/0` do banco `navora-db-2` e apagar o `navora-db` antigo.
+1. ~~Fazer o merge~~ **Feito em 23/10** — migrations aplicadas no deploy.
+2. ~~Trocar a senha das contas demo em produção~~ **Feito em 23/10** (senhas novas, só direto no banco — não estão no repositório; a usuária guarda). A `navora-demo-123` continua valendo só no banco local.
+3. ~~Tirar a regra `0.0.0.0/0` do banco~~ **Feito em 23/10** — testado: conexão de fora é recusada, o backend continua acessando pela rede interna. (O `navora-db` antigo já não existia.) Para rodar script contra produção de novo, liberar temporariamente só o IP da máquina.
 4. Trocar o `JWT_SECRET` de produção e a senha do banco (já circularam em conversas/prints).
 
 **Decisões (com o hospital / jurídico)**

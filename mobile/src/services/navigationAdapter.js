@@ -41,6 +41,10 @@ export const normalizeDestination = (destination = {}) => {
     floor: destination.floor || destination.navigationNode?.floor || 'Piso Terreo',
     distance: destination.distanceLabel || destination.distance || '80 m',
     time: destination.timeLabel || destination.time || '2 min',
+    // true = valor padrão inventado (a API/dados não trouxeram). Telas que
+    // mostram dado "de verdade" (barra de rota em andamento) escondem o campo.
+    distanceIsFallback: !(destination.distanceLabel || destination.distance) || Boolean(destination.distanceIsFallback),
+    timeIsFallback: !(destination.timeLabel || destination.time) || Boolean(destination.timeIsFallback),
     accessLevel: destination.accessLevel || destination.access_level || 'public',
     sector: destination.sector?.name || (typeof destination.sector === 'string' ? destination.sector : null),
     navigationNode: destination.navigationNode,
@@ -205,6 +209,14 @@ export const normalizeRoutePreview = (preview = {}, source = 'api', fallbackDest
   const rawOriginStr = typeof preview.origin === 'string' ? preview.origin : null;
   const totalDistance = preview.total_distance ?? preview.totalDistance ?? null;
   const estimatedTime = preview.estimated_time_seconds ?? preview.estimatedTime ?? null;
+  const realValue = (item, field) => (item && item[field] && !item[`${field}IsFallback`] ? item[field] : null);
+  const realDistance = totalDistance !== null
+    ? `${Math.round(totalDistance)} m`
+    : realValue(effectiveDestination, 'distance') || realValue(fallbackDestination, 'distance');
+  const realTime = estimatedTime !== null
+    ? secondsToLabel(estimatedTime)
+    : realValue(effectiveDestination, 'time') || realValue(fallbackDestination, 'time');
+
 
   return {
     routeFound: preview.route_found !== false,
@@ -222,9 +234,11 @@ export const normalizeRoutePreview = (preview = {}, source = 'api', fallbackDest
     steps,
     totalDistance,
     estimatedTime,
-    distance: totalDistance !== null ? `${Math.round(totalDistance)} m` : effectiveDestination?.distance || fallbackDestination?.distance || '80 m',
-    time: estimatedTime !== null ? secondsToLabel(estimatedTime) : effectiveDestination?.time || fallbackDestination?.time || '2 min',
-    eta: estimatedTime !== null ? secondsToLabel(estimatedTime) : effectiveDestination?.time || fallbackDestination?.time || '2 min',
+    distance: realDistance || '80 m',
+    time: realTime || '2 min',
+    eta: realTime || '2 min',
+    distanceIsFallback: !realDistance,
+    timeIsFallback: !realTime,
     status: preview.route_found === false ? 'not_found' : 'active',
     area: effectiveDestination?.area || fallbackDestination?.area,
     access: preview.access,

@@ -1,0 +1,29 @@
+# Alertas de dependência com falha de segurança.
+# `open-pull-requests-limit: 0` desliga as atualizações de rotina (o Expo exige
+# versões casadas — atualizar pacote solto quebra o app); ficam só os PRs de
+# SEGURANÇA, que precisam de "Dependabot security updates" ligado em
+# Settings › Code security no GitHub.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /backend-nest
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: npm
+    directory: /mobile
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: npm
+    directory: /web-admin
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly

@@ -19,6 +19,7 @@ function user(overrides: Record<string, any> = {}) {
     phone: overrides.phone ?? null,
     role: overrides.role ?? UserRole.ADMIN,
     active: overrides.active ?? true,
+    passwordChangedAt: null as Date | null,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
     updatedAt: new Date('2026-01-01T00:00:00.000Z'),
   };
@@ -92,6 +93,13 @@ async function run() {
   assert.equal(Object.prototype.hasOwnProperty.call(validated, 'passwordHash'), false, 'token valido nao serializa passwordHash');
   await expectUnauthorized('token invalido', () => service.validateToken('token-invalido'));
 
+  // Senha trocada depois do login: o token antigo deixa de valer.
+  activeAdmin.passwordChangedAt = new Date(Date.now() + 5_000);
+  await expectUnauthorized('token emitido antes da troca de senha', () => service.validateToken(login.access_token));
+  activeAdmin.passwordChangedAt = new Date(Date.now() - 60_000);
+  assert.equal((await service.validateToken(login.access_token)).id, activeAdmin.id, 'token emitido depois da troca continua valendo');
+  activeAdmin.passwordChangedAt = null;
+
   const controller = new AuthController(service);
   const me = await controller.me(validated);
   assert.equal(me.email, activeAdmin.email, '/auth/me retorna usuario autenticado');
@@ -155,6 +163,18 @@ async function run() {
   } finally {
     globalThis.fetch = originalFetch;
   }
+
+  // Sessao: paciente/visitante 30 dias (SOS nao pode falhar por sessao curta);
+  // equipe do painel continua curta.
+  const sessionService = new AuthService({} as any, new JwtService(), googleConfig() as unknown as ConfigService);
+  const ttl = async (role: UserRole) => {
+    const token = await sessionService.issueAccessToken({ id: 1, email: 'x@navora.com', role });
+    const payload = new JwtService().decode(token) as { exp: number; iat: number };
+    return payload.exp - payload.iat;
+  };
+  assert.equal(await ttl(UserRole.PATIENT), 30 * 24 * 60 * 60, 'paciente: 30 dias');
+  assert.equal(await ttl(UserRole.RECEPTION), 60 * 60, 'equipe: JWT_EXPIRES_IN');
+  assert.equal(await ttl(UserRole.ADMIN), 60 * 60, 'admin: JWT_EXPIRES_IN');
 
   console.log('auth tests passed');
 }

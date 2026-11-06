@@ -26,6 +26,13 @@ import BottomTabs
   from '../components/BottomTabs';
 
 import {
+  isRouteBarVisible,
+  useRouteBarSpace,
+} from '../components/ActiveRouteBar';
+
+
+// Sombra só nos cartões de status do visitante (mantidos como estavam).
+import {
   shadows,
 } from '../theme/colors';
 
@@ -33,10 +40,15 @@ import {
   useApp,
 } from '../context/AppContext';
 
+
 import {
   getAreaById,
   getReceptionDestination,
 } from '../data/routes';
+
+
+// Abas (62) + barra de gestos + respiro.
+const HOME_BOTTOM_SPACE = 120;
 
 
 const PENDING_STATUSES =
@@ -85,7 +97,16 @@ export default function PatientHomeScreen({
 }) {
   const {
     appColors,
+    liveRoute,
+    t,
   } = useApp();
+
+  // Rota real em andamento (a mesma regra da barra acima das abas).
+  const routeInProgress =
+    isRouteBarVisible(liveRoute);
+
+  const routeBarSpace =
+    useRouteBarSpace();
 
 
   /*
@@ -107,8 +128,8 @@ export default function PatientHomeScreen({
   const name =
     userProfile.name ||
     (isVisitor
-      ? 'Visitante'
-      : 'Paciente');
+      ? t('common.visitor')
+      : t('common.patient'));
 
 
   /*
@@ -155,11 +176,13 @@ export default function PatientHomeScreen({
       () =>
         getRemainingTime(
           visitorAccessRequest,
-          now
+          now,
+          t
         ),
       [
         visitorAccessRequest,
         now,
+        t,
       ]
     );
 
@@ -218,59 +241,6 @@ export default function PatientHomeScreen({
             visitorAccessRequest
               ?.requestedDestination
       );
-
-
-  /*
-   * ROTA ATIVA
-   */
-
-  const hasActiveRoute =
-    Boolean(
-      activeRoute?.status ===
-        'active' ||
-      activeRoute?.destination
-    );
-
-
-  const activeDestination =
-    activeRoute?.destination ||
-    userProfile
-      .lastDestination ||
-    'Destino selecionado';
-
-
-  /*
-   * LOCALIZAÇÃO
-   */
-
-  const presenceDetected =
-    Boolean(
-      userProfile
-        .currentBeacon ||
-
-      userProfile
-        .arrivalStatus ===
-        'INDOOR' ||
-
-      hospitalDetection
-        ?.arrivalStatus ===
-        'INDOOR' ||
-
-      hospitalDetection
-        ?.status ===
-        'confirmed'
-    );
-
-
-  const currentLocation =
-    userProfile
-      .currentLocation ||
-
-    area.entryLabel ||
-
-    activeHospital?.name ||
-
-    'Entrada identificada';
 
 
   /*
@@ -347,7 +317,15 @@ export default function PatientHomeScreen({
               visitorAccessRequest
                 ?.id,
 
+
+            visitorAccessToken:
+
+              visitorAccessRequest?.accessToken,
+
             visitorAccessRequest,
+
+            // O botão já é "Iniciar rota": não pede de novo no mapa.
+            startNow: true,
           }
         );
 
@@ -377,10 +355,12 @@ export default function PatientHomeScreen({
       ? [
           {
             icon:
-              'desk',
+              'face-agent',
+
+            tone: 'amber',
 
             title:
-              'Recepção',
+              t('home.quick.reception'),
 
             onPress:
               goReception,
@@ -388,10 +368,12 @@ export default function PatientHomeScreen({
 
           {
             icon:
-              'toilet',
+              'human-male-female',
+
+            tone: 'teal',
 
             title:
-              'Banheiros',
+              t('home.quick.restrooms'),
 
             onPress: () =>
               navigate(
@@ -407,10 +389,12 @@ export default function PatientHomeScreen({
           // Sala de espera existe nas duas unidades e é liberada para visitante.
           {
             icon:
-              'seat-outline',
+              'sofa-outline',
+
+            tone: 'violet',
 
             title:
-              'Sala de espera',
+              t('home.quick.waitingRoom'),
 
             onPress: () =>
               navigate(
@@ -426,8 +410,10 @@ export default function PatientHomeScreen({
             icon:
               'exit-run',
 
+            tone: 'green',
+
             title:
-              'Saída',
+              t('home.quick.exit'),
 
             onPress: () =>
               navigate(
@@ -442,10 +428,12 @@ export default function PatientHomeScreen({
       : [
           {
             icon:
-              'office-building',
+              'office-building-marker-outline',
+
+            tone: 'wine',
 
             title:
-              'Setores',
+              t('home.quick.sectors'),
 
             onPress: () =>
               navigate(
@@ -459,10 +447,12 @@ export default function PatientHomeScreen({
 
           {
             icon:
-              'flask',
+              'flask-outline',
+
+            tone: 'blue',
 
             title:
-              'Exames',
+              t('home.quick.exams'),
 
             onPress: () =>
               navigate(
@@ -476,10 +466,12 @@ export default function PatientHomeScreen({
 
           {
             icon:
-              'toilet',
+              'human-male-female',
+
+            tone: 'teal',
 
             title:
-              'Banheiros',
+              t('home.quick.restrooms'),
 
             onPress: () =>
               navigate(
@@ -493,10 +485,12 @@ export default function PatientHomeScreen({
 
           {
             icon:
-              'desk',
+              'face-agent',
+
+            tone: 'amber',
 
             title:
-              'Recepção',
+              t('home.quick.reception'),
 
             onPress:
               goReception,
@@ -509,35 +503,36 @@ export default function PatientHomeScreen({
       scroll={false}
       padded={false}
       withBottomTabs
+      topInset={false}
     >
       <View
         style={[
           styles.stage,
-
           {
             backgroundColor:
               appColors.background,
           },
         ]}
       >
-        {/*
-         * HEADER
-         */}
-
         <AppHeader
           navigate={
             navigate
           }
         />
 
-
         <ScrollView
           style={
             styles.scroll
           }
-          contentContainerStyle={
-            styles.content
-          }
+          contentContainerStyle={[
+            styles.content,
+            // Com a barra "Rota em andamento" visível, nada fica escondido atrás dela.
+            {
+              paddingBottom:
+                HOME_BOTTOM_SPACE +
+                routeBarSpace,
+            },
+          ]}
           showsVerticalScrollIndicator={
             false
           }
@@ -545,170 +540,86 @@ export default function PatientHomeScreen({
           overScrollMode="never"
         >
           {/*
-           * BOAS-VINDAS
+           * 1. SAUDAÇÃO
            */}
 
-          <View
-            style={
-              styles.hero
-            }
-          >
+          <View style={styles.hero}>
             <Text
-              style={[
-                styles.hello,
-
-                {
-                  color:
-                    appColors.text,
-                },
-              ]}
+              style={[styles.hello, { color: appColors.text }]}
+              accessibilityRole="header"
             >
-              Olá, {name}!
+              {t('home.hello', { name })}
             </Text>
 
-            <Text
-              style={[
-                styles.heroSubtitle,
-
-                {
-                  color:
-                    appColors.muted,
-                },
-              ]}
-            >
-              {isVisitor
-                ? 'O Navora acompanha sua visita.'
-                : 'Para onde vamos hoje?'}
+            <Text style={[styles.heroSubtitle, { color: appColors.muted }]}>
+              {routeInProgress
+                ? t('home.routeInProgress')
+                : isVisitor
+                  ? t('home.visitorSub')
+                  : t('home.patientSub')}
             </Text>
           </View>
 
-
           {/*
-           * BUSCA
+           * 2. BUSCA
            */}
 
           <Pressable
-            onPress={
-              openSearch
-            }
+            onPress={openSearch}
+            accessibilityRole="search"
+            accessibilityLabel={t('home.searchA11y')}
             style={({ pressed }) => [
               styles.searchCard,
-
               {
-                backgroundColor:
-                  appColors.surface,
-
-                borderColor:
-                  appColors.border,
+                backgroundColor: appColors.surface,
+                borderColor: appColors.border,
               },
-
-              shadows.card,
-
-              pressed &&
-                styles.pressed,
+              pressed && styles.pressed,
             ]}
           >
-            <MaterialCommunityIcons
-              name="magnify"
-              size={22}
-              color={
-                appColors.primary
-              }
-            />
+            <View style={[styles.tile40, { backgroundColor: appColors.iconBg }]}>
+              <MaterialCommunityIcons name="magnify" size={22} color={appColors.primary} />
+            </View>
 
             <Text
-              style={[
-                styles.searchText,
-
-                {
-                  color:
-                    appColors.muted,
-                },
-              ]}
+              numberOfLines={1}
+              style={[styles.searchText, { color: appColors.muted }]}
             >
-              Buscar setor, serviço ou destino
+              {t('home.searchPlaceholder')}
             </Text>
 
-            <View
-              style={[
-                styles.searchArrow,
-
-                {
-                  backgroundColor:
-                    appColors.iconBg,
-                },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="chevron-right"
-                size={20}
-                color={
-                  appColors.primary
-                }
-              />
+            <View style={[styles.searchArrow, { backgroundColor: appColors.primaryStrong }]}>
+              <MaterialCommunityIcons name="arrow-right" size={20} color="#FFFFFF" />
             </View>
           </Pressable>
 
-
           {/*
-           * COMO CHEGAR AO HOSPITAL
+           * 3. COMO CHEGAR AO HOSPITAL
            */}
 
           <Pressable
-            onPress={() =>
-              navigate('ExternalRoute')
-            }
+            onPress={() => navigate('ExternalRoute')}
+            accessibilityRole="button"
+            accessibilityLabel={t('home.howToGet')}
             style={({ pressed }) => [
-              styles.directionsChip,
-
+              styles.rowCard,
               {
-                backgroundColor:
-                  appColors.primarySoft,
+                backgroundColor: appColors.surface,
+                borderColor: appColors.border,
               },
-
-              pressed &&
-                styles.pressed,
+              pressed && styles.pressed,
             ]}
           >
-            <View
-              style={[
-                styles.directionsChipIcon,
-
-                {
-                  backgroundColor:
-                    appColors.primary,
-                },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="map-marker-distance"
-                size={15}
-                color="#FFFFFF"
-              />
+            <View style={[styles.tile40, { backgroundColor: appColors.iconBg }]}>
+              <MaterialCommunityIcons name="sign-direction" size={22} color={appColors.primary} />
             </View>
 
-            <Text
-              style={[
-                styles.directionsChipText,
-
-                {
-                  color:
-                    appColors.primary,
-                },
-              ]}
-            >
-              Como chegar ao hospital
+            <Text numberOfLines={2} style={[styles.rowTitle, { color: appColors.text }]}>
+              {t('home.howToGet')}
             </Text>
 
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={16}
-              color={
-                appColors.primary
-              }
-            />
+            <MaterialCommunityIcons name="chevron-right" size={22} color={appColors.primary} />
           </Pressable>
-
 
           {/*
            * VISITANTE - PENDENTE
@@ -775,7 +686,7 @@ export default function PatientHomeScreen({
                     },
                   ]}
                 >
-                  Validação necessária
+                  {t('home.validationNeeded')}
                 </Text>
 
                 <Text
@@ -789,7 +700,7 @@ export default function PatientHomeScreen({
                     },
                   ]}
                 >
-                  Vá à recepção para confirmar sua visita.
+                  {t('home.goToReception')}
                 </Text>
               </View>
 
@@ -866,7 +777,7 @@ export default function PatientHomeScreen({
                         },
                       ]}
                     >
-                      Visita autorizada
+                      {t('home.visitAuthorized')}
                     </Text>
 
                     <Text
@@ -882,7 +793,7 @@ export default function PatientHomeScreen({
                     >
                       {(() => {
                         const rd = visitorAccessRequest?.requestedDestination;
-                        return (typeof rd === 'string' ? rd : rd?.name) || 'Destino autorizado';
+                        return (typeof rd === 'string' ? rd : rd?.name) || t('home.authorizedDestination');
                       })()}
                     </Text>
                   </View>
@@ -952,7 +863,7 @@ export default function PatientHomeScreen({
                       styles.visitButtonText
                     }
                   >
-                    Iniciar rota
+                    {t('home.startRoute')}
                   </Text>
                 </Pressable>
               </View>
@@ -1026,7 +937,7 @@ export default function PatientHomeScreen({
                     },
                   ]}
                 >
-                  Tempo encerrado
+                  {t('home.timeOver')}
                 </Text>
 
                 <Text
@@ -1039,7 +950,7 @@ export default function PatientHomeScreen({
                     },
                   ]}
                 >
-                  Vá à saída ou procure a recepção.
+                  {t('home.goToExit')}
                 </Text>
               </View>
 
@@ -1115,7 +1026,7 @@ export default function PatientHomeScreen({
                       },
                     ]}
                   >
-                    Visita não liberada
+                    {t('home.visitNotReleased')}
                   </Text>
 
                   <Text
@@ -1128,7 +1039,7 @@ export default function PatientHomeScreen({
                       },
                     ]}
                   >
-                    Procure a recepção para orientação.
+                    {t('home.askReception')}
                   </Text>
                 </View>
 
@@ -1144,663 +1055,138 @@ export default function PatientHomeScreen({
 
 
           {/*
-           * ACESSOS
+           * 4. APOIO: ESTOU PERDIDO + AJUDA / SOS (o único bloco bordô da tela)
            */}
 
-          <View
-            style={
-              styles.section
-            }
-          >
-            <Text
-              style={[
-                styles.sectionTitle,
+          <View style={styles.supportRow}>
+            <SupportCard
+              icon="compass-outline"
+              title={t('help.lost')}
+              subtitle={t('home.lostSub')}
+              onPress={() => navigate('Lost')}
+              appColors={appColors}
+            />
 
-                {
-                  color:
-                    appColors.text,
-                },
-              ]}
+            <SupportCard
+              icon="hand-heart-outline"
+              title={t('home.helpSos')}
+              subtitle={t('home.sosSub')}
+              emergency
+              onPress={() => navigate('Help', { type: 'help' })}
+              appColors={appColors}
+            />
+          </View>
+
+          {/*
+           * 5. ACESSOS RÁPIDOS (uma linha, quatro cards)
+           */}
+
+          <View style={styles.section}>
+            <Text
+              style={[styles.sectionTitle, { color: appColors.text }]}
+              accessibilityRole="header"
             >
-              Acessos rápidos
+              {t('home.quickAccess')}
             </Text>
 
-
-            <View
-              style={
-                styles.quickGrid
-              }
-            >
-              {quickItems.map(
-                (item) => (
-                  <QuickCard
-                    key={
-                      item.title
-                    }
-                    {...item}
-                    appColors={
-                      appColors
-                    }
-                  />
-                )
-              )}
+            <View style={styles.quickRow}>
+              {quickItems.map((item) => (
+                <QuickCard
+                  key={item.title}
+                  {...item}
+                  appColors={appColors}
+                />
+              ))}
             </View>
-
 
             {isVisitor &&
               !visitApproved && (
-                <Text
-                  style={[
-                    styles.accessNotice,
-
-                    {
-                      color:
-                        appColors.muted,
-                    },
-                  ]}
-                >
-                  Enquanto a visita não for liberada, somente destinos públicos ficam disponíveis.
+                <Text style={[styles.accessNotice, { color: appColors.muted }]}>
+                  {t('home.visitorPublicOnly')}
                 </Text>
               )}
           </View>
 
-
           {/*
-           * IA
+           * 6. NAVORA IA
            */}
 
           <Pressable
-            onPress={() =>
-              navigate(
-                'Assistant'
-              )
-            }
+            onPress={() => navigate('Assistant')}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('home.aiTitle')}. ${t('home.aiSub')}`}
             style={({ pressed }) => [
               styles.aiCard,
-
               {
-                backgroundColor:
-                  appColors.surface,
-
-                borderColor:
-                  appColors.border,
+                backgroundColor: appColors.surface,
+                borderColor: appColors.border,
               },
-
-              shadows.card,
-
-              pressed &&
-                styles.pressed,
+              pressed && styles.pressed,
             ]}
           >
-            <View
-              style={[
-                styles.aiMainIcon,
-
-                {
-                  backgroundColor:
-                    appColors.primary,
-                },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="microphone"
-                size={25}
-                color="#FFFFFF"
-              />
+            <View style={[styles.tile46, { backgroundColor: appColors.iconBg }]}>
+              <MaterialCommunityIcons name="star-four-points" size={23} color={appColors.primary} />
             </View>
 
-
-            <View
-              style={
-                styles.aiCopy
-              }
-            >
-              <View
-                style={
-                  styles.aiTitleRow
-                }
-              >
-                <Text
-                  style={[
-                    styles.aiTitle,
-
-                    {
-                      color:
-                        appColors.text,
-                    },
-                  ]}
-                >
-                  Navora IA
+            <View style={styles.cardCopy}>
+              <View style={styles.aiTitleRow}>
+                <Text numberOfLines={1} style={[styles.cardTitle, { color: appColors.text }]}>
+                  {t('home.aiTitle')}
                 </Text>
 
-                <View
-                  style={[
-                    styles.aiBadge,
-
-                    {
-                      backgroundColor:
-                        appColors.iconBg,
-                    },
-                  ]}
-                >
+                <View style={[styles.aiBadge, { backgroundColor: appColors.iconBg }]}>
                   <Text
-                    style={[
-                      styles.aiBadgeText,
-
-                      {
-                        color:
-                          appColors.primary,
-                      },
-                    ]}
+                    style={[styles.aiBadgeText, { color: appColors.primary }]}
+                    maxFontSizeMultiplier={1.2}
                   >
-                    Assistente
+                    {t('home.assistant')}
                   </Text>
                 </View>
               </View>
 
-
-              <Text
-                numberOfLines={2}
-                style={[
-                  styles.aiDescription,
-
-                  {
-                    color:
-                      appColors.muted,
-                  },
-                ]}
-              >
-                Pergunte por rotas, localização, acessibilidade ou orientação.
+              <Text numberOfLines={2} style={[styles.cardSubtitle, { color: appColors.muted }]}>
+                {t('home.aiSub')}
               </Text>
             </View>
 
-
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={23}
-              color={
-                appColors.primary
-              }
-            />
+            <View style={[styles.arrowTile, { backgroundColor: appColors.iconBg }]}>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={appColors.primary} />
+            </View>
           </Pressable>
 
-
           {/*
-           * SUA JORNADA
+           * 7. ACESSIBILIDADE
            */}
-
-          <View
-            style={
-              styles.section
-            }
-          >
-            <Text
-              style={[
-                styles.sectionTitle,
-
-                {
-                  color:
-                    appColors.text,
-                },
-              ]}
-            >
-              Sua jornada
-            </Text>
-
-
-            {/*
-             * LOCALIZAÇÃO
-             */}
-
-            <View
-              style={[
-                styles.locationCard,
-
-                {
-                  backgroundColor:
-                    appColors.surface,
-
-                  borderColor:
-                    appColors.border,
-                },
-
-                shadows.card,
-              ]}
-            >
-              <View
-                style={[
-                  styles.locationIcon,
-
-                  {
-                    backgroundColor:
-                      appColors.iconBg,
-                  },
-                ]}
-              >
-                <MaterialCommunityIcons
-                  name="map-marker-radius-outline"
-                  size={22}
-                  color={
-                    appColors.primary
-                  }
-                />
-              </View>
-
-
-              <View
-                style={
-                  styles.locationCopy
-                }
-              >
-                <Text
-                  style={[
-                    styles.locationLabel,
-
-                    {
-                      color:
-                        appColors.muted,
-                    },
-                  ]}
-                >
-                  LOCALIZAÇÃO ATUAL
-                </Text>
-
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.locationTitle,
-
-                    {
-                      color:
-                        appColors.text,
-                    },
-                  ]}
-                >
-                  {currentLocation}
-                </Text>
-
-                <Text
-                  style={[
-                    styles.locationMeta,
-
-                    {
-                      color:
-                        appColors.muted,
-                    },
-                  ]}
-                >
-                  {presenceDetected
-                    ? 'Localização interna identificada'
-                    : 'Localização aproximada'}
-                </Text>
-              </View>
-
-
-              <View
-                style={[
-                  styles.locationStatus,
-
-                  {
-                    backgroundColor:
-                      presenceDetected
-                        ? appColors.iconBg
-                        : appColors.surfaceAlt,
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.locationDot,
-
-                    {
-                      backgroundColor:
-                        presenceDetected
-                          ? appColors.success
-                          : appColors.muted,
-                    },
-                  ]}
-                />
-              </View>
-            </View>
-
-
-            {/*
-             * ROTA OU PRONTO PARA NAVEGAR
-             */}
-
-            {hasActiveRoute ? (
-              <Pressable
-                onPress={() =>
-                  navigate(
-                    'Navigation',
-                    {
-                      destination:
-                        activeDestination,
-                    }
-                  )
-                }
-                style={({ pressed }) => [
-                  styles.journeyCard,
-
-                  {
-                    backgroundColor:
-                      appColors.surface,
-
-                    borderColor:
-                      appColors.border,
-                  },
-
-                  shadows.card,
-
-                  pressed &&
-                    styles.pressed,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.journeyIcon,
-
-                    {
-                      backgroundColor:
-                        appColors.primary,
-                    },
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name="navigation-variant"
-                    size={23}
-                    color="#FFFFFF"
-                  />
-                </View>
-
-
-                <View
-                  style={
-                    styles.journeyCopy
-                  }
-                >
-                  <Text
-                    style={[
-                      styles.journeyLabel,
-
-                      {
-                        color:
-                          appColors.muted,
-                      },
-                    ]}
-                  >
-                    ROTA EM ANDAMENTO
-                  </Text>
-
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      styles.journeyTitle,
-
-                      {
-                        color:
-                          appColors.text,
-                      },
-                    ]}
-                  >
-                    {
-                      activeDestination
-                    }
-                  </Text>
-
-                  <Text
-                    style={[
-                      styles.journeyMeta,
-
-                      {
-                        color:
-                          appColors.muted,
-                      },
-                    ]}
-                  >
-                    {[
-                      activeRoute
-                        ?.distance,
-
-                      navigationProgress
-                        ?.currentFloor ||
-                        activeRoute
-                          ?.eta,
-                    ]
-                      .filter(
-                        Boolean
-                      )
-                      .join(' • ') ||
-                      'Orientação ativa'}
-                  </Text>
-                </View>
-
-
-                <MaterialCommunityIcons
-                  name="chevron-right"
-                  size={23}
-                  color={
-                    appColors.primary
-                  }
-                />
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={
-                  openSearch
-                }
-                style={({ pressed }) => [
-                  styles.journeyCard,
-
-                  {
-                    backgroundColor:
-                      appColors.surface,
-
-                    borderColor:
-                      appColors.border,
-                  },
-
-                  shadows.card,
-
-                  pressed &&
-                    styles.pressed,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.journeyIcon,
-
-                    {
-                      backgroundColor:
-                        appColors.iconBg,
-                    },
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name="navigation-variant-outline"
-                    size={23}
-                    color={
-                      appColors.primary
-                    }
-                  />
-                </View>
-
-
-                <View
-                  style={
-                    styles.journeyCopy
-                  }
-                >
-                  <Text
-                    style={[
-                      styles.journeyLabel,
-
-                      {
-                        color:
-                          appColors.muted,
-                      },
-                    ]}
-                  >
-                    SUA PRÓXIMA ROTA
-                  </Text>
-
-                  <Text
-                    style={[
-                      styles.journeyTitle,
-
-                      {
-                        color:
-                          appColors.text,
-                      },
-                    ]}
-                  >
-                    Pronto para navegar
-                  </Text>
-
-                  <Text
-                    style={[
-                      styles.journeyMeta,
-
-                      {
-                        color:
-                          appColors.muted,
-                      },
-                    ]}
-                  >
-                    Escolha um destino e inicie sua rota.
-                  </Text>
-                </View>
-
-
-                <MaterialCommunityIcons
-                  name="chevron-right"
-                  size={23}
-                  color={
-                    appColors.primary
-                  }
-                />
-              </Pressable>
-            )}
-          </View>
-
-
-          {/*
-           * AJUDA RÁPIDA
-           */}
-
-          <View
-            style={
-              styles.supportGrid
-            }
-          >
-            <SupportCard
-              icon="map-marker-question-outline"
-              title="Estou perdido"
-              onPress={() =>
-                navigate(
-                  'Lost'
-                )
-              }
-              appColors={
-                appColors
-              }
-            />
-
-            <SupportCard
-              icon="alarm-light-outline"
-              title="Ajuda / SOS"
-              onPress={() =>
-                navigate(
-                  'Help',
-                  {
-                    type:
-                      'help',
-                  }
-                )
-              }
-              appColors={
-                appColors
-              }
-            />
-          </View>
-
 
           <Pressable
-            onPress={() =>
-              navigate(
-                'Accessibility'
-              )
-            }
+            onPress={() => navigate('Accessibility')}
+            accessibilityRole="button"
+            accessibilityLabel={`${t('home.accessibility')}. ${t('home.adjustRoute')}`}
             style={({ pressed }) => [
-              styles.accessibilityCard,
-
+              styles.rowCard,
               {
-                backgroundColor:
-                  appColors.surface,
-
-                borderColor:
-                  appColors.border,
+                backgroundColor: appColors.surface,
+                borderColor: appColors.border,
               },
-
-              pressed &&
-                styles.pressed,
+              pressed && styles.pressed,
             ]}
           >
-            <View
-              style={[
-                styles.accessibilityIcon,
-
-                {
-                  backgroundColor:
-                    appColors.iconBg,
-                },
-              ]}
-            >
-              <MaterialCommunityIcons
-                name="wheelchair-accessibility"
-                size={20}
-                color={
-                  appColors.primary
-                }
-              />
+            <View style={[styles.tile40, { backgroundColor: appColors.iconBg }]}>
+              <MaterialCommunityIcons name="wheelchair-accessibility" size={21} color={appColors.primary} />
             </View>
 
-            <Text
-              style={[
-                styles.accessibilityText,
+            <View style={styles.cardCopy}>
+              <Text numberOfLines={1} style={[styles.cardTitle, { color: appColors.text }]}>
+                {t('home.accessibility')}
+              </Text>
+              <Text numberOfLines={2} style={[styles.cardSubtitle, { color: appColors.muted }]}>
+                {t('home.adjustRoute')}
+              </Text>
+            </View>
 
-                {
-                  color:
-                    appColors.text,
-                },
-              ]}
-            >
-              Acessibilidade
-            </Text>
-
-            <Text
-              style={[
-                styles.accessibilityMeta,
-
-                {
-                  color:
-                    appColors.muted,
-                },
-              ]}
-            >
-              Ajustar rota e orientação
-            </Text>
-
-            <MaterialCommunityIcons
-              name="chevron-right"
-              size={21}
-              color={
-                appColors.primary
-              }
-            />
+            <MaterialCommunityIcons name="chevron-right" size={22} color={appColors.primary} />
           </Pressable>
         </ScrollView>
-
 
         <BottomTabs
           active="Home"
@@ -1825,48 +1211,29 @@ function QuickCard({
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
       style={({ pressed }) => [
         styles.quickCard,
-
         {
-          backgroundColor:
-            appColors.surface,
+          backgroundColor: appColors.surface,
+          borderColor: appColors.border,
         },
-
-        shadows.card,
-
-        pressed &&
-          styles.pressed,
+        pressed && styles.pressed,
       ]}
     >
-      <View
-        style={[
-          styles.quickIcon,
-
-          {
-            backgroundColor:
-              appColors.primary,
-          },
-
-          shadows.soft,
-        ]}
-      >
-        <MaterialCommunityIcons
-          name={icon}
-          size={22}
-          color="#FFFFFF"
-        />
+      <View style={[styles.tile46, { backgroundColor: appColors.iconBg }]}>
+        <MaterialCommunityIcons name={icon} size={24} color={appColors.primary} />
       </View>
 
+      {/* "Banheiros"/"Recepção" não podem cortar: encolhe um pouco e, se
+          ainda não couber (tela pequena / fonte aumentada), quebra em 2 linhas. */}
       <Text
-        style={[
-          styles.quickTitle,
-
-          {
-            color:
-              appColors.text,
-          },
-        ]}
+        numberOfLines={2}
+        adjustsFontSizeToFit
+        minimumFontScale={0.85}
+        maxFontSizeMultiplier={1.4}
+        style={[styles.quickTitle, { color: appColors.text }]}
       >
         {title}
       </Text>
@@ -1882,68 +1249,57 @@ function QuickCard({
 function SupportCard({
   icon,
   title,
+  subtitle,
+  emergency = false,
   onPress,
   appColors,
 }) {
+  const textColor = emergency ? '#FFFFFF' : appColors.text;
+
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${title}. ${subtitle}`}
       style={({ pressed }) => [
         styles.supportCard,
-
         {
-          backgroundColor:
-            appColors.surface,
-
-          borderColor:
-            appColors.border,
+          backgroundColor: emergency ? appColors.primaryStrong : appColors.surface,
+          borderColor: emergency ? appColors.primaryStrong : appColors.border,
         },
-
-        shadows.card,
-
-        pressed &&
-          styles.pressed,
+        pressed && styles.pressed,
       ]}
     >
       <View
         style={[
-          styles.supportIcon,
-
+          styles.tile40,
           {
-            backgroundColor:
-              appColors.iconBg,
+            backgroundColor: emergency
+              ? 'rgba(255, 255, 255, 0.18)'
+              : appColors.iconBg,
           },
         ]}
       >
         <MaterialCommunityIcons
           name={icon}
-          size={21}
-          color={
-            appColors.primary
-          }
+          size={22}
+          color={emergency ? '#FFFFFF' : appColors.primary}
         />
       </View>
 
-      <Text
-        style={[
-          styles.supportTitle,
-
-          {
-            color:
-              appColors.text,
-          },
-        ]}
-      >
+      <Text numberOfLines={2} style={[styles.supportTitle, { color: textColor }]}>
         {title}
       </Text>
 
-      <MaterialCommunityIcons
-        name="chevron-right"
-        size={19}
-        color={
-          appColors.muted
-        }
-      />
+      <Text
+        numberOfLines={2}
+        style={[
+          styles.supportSubtitle,
+          { color: emergency ? 'rgba(255, 255, 255, 0.86)' : appColors.muted },
+        ]}
+      >
+        {subtitle}
+      </Text>
     </Pressable>
   );
 }
@@ -2012,7 +1368,8 @@ function getExpiryTimestamp(
 
 function getRemainingTime(
   request,
-  now
+  now,
+  t
 ) {
   const expiry =
     getExpiryTimestamp(
@@ -2025,7 +1382,7 @@ function getRemainingTime(
       label:
         request
           ?.allowedTime ||
-        'Definido pela recepção',
+        t('home.setByReception'),
 
       expired:
         false,
@@ -2133,6 +1490,81 @@ function getRemainingTime(
 
 const styles =
   StyleSheet.create({
+    cardSubtitle: {
+      fontSize: 13,
+      lineHeight: 18,
+      fontWeight: '600',
+    },
+
+    cardTitle: {
+      fontSize: 16,
+      fontWeight: '900',
+      flexShrink: 1,
+    },
+
+    cardCopy: {
+      flex: 1,
+      minWidth: 0,
+      gap: 3,
+    },
+
+    quickRow: {
+      flexDirection: 'row',
+      gap: 8,
+    },
+
+    supportSubtitle: {
+      fontSize: 12.5,
+      lineHeight: 16,
+      fontWeight: '600',
+    },
+
+    supportRow: {
+      flexDirection: 'row',
+      gap: 10,
+    },
+
+    rowTitle: {
+      flex: 1,
+      fontSize: 15,
+      fontWeight: '800',
+    },
+
+    rowCard: {
+      minHeight: 60,
+      borderRadius: 18,
+      borderWidth: 1,
+      paddingVertical: 10,
+      paddingHorizontal: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+
+    arrowTile: {
+      width: 32,
+      height: 32,
+      borderRadius: 11,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    tile46: {
+      width: 46,
+      height: 46,
+      borderRadius: 15,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
+    tile40: {
+      width: 40,
+      height: 40,
+      borderRadius: 13,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+
     stage: {
       flex: 1,
     },
@@ -2142,15 +1574,9 @@ const styles =
     },
 
     content: {
-      width: '100%',
-
-      maxWidth: 430,
-
-      alignSelf: 'center',
-
-      paddingHorizontal: 18,
-
-      paddingBottom: 110,
+      paddingHorizontal: 16,
+      paddingTop: 18,
+      gap: 12,
     },
 
 
@@ -2159,29 +1585,21 @@ const styles =
      */
 
     hero: {
-      paddingTop: 18,
-
-      paddingBottom: 15,
+      gap: 4,
+      marginBottom: 2,
     },
 
     hello: {
-      fontSize: 24,
-
-      lineHeight: 29,
-
+      fontSize: 26,
+      lineHeight: 32,
       fontWeight: '900',
-
       letterSpacing: -0.4,
     },
 
     heroSubtitle: {
-      marginTop: 3,
-
-      fontSize: 12.5,
-
-      lineHeight: 18,
-
-      fontWeight: '500',
+      fontSize: 15,
+      lineHeight: 21,
+      fontWeight: '600',
     },
 
 
@@ -2190,41 +1608,29 @@ const styles =
      */
 
     searchCard: {
-      minHeight: 52,
-
-      borderRadius: 17,
-
+      minHeight: 56,
+      borderRadius: 18,
       borderWidth: 1,
-
-      paddingHorizontal: 13,
-
+      paddingVertical: 8,
+      paddingLeft: 8,
+      paddingRight: 8,
       flexDirection: 'row',
-
       alignItems: 'center',
-
-      marginBottom: 18,
+      gap: 10,
     },
 
     searchText: {
       flex: 1,
-
-      marginLeft: 10,
-
-      fontSize: 12.5,
-
+      fontSize: 15,
       fontWeight: '600',
     },
 
     searchArrow: {
-      width: 31,
-      height: 31,
-
-      borderRadius: 11,
-
+      width: 40,
+      height: 40,
+      borderRadius: 13,
       alignItems: 'center',
-
-      justifyContent:
-        'center',
+      justifyContent: 'center',
     },
 
     directionsChip: {
@@ -2273,17 +1679,13 @@ const styles =
      */
 
     section: {
-      marginBottom: 19,
+      gap: 10,
+      marginTop: 4,
     },
 
     sectionTitle: {
       fontSize: 17,
-
-      lineHeight: 22,
-
       fontWeight: '900',
-
-      marginBottom: 11,
     },
 
 
@@ -2303,27 +1705,25 @@ const styles =
     },
 
     quickCard: {
-      width: '48.5%',
-
+      flex: 1,
+      minWidth: 0,
       minHeight: 96,
-
-      borderRadius: 20,
-
-      padding: 14,
-
+      borderRadius: 18,
+      borderWidth: 1,
+      paddingVertical: 10,
+      paddingHorizontal: 4,
       alignItems: 'center',
-
       justifyContent: 'center',
-
-      gap: 9,
+      gap: 8,
     },
 
     quickIcon: {
-      width: 44,
+      width: 56,
 
-      height: 44,
+      height: 56,
 
-      borderRadius: 14,
+      borderRadius: 18,
+      borderWidth: 1,
 
       alignItems: 'center',
 
@@ -2332,13 +1732,11 @@ const styles =
     },
 
     quickTitle: {
-      fontSize: 12.5,
-
-      lineHeight: 16,
-
-      fontWeight: '900',
-
+      fontSize: 11.5,
+      lineHeight: 14,
+      fontWeight: '800',
       textAlign: 'center',
+      alignSelf: 'stretch',
     },
 
     accessNotice: {
@@ -2357,21 +1755,13 @@ const styles =
      */
 
     aiCard: {
-      minHeight: 88,
-
+      minHeight: 76,
       borderRadius: 20,
-
       borderWidth: 1,
-
-      paddingHorizontal: 14,
-
-      paddingVertical: 13,
-
+      padding: 12,
       flexDirection: 'row',
-
       alignItems: 'center',
-
-      marginBottom: 20,
+      gap: 12,
     },
 
     aiMainIcon: {
@@ -2399,10 +1789,9 @@ const styles =
 
     aiTitleRow: {
       flexDirection: 'row',
-
       alignItems: 'center',
-
-      gap: 7,
+      flexWrap: 'wrap',
+      gap: 8,
     },
 
     aiTitle: {
@@ -2412,21 +1801,13 @@ const styles =
     },
 
     aiBadge: {
-      minHeight: 21,
-
-      borderRadius: 11,
-
-      paddingHorizontal: 7,
-
-      alignItems: 'center',
-
-      justifyContent:
-        'center',
+      paddingHorizontal: 8,
+      paddingVertical: 3,
+      borderRadius: 999,
     },
 
     aiBadgeText: {
-      fontSize: 8.5,
-
+      fontSize: 11,
       fontWeight: '900',
     },
 
@@ -2723,19 +2104,13 @@ const styles =
     },
 
     supportCard: {
-      width: '48.5%',
-
-      minHeight: 64,
-
-      borderRadius: 17,
-
+      flex: 1,
+      minWidth: 0,
+      minHeight: 116,
+      borderRadius: 20,
       borderWidth: 1,
-
-      paddingHorizontal: 11,
-
-      flexDirection: 'row',
-
-      alignItems: 'center',
+      padding: 12,
+      gap: 6,
     },
 
     supportIcon: {
@@ -2752,17 +2127,10 @@ const styles =
     },
 
     supportTitle: {
-      flex: 1,
-
-      minWidth: 0,
-
-      marginLeft: 8,
-
-      fontSize: 11.5,
-
-      lineHeight: 15,
-
+      fontSize: 15,
+      lineHeight: 19,
       fontWeight: '900',
+      marginTop: 2,
     },
 
 

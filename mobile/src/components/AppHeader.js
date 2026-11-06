@@ -2,7 +2,6 @@ import React from 'react';
 
 import {
   Image,
-  Pressable,
   StyleSheet,
   Text,
   View,
@@ -13,12 +12,10 @@ import {
 } from 'react-native-safe-area-context';
 
 import {
-  MaterialCommunityIcons,
-} from '@expo/vector-icons';
-
-import {
   useApp,
 } from '../context/AppContext';
+
+import HeaderIconButton from './HeaderIconButton';
 
 const logo =
   require('../../assets/images/navora_symbol.png');
@@ -30,7 +27,7 @@ export default function AppHeader({
   const insets =
     useSafeAreaInsets();
 
-  const { appColors } =
+  const { appColors, t } =
     useApp();
 
   const topPadding =
@@ -39,50 +36,28 @@ export default function AppHeader({
       8
     );
 
+  const badgeLabel =
+    notificationCount > 9
+      ? '9+'
+      : String(notificationCount);
+
   return (
     <View
       style={[
         styles.header,
         {
-          paddingTop:
-            topPadding,
-
-          backgroundColor:
-            appColors.surface,
-
-          borderBottomColor:
-            appColors.border,
+          paddingTop: topPadding,
+          backgroundColor: appColors.bar,
+          borderBottomColor: appColors.barBorder,
         },
       ]}
     >
       <View style={styles.row}>
-        <Pressable
-          onPress={() =>
-            navigate('Menu')
-          }
-          accessibilityRole="button"
-          accessibilityLabel="Abrir menu"
-          hitSlop={8}
-          style={({ pressed }) => [
-            styles.iconButton,
-            {
-              backgroundColor:
-                appColors.surface,
-
-              borderColor:
-                appColors.border,
-            },
-
-            pressed &&
-              styles.pressed,
-          ]}
-        >
-          <MaterialCommunityIcons
-            name="menu"
-            size={23}
-            color={appColors.text}
-          />
-        </Pressable>
+        <HeaderIconButton
+          icon="menu"
+          onPress={() => navigate('Menu')}
+          accessibilityLabel={t('header.openMenu')}
+        />
 
         <View
           pointerEvents="none"
@@ -95,69 +70,23 @@ export default function AppHeader({
           />
 
           <Text
-            style={[
-              styles.brandName,
-              {
-                color:
-                  appColors.text,
-              },
-            ]}
+            style={[styles.brandName, { color: appColors.text }]}
+            maxFontSizeMultiplier={1.3}
           >
             Navora
           </Text>
         </View>
 
-        <Pressable
-          onPress={() =>
-            navigate(
-              'Notifications'
-            )
+        <HeaderIconButton
+          icon="bell"
+          badge={notificationCount}
+          onPress={() => navigate('Notifications')}
+          accessibilityLabel={
+            notificationCount > 0
+              ? t('header.openNotificationsCount', { count: badgeLabel })
+              : t('header.openNotifications')
           }
-          accessibilityRole="button"
-          accessibilityLabel="Abrir notificações"
-          hitSlop={8}
-          style={({ pressed }) => [
-            styles.iconButton,
-            {
-              backgroundColor:
-                appColors.surface,
-
-              borderColor:
-                appColors.border,
-            },
-
-            pressed &&
-              styles.pressed,
-          ]}
-        >
-          <MaterialCommunityIcons
-            name="bell-outline"
-            size={22}
-            color={appColors.text}
-          />
-
-          {notificationCount > 0 ? (
-            <View
-              style={[
-                styles.badge,
-                {
-                  backgroundColor:
-                    appColors.primary,
-                },
-              ]}
-            >
-              <Text
-                style={
-                  styles.badgeText
-                }
-              >
-                {notificationCount > 9
-                  ? '9+'
-                  : notificationCount}
-              </Text>
-            </View>
-          ) : null}
-        </Pressable>
+        />
       </View>
     </View>
   );
@@ -168,47 +97,26 @@ const styles =
     header: {
       width: '100%',
       borderBottomWidth: 1,
-
       paddingHorizontal: 16,
       paddingBottom: 8,
-
       zIndex: 100,
     },
 
     row: {
-      height: 46,
-
+      height: 48,
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent:
-        'space-between',
-    },
-
-    iconButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-
-      borderWidth: 1,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-
-      position: 'relative',
+      justifyContent: 'space-between',
     },
 
     brand: {
       position: 'absolute',
-
-      left: 52,
-      right: 52,
-
-      height: 46,
-
+      left: 56,
+      right: 56,
+      height: 48,
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-
       gap: 6,
     },
 
@@ -222,37 +130,5 @@ const styles =
       lineHeight: 20,
       fontWeight: '900',
       letterSpacing: -0.2,
-    },
-
-    badge: {
-      position: 'absolute',
-
-      top: -3,
-      right: -3,
-
-      minWidth: 17,
-      height: 17,
-      borderRadius: 9,
-
-      paddingHorizontal: 4,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    badgeText: {
-      color: '#FFFFFF',
-      fontSize: 9,
-      fontWeight: '900',
-    },
-
-    pressed: {
-      opacity: 0.72,
-
-      transform: [
-        {
-          scale: 0.97,
-        },
-      ],
     },
   });

@@ -52,7 +52,7 @@ export class PatientsService {
           email,
           passwordHash,
           name: payload.name.trim(),
-          phone: payload.phone,
+          phone: payload.phone.trim(),
           role: UserRole.PATIENT,
           active: true,
         },
@@ -61,11 +61,8 @@ export class PatientsService {
       return tx.patientProfile.create({
         data: {
           userId: user.id,
-          patientCode: payload.patientCode,
-          birthDate: payload.birthDate ? new Date(payload.birthDate) : undefined,
           accessibility: this.cleanAccessibility(payload.accessibility),
-          emergencyContact: payload.emergencyContact,
-          notes: payload.notes?.trim() || null,
+          emergencyContact: payload.emergencyContact?.trim() || null,
           privacyConsentAt: new Date(),
           privacyPolicyVersion: payload.privacyPolicyVersion,
         },
@@ -95,7 +92,7 @@ export class PatientsService {
           where: { id: user.id },
           data: {
             ...(payload.name !== undefined ? { name: payload.name.trim() } : {}),
-            ...(payload.phone !== undefined ? { phone: payload.phone } : {}),
+            ...(payload.phone !== undefined ? { phone: payload.phone.trim() } : {}),
           },
         });
       }
@@ -103,17 +100,12 @@ export class PatientsService {
       return tx.patientProfile.update({
         where: { userId: user.id },
         data: {
-          ...(payload.patientCode !== undefined ? { patientCode: payload.patientCode || null } : {}),
-          ...(payload.birthDate !== undefined
-            ? { birthDate: payload.birthDate ? new Date(payload.birthDate) : null }
-            : {}),
           ...(payload.accessibility !== undefined
             ? { accessibility: this.cleanAccessibility(payload.accessibility) }
             : {}),
           ...(payload.emergencyContact !== undefined
-            ? { emergencyContact: payload.emergencyContact || null }
+            ? { emergencyContact: payload.emergencyContact.trim() || null }
             : {}),
-          ...(payload.notes !== undefined ? { notes: payload.notes.trim() || null } : {}),
         },
         include: { user: true },
       });
@@ -140,8 +132,8 @@ export class PatientsService {
   }
 
   // LGPD (art. 18, VI): o paciente apaga a própria conta. Some o cadastro
-  // (nome, e-mail, telefone, nascimento, acessibilidade, observações, contato
-  // de emergência) e as notificações. Chamados de SOS/ajuda já atendidos ficam
+  // (nome, e-mail, telefone, acessibilidade, contato de emergência) e as
+  // notificações. Chamados de SOS/ajuda já atendidos ficam
   // no histórico do hospital (registro de atendimento), sem ligação com a conta.
   async deleteMe(user: AuthenticatedUser, password: string) {
     this.ensurePatient(user);
@@ -198,11 +190,8 @@ export class PatientsService {
   private toPatientResponse(patient: PatientWithUser) {
     return {
       id: patient.id,
-      patientCode: patient.patientCode,
-      birthDate: patient.birthDate?.toISOString() ?? null,
       accessibility: patient.accessibility,
       emergencyContact: patient.emergencyContact,
-      notes: patient.notes,
       privacyConsentAt: patient.privacyConsentAt?.toISOString() ?? null,
       privacyPolicyVersion: patient.privacyPolicyVersion,
       user: this.authService.toSafeUser(patient.user),

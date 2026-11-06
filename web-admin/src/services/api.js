@@ -113,19 +113,23 @@ export const adminApi = {
   healthCheck: () => request('/health', {}, { status: 'offline', demoMode: true }),
   login: (payload) => request('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
   getAuthMe: () => request('/auth/me', { authenticated: true }),
-  getCalls: () => request('/calls', { authenticated: true }, []),
+  // updatedSince: so os chamados criados/alterados depois (busca rapida do SOS).
+  getCalls: (updatedSince) =>
+    request(updatedSince ? `/calls?updated_since=${encodeURIComponent(updatedSince)}` : '/calls', { authenticated: true }, []),
+  // Ações da recepção não têm resposta de reserva: sem servidor, o painel avisa
+  // o erro. Antes mostrava "aprovado"/"atualizado" sem ter salvo nada (06/11).
   updateCallStatus: (id, status) =>
-    request(`/calls/${id}/status`, { method: 'PATCH', authenticated: true, body: JSON.stringify({ status }) }, { id, status, demoMode: true }),
+    request(`/calls/${id}/status`, { method: 'PATCH', authenticated: true, body: JSON.stringify({ status }) }),
   getVisitorAccessRequests: (status) =>
     request(status ? `/visitor-access?status=${encodeURIComponent(status)}` : '/visitor-access', { authenticated: true }, []),
   approveVisitorAccess: (id, data) =>
-    request(`/visitor-access/${id}/approve`, { method: 'PATCH', authenticated: true, body: JSON.stringify(data) }, { id, ...data, status: 'APPROVED', demoMode: true }),
+    request(`/visitor-access/${id}/approve`, { method: 'PATCH', authenticated: true, body: JSON.stringify(data) }),
   authorizeVisitorAccess: (id, payload) =>
-    request(`/visitor-access/${id}/approve`, { method: 'PATCH', authenticated: true, body: JSON.stringify(payload) }, { id, ...payload, status: 'APPROVED', demoMode: true }),
+    request(`/visitor-access/${id}/approve`, { method: 'PATCH', authenticated: true, body: JSON.stringify(payload) }),
   denyVisitorAccess: (id, deniedReason) =>
-    request(`/visitor-access/${id}/deny`, { method: 'PATCH', authenticated: true, body: JSON.stringify(typeof deniedReason === 'string' ? { deniedReason } : deniedReason) }, { id, status: 'DENIED', deniedReason, demoMode: true }),
+    request(`/visitor-access/${id}/deny`, { method: 'PATCH', authenticated: true, body: JSON.stringify(typeof deniedReason === 'string' ? { deniedReason } : deniedReason) }),
   updateVisitorAccessStatus: (id, status) =>
-    request(`/visitor-access/${id}/status`, { method: 'PATCH', authenticated: true, body: JSON.stringify({ status }) }, { id, status, demoMode: true }),
+    request(`/visitor-access/${id}/status`, { method: 'PATCH', authenticated: true, body: JSON.stringify({ status }) }),
   getDashboardSummary: () => request('/dashboard/summary', { authenticated: true }, fallbackSummary),
   getCheckIns: () => request('/check-ins', { authenticated: true }),
   createCheckIn: (payload) => request('/check-ins', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }),
@@ -142,6 +146,13 @@ export const adminApi = {
   getNavigationAreas: () => requestFromApi('/navigation/areas', { authenticated: true }),
   getNavigationDestinations: () => requestFromApi('/navigation/destinations', { authenticated: true }),
   getNavigationMap: () => requestFromApi('/navigation/map', { authenticated: true }),
+  // Funcionarios: nunca ha exclusao, apenas desativacao/reativacao (regra de seguranca).
+  getStaff: () => requestFromApi('/staff', { authenticated: true }),
+  getStaffAudit: (id) => request(`/staff/${id}/audit`, { authenticated: true }),
+  deactivateStaff: (id, reason) =>
+    request(`/staff/${id}/deactivate`, { method: 'PATCH', authenticated: true, body: JSON.stringify({ reason }) }),
+  reactivateStaff: (id, reason) =>
+    request(`/staff/${id}/reactivate`, { method: 'PATCH', authenticated: true, body: JSON.stringify({ reason }) }),
   generateAdminReport: (payload = {}) =>
     request('/reports/admin', { method: 'POST', authenticated: true, body: JSON.stringify(payload) }, { demoMode: true }),
   createStaff: (payload) =>

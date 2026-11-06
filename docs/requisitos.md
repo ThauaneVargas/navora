@@ -25,11 +25,11 @@ App de navegação indoor/outdoor para dois hospitais (HMC Private e HMC Marco C
 | RF-01 | Login com e-mail/senha | Paciente | Implementado | `LoginScreen.js` → `POST /auth/login` |
 | RF-02 | Login com Google (e Apple) | Paciente | `PENDENTE` — backend pronto (`POST /auth/google`, `googleId` em `User`), mas o app só mostra "Em breve disponível" nos dois botões; falta configurar os Client IDs do Google e ligar o fluxo | `LoginScreen.js` (`handleSocialLogin`) |
 | RF-03 | Recuperação de senha por e-mail | Paciente | Implementado | `ForgotPasswordScreen.js`/`ResetPasswordScreen.js` → `POST /auth/forgot-password`, `POST /auth/reset-password` |
-| RF-04 | Cadastro completo (nome, nascimento, CPF, telefone, e-mail, senha, contato de emergência, 9 opções de acessibilidade, observações importantes) | Paciente | Implementado (observações e 3 opções de acessibilidade passaram a ser salvas em 21/10) | `PatientRegisterScreen.js` → `POST /patients/register` |
-| RF-05 | Entrada rápida sem criar conta (nome/telefone/nascimento, estado local) | Paciente | Implementado | `PatientQuickRegisterScreen.js` (`quick: true`) |
-| RF-06 | "Primeiro acesso" cria conta real (prefill de nome/telefone/nascimento → cadastro completo) | Paciente | Implementado (16/10) | `PatientQuickRegisterScreen.js` (`quick: false`) → `PatientRegisterScreen.js` com `routeParams.initialValues` |
+| RF-04 | Cadastro mínimo (LGPD, 29/10): nome, telefone, e-mail e senha obrigatórios; contato de emergência e 9 opções de acessibilidade opcionais. Sem CPF, nascimento nem observações | Paciente e visitante (mesma conta) | Implementado (29/10) | `PatientRegisterScreen.js` → `POST /patients/register` |
+| RF-05 | ~~Entrada rápida sem criar conta~~ | — | **Removido em 29/10** (login obrigatório) | — |
+| RF-06 | ~~"Primeiro acesso" pelo acesso rápido~~ | — | **Removido em 29/10** — criar conta é pelo "Cadastre-se" do Login | — |
 | RF-07 | Editar dados pessoais e contato de emergência sem recriar a conta | Paciente | Implementado (16/10) | `ProfileScreen.js` → `PatientRegisterScreen.js` (`mode: 'edit'`) → `PUT /patients/me` |
-| RF-08 | Identificação de visitante (nome, telefone, nascimento, paciente visitado, acompanhantes) | Visitante | Implementado | `VisitorEntryScreen.js` |
+| RF-08 | Visitante entra com conta (Login com "Visitante" marcado); nome e telefone vêm da conta; informa paciente visitado e acompanhantes. Sem nascimento | Visitante | Implementado (login obrigatório em 29/10) | `LoginScreen.js` → `VisitorEntryScreen.js` → `POST /visitor-access` (JWT) |
 
 ### 3.2 Navegação
 
@@ -113,3 +113,15 @@ App de navegação indoor/outdoor para dois hospitais (HMC Private e HMC Marco C
 ## 5. Rastreabilidade — requisito × teste automatizado
 
 Ver `docs/casos_de_teste.md` para a tabela completa de onde cada requisito funcional tem cobertura automatizada (unitária/e2e) e onde só existe validação manual.
+
+## Regras de segurança do Web Admin
+
+### RS-01 — Funcionários nunca são excluídos, apenas desativados
+
+- Usuários da equipe (Recepção e Administrador) não podem ser apagados do sistema.
+- Para retirar o acesso de alguém, o administrador **desativa** o usuário. A pessoa deixa de conseguir entrar no painel imediatamente, inclusive sessões já abertas.
+- O histórico continua salvo para consulta futura: quais visitantes o funcionário autorizou ou negou, quando, e quem desativou/reativou o acesso dele (com motivo).
+- Um usuário desativado pode ser reativado com o mesmo perfil.
+- Um administrador não pode desativar a si mesmo, e o último administrador ativo não pode ser desativado.
+- A regra é garantida em três camadas: interface (não existe botão de excluir), API (`DELETE /staff/:id` responde 405) e banco de dados (triggers recusam a exclusao).
+- Escopo: vale para funcionários. Pacientes seguem as regras próprias de cadastro/LGPD.
