@@ -2,8 +2,8 @@
 // do SOS. Fica no próprio app (não vem do servidor) porque é justamente quando
 // a internet falha que a pessoa precisa dele.
 //
-// Preencher com o número que o hospital informar, só dígitos com DDD
-// (ex.: '8133330000'), ou via .env: EXPO_PUBLIC_RECEPTION_PHONE_PRIVATE e
+// Recepção geral do hospital (informado em 06/11): (24) 2471-8381, igual nas duas unidades.
+// Só dígitos com DDD, via .env ou eas.json: EXPO_PUBLIC_RECEPTION_PHONE_PRIVATE e
 // EXPO_PUBLIC_RECEPTION_PHONE_SUS. Sem número, o botão não aparece.
 const RECEPTION_PHONES = {
   private: process.env.EXPO_PUBLIC_RECEPTION_PHONE_PRIVATE || null,

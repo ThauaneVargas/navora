@@ -362,8 +362,9 @@ export default function HelpScreen({
         };
         await saveActiveCall(tracked);
         setActiveCall((await getActiveCall()) || tracked);
-        // SOS: abre direto o andamento (Enviado -> Recebido -> ...).
-        if (isSos) setStatusSheetVisible(true);
+        // Abre direto o andamento (Enviado -> Recebido -> ...) em todo pedido:
+        // sem isso, ajuda e "Falar com a recepção" pareciam não fazer nada.
+        setStatusSheetVisible(true);
       }
 
 
@@ -466,10 +467,18 @@ export default function HelpScreen({
         'Accessibility'
       ),
 
+    // Pergunta antes: ligar agora (quando há número) ou pedir que alguém venha.
     reception: () =>
-      submit(
-        'reception',
-        'Contato com recepção'
+      Alert.alert(
+        t('help.receptionChoiceTitle'),
+        t('help.receptionChoice'),
+        [
+          ...(receptionPhone
+            ? [{ text: t('help.callReception'), onPress: () => Linking.openURL(`tel:${receptionPhone}`).catch(() => {}) }]
+            : []),
+          { text: t('help.askSomeoneCome'), onPress: () => submit('reception', 'Contato com recepção') },
+          { text: t('common.cancel'), style: 'cancel' },
+        ]
       ),
 
     // Com chamado em andamento, abre o acompanhamento; sem, as notificacoes.
