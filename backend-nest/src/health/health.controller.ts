@@ -1,5 +1,6 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { SkipThrottle } from '@nestjs/throttler';
+import { clearTimeout, setTimeout } from 'node:timers';
 import { PrismaService } from '../database/prisma.service';
 
 // Banco que nao responde em 5 s conta como fora (o monitor nao pode ficar pendurado).
@@ -20,7 +21,7 @@ export class HealthController {
   @Get('health')
   @SkipThrottle()
   async health() {
-    let timer: NodeJS.Timeout | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
       await Promise.race([
         this.prisma.$queryRaw`SELECT 1`,
