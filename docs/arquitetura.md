@@ -36,9 +36,10 @@ flowchart LR
     OPM[Operational Messages]
   end
 
-  DB[(PostgreSQL via Prisma)]
+  DB[(PostgreSQL no Neon, via Prisma)]
   MAPS["Google Maps / Waze / Apple Maps (externo)"]
-  RENDER["Render.com (deploy)"]
+  RENDER["Render.com (deploy da API)"]
+  VERCEL["Vercel (deploy do painel)"]
 
   M -- "REST + JWT" --> API
   W -- "REST + JWT" --> API
@@ -46,6 +47,7 @@ flowchart LR
   M -. "quando API fora do ar" .-> FALLBACK["navigationAdapter.js (fallback local)"]
   M -- "abre app externo" --> MAPS
   API -. deploy .-> RENDER
+  W -. deploy .-> VERCEL
 ```
 
 ## 3. Stack por componente
@@ -86,13 +88,17 @@ flowchart LR
 | Ambiente | Backend | Banco | Observações |
 |---|---|---|---|
 | Local (dev) | `npm run start:dev` (porta 8000) | PostgreSQL via Docker (`navora-postgres`) | IP Wi-Fi da máquina muda — `mobile/.env` precisa acompanhar. |
-| Produção | Render.com (`navora-backend-kpio.onrender.com`), roda a branch `main` (commit `b93df9d`, de 23/08) | Postgres free `navora-db-2` (Oregon, v16), **expira 19/11/2026** | Plano free dorme após 15 min; cold start ~50s — por isso `REQUEST_TIMEOUT_MS = 60000` no mobile. O start command roda `prisma migrate deploy`, mas **não roda seed** — banco novo precisa ser populado à mão (ver procedimento abaixo). |
+| Produção (API) | Render.com (`navora-backend-kpio.onrender.com`, Oregon), roda a branch `main` (auto-deploy a cada commit) | **Neon** (projeto `navora`, AWS US West 2/Oregon, Postgres 17, grátis, não expira) desde 03/11/2026 | Plano free dorme após 15 min; cold start ~50s — por isso `REQUEST_TIMEOUT_MS = 60000` no mobile. O start command roda `prisma migrate deploy`, mas **não roda seed**. |
+| Produção (painel) | Vercel, projeto `navora` → https://navora-nine.vercel.app (build da `main`) | — | `VITE_NAVORA_API_URL` (variável da Vercel) tem que ser a URL da API acima e é gravada no build: mudou, republica. O domínio do painel tem que estar em `CORS_ORIGINS` no Render. Commits com e-mail diferente de `thauanevargas160@gmail.com` são bloqueados pela Vercel. |
+| Mobile (distribuição) | — | — | Dois caminhos testados: Expo Go (LAN ou túnel `exp.direct`) e APK standalone assinado com keystore de debug, apontando pra produção. |
 
-### Incidente 10/10–20/10 e procedimento de recriação do banco
+Plano para quando vender: API na AWS Lightsail São Paulo e banco no Neon São Paulo, sempre na mesma região (ver item 27 de `docs/historico.md`).
+
+### Histórico: incidente 10/10–20/10 e recriação do banco no Render (obsoleto desde a ida pro Neon)
 
 - O Postgres free original (`navora-db`) expirou em 10/10 e foi suspenso por cobrança. O serviço web ficou em crash-loop (`prisma migrate deploy` → `P1001: Can't reach database server`), sem nunca escutar porta — produção ficou fora do ar por 10 dias sem ninguém notar.
-- Resolvido em 20/10 criando `navora-db-2` (free). **O free tier expira a cada ~30 dias — este procedimento vai precisar ser repetido até 19/11, ou trocar pra plano pago.**
-- Procedimento usado (repetível):
+- Resolvido em 20/10 criando `navora-db-2` (free, expirava 19/11). Em 03/11 os dados foram copiados para o Neon e o `navora-db-2` foi parado — o procedimento abaixo só serve de referência.
+- Procedimento usado na época:
   1. Criar Postgres free no Render, mesma região do serviço (Oregon), versão 16.
   2. No painel do banco, em **PostgreSQL Inbound IP Rules**, adicionar `0.0.0.0/0` (temporário — a regra de workspace não vale pro banco).
   3. Copiar a **External Database URL**.
@@ -100,7 +106,6 @@ flowchart LR
   5. No serviço, atualizar a env `DATABASE_URL` para a URL **interna** (a externa sem o sufixo `.oregon-postgres.render.com`) — isso já dispara o deploy.
   6. Validar: login de `admin@navora.com`/`recepcao@navora.com`/`paciente@navora.com` (senha `navora-demo-123`) deve dar 201 — `/health` sozinho não prova nada, ele não consulta o banco.
   7. Remover a regra `0.0.0.0/0` do banco (o serviço usa a URL interna, não precisa dela).
-| Mobile (distribuição) | — | — | Dois caminhos testados: Expo Go (LAN ou túnel `exp.direct`) e APK standalone assinado com keystore de debug, apontando pra produção. |
 
 ## 8. Decisões arquiteturais que não são triviais de inferir do código
 

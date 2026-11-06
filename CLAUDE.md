@@ -2,17 +2,17 @@
 
 App de navegação hospitalar (Navora / sistema HMC). Monorepo: `mobile/` (Expo SDK 58, RN 0.88, React 19.3 — sem React Navigation, state machine em `App.js`), `backend-nest/` (NestJS + Prisma + PostgreSQL), `web-admin/` (React + Vite; o painel real é `src/App.jsx`).
 
-Histórico detalhado de cada bug/feature/decisão (itens 1–24): `docs/historico.md`. Consultar antes de mexer em algo já resolvido.
+Histórico detalhado de cada bug/feature/decisão (itens 1–27): `docs/historico.md`. Consultar antes de mexer em algo já resolvido.
 
 ## Prioridades (28/10)
 Checklist completo para o lançamento (banco, hospedagem, segurança, LGPD, lojas, melhorias): `docs/checklist-lancamento.md`.
 
 0. **Branch `fix/seguranca-entrega` (29/10, item 25 do histórico):** corrige painel web em branco, pedido de visitante que nunca chegava, SOS falso offline e furos de acesso; traz desativação de funcionário, recuperação de senha por e-mail (SMTP), selo "Sem conta" e SOS completo (problemas, acessibilidade, andamento no celular, painel em ~2 s com som). Faltam os telefones da recepção (`mobile/.env`). Precisa entrar antes de qualquer deploy (+ APK novo). Configurar SMTP no Render para o "Esqueci minha senha" funcionar.
 1. **Produção:** falta trocar a senha do banco e o `JWT_SECRET` (`docs/lgpd.md` §3). Push pra `main` = deploy de produção — só a usuária faz (`git push origin <branch>:main`).
-2. **Banco de produção free expira 19/11/2026** — procedimento em `docs/arquitetura.md` §7 (skill `/recriar-banco`). Plano pago adiado até pesquisar custos.
+2. **Banco no Neon desde 03/11** (item 27 do histórico): não expira; o antigo `navora-db-2` do Render está parado e vai ser apagado (a skill `/recriar-banco` ficou obsoleta). Navora é produto para vender — o TCC é secundário. Ao vender: API na AWS Lightsail SP + Neon SP, mesma região.
 3. **Beacons:** calibrar no hospital (`measuredPower`, `BEACON_STABILITY`), testar "Localização inicial" (CTM-13/14). Voz (reconhecimento do aparelho) pode entrar no mesmo APK.
 4. **Testes no celular físico:** cadastro mínimo, login como Visitante, editar perfil, SOS no painel (CTM-06/10/11 em `docs/casos_de_teste.md`).
-5. **App Store (iOS)** — código pronto em 28/10: botões Google/Apple "Em breve" removidos (Apple reprova botão falso e exigiria "Entrar com Apple"), textos de permissão em pt no `app.json` (Face ID, câmera, fotos, localização; sem microfone), `supportsTablet: false`, `ITSAppUsesNonExemptEncryption: false`, perfil `production` no `eas.json` (API de produção embutida), política pública em `web-admin/public/privacidade.html` (gerada do `privacyPolicy.js` por `npm run privacidade`). **Falta (usuária):** conta Apple Developer — app de saúde exige conta de **organização** (hospital, com D-U-N-S; regra 5.1.1(ix)) ou ficar só no TestFlight; plano pago no Render (servidor dormindo/banco expirando reprova na revisão); conta demo pro revisor; trocar `JWT_SECRET`/senha do banco; testar num iPhone (nunca testado). BLE já fica desligado no iOS (`ios_unsupported`).
+5. **App Store (iOS)** — código pronto em 28/10: botões Google/Apple "Em breve" removidos (Apple reprova botão falso e exigiria "Entrar com Apple"), textos de permissão em pt no `app.json` (Face ID, câmera, fotos, localização; sem microfone), `supportsTablet: false`, `ITSAppUsesNonExemptEncryption: false`, perfil `production` no `eas.json` (API de produção embutida), política pública em `web-admin/public/privacidade.html` (gerada do `privacyPolicy.js` por `npm run privacidade`). **Falta (usuária):** conta Apple Developer — app de saúde exige conta de **organização** (hospital, com D-U-N-S; regra 5.1.1(ix)) ou ficar só no TestFlight; plano pago no Render (servidor dormindo reprova na revisão); conta demo pro revisor; trocar `JWT_SECRET`/senha do banco; testar num iPhone (nunca testado). BLE já fica desligado no iOS (`ios_unsupported`).
 6. Sem pressa: seletor de andar com dados reais; dividir telas gigantes (`VisitorEntryScreen`, `PatientHomeScreen`, `App.js`) quando precisar mexer.
 
 ## Regras de escopo (não violar)
@@ -44,7 +44,9 @@ Checklist completo para o lançamento (banco, hospedagem, segurança, LGPD, loja
 
 ## Ambientes
 - Local: `mobile/.env` aponta pro IP Wi-Fi da máquina (muda com a rede — conferir com `ipconfig`). Contas demo `navora-demo-123` só valem no banco local.
-- Produção: `https://navora-backend-kpio.onrender.com` (Render Oregon, serviço `srv-dah043rl550s73d10v8g`, banco `navora-db-2` / `dpg-dbburtjncjis73fdjpig-a`). Dorme após 15 min (1º request 30–50 s). Pra ver se está viva, testar **login** (skill `/checar-producao`), não `/health`. Senhas de produção ficam com a usuária. Banco fechado pra internet.
+- Produção: API `https://navora-backend-kpio.onrender.com` (Render Oregon, serviço `srv-dah043rl550s73d10v8g`, roda a `main`), banco no **Neon** (projeto `navora`, Oregon, Postgres 17). Dorme após 15 min (1º request 30–50 s). Pra ver se está viva, testar **login** (skill `/checar-producao`), não `/health`. Senhas de produção ficam com a usuária.
+- Painel: `https://navora-nine.vercel.app` (Vercel, projeto `navora`, build da `main`). `VITE_NAVORA_API_URL` na Vercel = URL da API acima e só vale depois de republicar; o domínio do painel precisa estar em `CORS_ORIGINS` no Render. Login falhando com "Não foi possível conectar ao backend" → conferir a URL dentro do `assets/index-*.js` publicado (em 05/11 apontava pro Railway desativado).
+- Commits: e-mail `thauanevargas160@gmail.com` — com outro, a Vercel bloqueia o deploy.
 
 ## Identidade visual
 Fundo branco ou branco-gelo, detalhes em bordô (#980027), aparência limpa e premium, bastante espaço em branco, ícones simples, textos objetivos, botões grandes (público pode ter mobilidade reduzida/ansiedade). Tokens e regras completos no Design System: https://claude.ai/artifact/JJF9fBQvzWDyYwrQppEANj (ler o `project/README.md` dele antes de desenhar tela/mockup; fonte da verdade continua sendo `mobile/src/theme/`).

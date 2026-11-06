@@ -1,6 +1,6 @@
 ---
 name: recriar-banco
-description: Recria o Postgres free de produção do Navora no Render quando ele expira (o atual, navora-db-2, expira 19/11/2026). Usar quando a produção cair com P1001, o login de produção falhar, ou a data de expiração estiver perto.
+description: OBSOLETA desde 03/11/2026 — o banco de produção agora é o Neon (não expira), não recriar no Render. Recriava o Postgres free do Render quando expirava. Só consultar como referência histórica; se o login de produção falhar, investigar o Neon. Antes servia quando a produção cair com P1001, o login de produção falhar, ou a data de expiração estiver perto.
 ---
 
 # Recriar o banco de produção (Render free)
