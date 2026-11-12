@@ -31,11 +31,16 @@ function prismaFor(data: {
   destinations?: Record<string, any>[];
   users?: Record<string, any>[];
 }) {
-  const model = (items: Record<string, any>[]) => ({
-    count: ({ where }: { where?: Record<string, any> } = {}) => items.filter((item) => matchesWhere(item, where)).length,
-    groupBy: ({ by }: { by: string[] }) => groupBy(items, by[0]),
-    findMany: () => items,
-  });
+  // Todo registro do teste e do hospital 1 (salvo se disser outro).
+  const model = (raw: Record<string, any>[]) => {
+    const items = raw.map((item) => ({ hospitalId: 1, ...item }));
+    return {
+      count: ({ where }: { where?: Record<string, any> } = {}) => items.filter((item) => matchesWhere(item, where)).length,
+      groupBy: ({ by, where }: { by: string[]; where?: Record<string, any> }) =>
+        groupBy(items.filter((item) => matchesWhere(item, where)), by[0]),
+      findMany: ({ where }: { where?: Record<string, any> } = {}) => items.filter((item) => matchesWhere(item, where)),
+    };
+  };
 
   return {
     callRequest: model(data.calls || []),
@@ -48,7 +53,7 @@ function prismaFor(data: {
 }
 
 async function run() {
-  const empty = await new DashboardService(prismaFor({}) as any).summary();
+  const empty = await new DashboardService(prismaFor({}) as any).summary(1);
   assert.equal(empty.source, 'api');
   assert.equal(empty.totalCalls, 0);
   assert.equal(empty.openCalls, 0);
@@ -77,9 +82,18 @@ async function run() {
       ],
       sectors: [{ id: 1 }, { id: 2 }],
       destinations: [{ id: 1 }, { id: 2 }, { id: 3 }],
-      users: [{ role: UserRole.PATIENT }, { role: UserRole.ADMIN }, { role: UserRole.RECEPTION }],
+      users: [
+        { role: UserRole.PATIENT },
+        { role: UserRole.ADMIN },
+        { role: UserRole.RECEPTION },
+        // Outro hospital: nao entra na conta do hospital 1.
+        { role: UserRole.ADMIN, hospitalId: 2 },
+        { role: UserRole.PATIENT, hospitalId: 2 },
+      ],
     }) as any,
-  ).summary();
+  ).summary(1);
+  assert.equal(summary.staffUsers, 2, 'conta so a equipe do proprio hospital');
+  assert.equal(summary.patientUsers, 1, 'conta so pacientes cadastrados neste hospital');
 
   assert.equal(summary.totalCalls, 4);
   assert.equal(summary.openCalls, 2);

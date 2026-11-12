@@ -5,13 +5,13 @@
 // Escreva só o que o app faz de fato (ver docs/lgpd.md). Depois de mudar, rode
 // `npm run privacidade` no web-admin: gera a página pública exigida pelas lojas.
 
-export const PRIVACY_POLICY_VERSION = '2026-10-29';
+export const PRIVACY_POLICY_VERSION = '2026-11-07';
 
 const ICONS = ['account-outline', 'target', 'bluetooth', 'account-group-outline', 'server-outline', 'clock-outline', 'scale-balance'];
 
 const POLICY = {
   pt: {
-    updatedLabel: '29 de outubro de 2026',
+    updatedLabel: '7 de novembro de 2026',
     translationNote: null,
     sections: [
       ['O que guardamos',
@@ -28,16 +28,19 @@ const POLICY = {
         'O servidor não guarda um histórico da sua localização. ' +
         'A lista de rotas que você iniciou (em "Histórico de rotas") fica só no seu celular e é apagada quando você toca em Sair.'],
       ['Quem vê',
-        'A equipe da recepção e a administração do hospital, com login próprio, veem os pedidos de ajuda e SOS (seu nome, onde você está, telefone, contato de emergência e se precisa de cadeira de rodas ou maca) e os pedidos de visita. ' +
+        'A equipe da recepção e a administração do hospital onde você está, com login próprio, veem os pedidos de ajuda e SOS (seu nome, onde você está, telefone, contato de emergência e se precisa de cadeira de rodas ou maca) e os pedidos de visita. ' +
+        'Cada hospital só vê os pedidos feitos nele, e tudo o que a equipe faz no sistema fica registrado. ' +
         'Não compartilhamos com outras empresas.'],
       ['Onde ficam',
-        'Em um servidor na nuvem (Render), localizado nos Estados Unidos. ' +
-        'A conexão entre o app e o servidor é criptografada (HTTPS) e sua senha é guardada de forma que nem a equipe consegue lê-la.'],
+        'Em servidores na nuvem nos Estados Unidos: o sistema roda na Render e o banco de dados fica na Neon. ' +
+        'A conexão entre o app e o servidor é criptografada (HTTPS), o banco de dados também é criptografado e sua senha é guardada de forma que nem a equipe consegue lê-la.'],
       ['Por quanto tempo',
-        'Enquanto sua conta existir. Se você excluir a conta, apagamos seu cadastro e seus dados de saúde. ' +
-        'Pedidos de ajuda e SOS já atendidos continuam no registro de atendimento do hospital.'],
+        'Seu cadastro, enquanto a conta existir; se você excluir a conta, apagamos seu cadastro e seus dados de saúde. ' +
+        'Pedidos de visita são apagados depois de 30 dias. ' +
+        'Pedidos de ajuda, SOS e check-ins: depois de 180 dias o hospital guarda só o registro do atendimento (tipo, local e data), sem seu nome, telefone ou necessidades. ' +
+        'Notificações são apagadas depois de 90 dias.'],
       ['Seus direitos',
-        'Você pode ver e corrigir seus dados em "Meu perfil", retirar o consentimento e excluir a conta nesta tela, a qualquer momento. ' +
+        'Você pode ver e corrigir seus dados em "Meu perfil" e, nesta tela, baixar uma cópia dos seus dados, retirar o consentimento e excluir a conta, a qualquer momento. ' +
         'Dúvidas ou outros pedidos: fale com a recepção do hospital.'],
     ],
     consentText:
@@ -45,7 +48,7 @@ const POLICY = {
       '(acessibilidade) e o contato de emergência, para me guiar e me atender no hospital.',
   },
   en: {
-    updatedLabel: 'October 29, 2026',
+    updatedLabel: 'November 7, 2026',
     translationNote: 'This is a translation for your convenience. The Portuguese version prevails.',
     sections: [
       ['What we keep',
@@ -62,16 +65,19 @@ const POLICY = {
         'The server does not keep a history of your location. ' +
         'The list of routes you started (in "Route history") stays only on your phone and is erased when you tap Sign out.'],
       ['Who sees it',
-        'The reception staff and the hospital administration, with their own login, see help and SOS requests (your name, where you are, phone, emergency contact and whether you need a wheelchair or stretcher) and visit requests. ' +
+        'The reception staff and the administration of the hospital you are in, with their own login, see help and SOS requests (your name, where you are, phone, emergency contact and whether you need a wheelchair or stretcher) and visit requests. ' +
+        'Each hospital only sees the requests made there, and everything the staff does in the system is recorded. ' +
         'We do not share it with other companies.'],
       ['Where it is stored',
-        'On a cloud server (Render) located in the United States. ' +
-        'The connection between the app and the server is encrypted (HTTPS), and your password is stored in a way that not even the staff can read it.'],
+        'On cloud servers in the United States: the system runs on Render and the database is hosted by Neon. ' +
+        'The connection between the app and the server is encrypted (HTTPS), the database is encrypted too, and your password is stored in a way that not even the staff can read it.'],
       ['For how long',
-        'For as long as your account exists. If you delete your account, we erase your registration and your health data. ' +
-        'Help and SOS requests already handled remain in the hospital\'s care records.'],
+        'Your registration, for as long as your account exists; if you delete your account, we erase your registration and your health data. ' +
+        'Visit requests are erased after 30 days. ' +
+        'Help requests, SOS and check-ins: after 180 days the hospital keeps only the care record (type, place and date), without your name, phone or needs. ' +
+        'Notifications are erased after 90 days.'],
       ['Your rights',
-        'You can see and correct your data in "My profile", withdraw your consent and delete your account on this screen at any time. ' +
+        'You can see and correct your data in "My profile" and, on this screen, download a copy of your data, withdraw your consent and delete your account, at any time. ' +
         'Questions or other requests: talk to the hospital reception.'],
     ],
     consentText:
@@ -79,7 +85,7 @@ const POLICY = {
       '(accessibility) and my emergency contact, to guide and assist me at the hospital.',
   },
   es: {
-    updatedLabel: '29 de octubre de 2026',
+    updatedLabel: '7 de noviembre de 2026',
     translationNote: 'Esta es una traducción para tu comodidad. Prevalece la versión en portugués.',
     sections: [
       ['Qué guardamos',
@@ -96,16 +102,19 @@ const POLICY = {
         'El servidor no guarda un historial de tu ubicación. ' +
         'La lista de rutas que iniciaste (en "Historial de rutas") queda solo en tu celular y se borra cuando tocas Salir.'],
       ['Quién los ve',
-        'El equipo de recepción y la administración del hospital, con su propio acceso, ven los pedidos de ayuda y SOS (tu nombre, dónde estás, teléfono, contacto de emergencia y si necesitas silla de ruedas o camilla) y los pedidos de visita. ' +
+        'El equipo de recepción y la administración del hospital donde estás, con su propio acceso, ven los pedidos de ayuda y SOS (tu nombre, dónde estás, teléfono, contacto de emergencia y si necesitas silla de ruedas o camilla) y los pedidos de visita. ' +
+        'Cada hospital solo ve los pedidos hechos en él, y todo lo que el equipo hace en el sistema queda registrado. ' +
         'No los compartimos con otras empresas.'],
       ['Dónde se guardan',
-        'En un servidor en la nube (Render), ubicado en Estados Unidos. ' +
-        'La conexión entre la app y el servidor está cifrada (HTTPS) y tu contraseña se guarda de forma que ni el equipo puede leerla.'],
+        'En servidores en la nube en Estados Unidos: el sistema funciona en Render y la base de datos está en Neon. ' +
+        'La conexión entre la app y el servidor está cifrada (HTTPS), la base de datos también está cifrada y tu contraseña se guarda de forma que ni el equipo puede leerla.'],
       ['Por cuánto tiempo',
-        'Mientras exista tu cuenta. Si eliminas la cuenta, borramos tu registro y tus datos de salud. ' +
-        'Los pedidos de ayuda y SOS ya atendidos permanecen en el registro de atención del hospital.'],
+        'Tu registro, mientras exista tu cuenta; si eliminas la cuenta, borramos tu registro y tus datos de salud. ' +
+        'Los pedidos de visita se borran después de 30 días. ' +
+        'Pedidos de ayuda, SOS y check-ins: después de 180 días el hospital guarda solo el registro de la atención (tipo, lugar y fecha), sin tu nombre, teléfono ni necesidades. ' +
+        'Las notificaciones se borran después de 90 días.'],
       ['Tus derechos',
-        'Puedes ver y corregir tus datos en "Mi perfil", retirar tu consentimiento y eliminar la cuenta en esta pantalla, en cualquier momento. ' +
+        'Puedes ver y corregir tus datos en "Mi perfil" y, en esta pantalla, descargar una copia de tus datos, retirar tu consentimiento y eliminar la cuenta, en cualquier momento. ' +
         'Dudas u otros pedidos: habla con la recepción del hospital.'],
     ],
     consentText:

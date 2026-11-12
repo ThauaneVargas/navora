@@ -16,7 +16,8 @@ function matchesWhere(item: Record<string, any>, where?: Record<string, any>) {
   });
 }
 
-function model(items: Record<string, any>[]) {
+function model(raw: Record<string, any>[]) {
+  const items = raw.map((item) => ({ hospitalId: 1, ...item }));
   return {
     count: async ({ where }: { where?: Record<string, any> } = {}) =>
       items.filter((item) => matchesWhere(item, where)).length,
@@ -44,7 +45,11 @@ async function run() {
     destination: model([{ id: 1 }, { id: 2 }]),
   } as any);
 
-  const full = await service.adminReport({ period: 'diario' });
+  const otherHospital = await service.adminReport(2, { period: 'diario' });
+  assert.equal(otherHospital.callsTotal, 0, 'relatorio conta so o proprio hospital');
+  assert.equal(otherHospital.beaconsTotal, 0);
+
+  const full = await service.adminReport(1, { period: 'diario' });
   assert.equal(full.source, 'api');
   assert.equal(full.callsTotal, 2);
   assert.equal(full.helpCalls, 1);
@@ -53,14 +58,14 @@ async function run() {
   assert.equal(full.checkInsTotal, 2);
   assert.equal(full.beaconsOffline, 1);
 
-  const ranged = await service.adminReport({ from: '2026-08-17T00:00:00.000Z', to: '2026-08-18T00:00:00.000Z' });
+  const ranged = await service.adminReport(1, { from: '2026-08-17T00:00:00.000Z', to: '2026-08-18T00:00:00.000Z' });
   assert.equal(ranged.callsTotal, 1);
   assert.equal(ranged.helpCalls, 0);
   assert.equal(ranged.checkInsTotal, 1);
 
-  await assert.rejects(() => service.adminReport({ from: 'data-invalida' }), BadRequestException);
+  await assert.rejects(() => service.adminReport(1, { from: 'data-invalida' }), BadRequestException);
   await assert.rejects(
-    () => service.adminReport({ from: '2026-08-18T00:00:00.000Z', to: '2026-08-17T00:00:00.000Z' }),
+    () => service.adminReport(1, { from: '2026-08-18T00:00:00.000Z', to: '2026-08-17T00:00:00.000Z' }),
     BadRequestException,
   );
 

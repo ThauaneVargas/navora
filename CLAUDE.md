@@ -23,6 +23,8 @@ Checklist completo para o lançamento (banco, hospedagem, segurança, LGPD, loja
 - BLE (beacons Feasycom FSC-BP104D, códigos `FSC-01/02/10/11`) é OPCIONAL — app funciona 100% sem beacon. Só Android.
 - Não remover o fallback offline (`navigationAdapter.js`).
 - Private e SUS têm estruturas separadas — não assumir que uma funciona igual à outra.
+- **Multi-hospital (07/11, item 29):** todo dado operacional e todo o mapa têm `hospital_id`. Rota nova do backend recebe o hospital por `@HospitalId()` e filtra/confere `hospitalId` em toda consulta (registro de outro hospital = 404). Equipe usa sempre o hospital da conta; o app manda `X-Hospital` (`EXPO_PUBLIC_HOSPITAL_CODE`). Códigos são únicos por hospital (`hospitalId_code`). Hospital novo: `npm run hospital:create`.
+- Auditoria (`audit_logs`) e prazo de guarda (`privacy/retention.service.ts`) são automáticos — não gravar dado pessoal na auditoria; mudou prazo, muda a política (`privacyPolicy.js`) junto.
 - Antes de mudar algo, entender a estrutura atual e reutilizar o que existe (não duplicar arquivos/componentes).
 - Assistente é determinístico, sem LLM (decisão da usuária). Frases novas: teste em `navoraAssistant.test.mjs` + sinônimo em `navoraAssistant.js`.
 

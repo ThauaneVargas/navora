@@ -6,6 +6,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { HospitalId } from '../hospitals/hospital-id.decorator';
 import { CallsService } from './calls.service';
 import { CreateCallDto } from './dto/create-call.dto';
 import { UpdateCallStatusDto } from './dto/update-call-status.dto';
@@ -18,14 +19,14 @@ export class CallsController {
   // com conta, e a recepcao sempre sabe quem pediu (protege contra trote).
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(@Body() payload: CreateCallDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.callsService.create(payload, user);
+  create(@Body() payload: CreateCallDto, @CurrentUser() user: AuthenticatedUser, @HospitalId() hospitalId: number) {
+    return this.callsService.create(payload, user, hospitalId);
   }
 
   @Post('help')
   @UseGuards(JwtAuthGuard)
-  createHelp(@Body() payload: CreateCallDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.callsService.createHelp(payload, user);
+  createHelp(@Body() payload: CreateCallDto, @CurrentUser() user: AuthenticatedUser, @HospitalId() hospitalId: number) {
+    return this.callsService.createHelp(payload, user, hospitalId);
   }
 
   // Emergencia nunca pode ser barrada por limite de requisicoes: no Wi-Fi do
@@ -33,8 +34,8 @@ export class CallsController {
   @Post('sos')
   @SkipThrottle()
   @UseGuards(JwtAuthGuard)
-  createSos(@Body() payload: CreateCallDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.callsService.createSos(payload, user);
+  createSos(@Body() payload: CreateCallDto, @CurrentUser() user: AuthenticatedUser, @HospitalId() hospitalId: number) {
+    return this.callsService.createSos(payload, user, hospitalId);
   }
 
   // O painel consulta a cada ~2 s com updated_since; sem limite de requisicoes
@@ -43,13 +44,13 @@ export class CallsController {
   @SkipThrottle()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.RECEPTION)
-  list(@Query('updated_since') updatedSince?: string) {
+  list(@HospitalId() hospitalId: number, @Query('updated_since') updatedSince?: string) {
     let since: Date | undefined;
     if (updatedSince) {
       since = new Date(updatedSince);
       if (Number.isNaN(since.getTime())) throw new BadRequestException('updated_since invalido');
     }
-    return this.callsService.list(since);
+    return this.callsService.list(hospitalId, since);
   }
 
   // Celular de quem pediu: acompanha o andamento com o codigo secreto
@@ -63,7 +64,11 @@ export class CallsController {
   @Patch(':callId/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.RECEPTION)
-  updateStatus(@Param('callId', ParseIntPipe) callId: number, @Body() payload: UpdateCallStatusDto) {
-    return this.callsService.updateStatus(callId, payload.status);
+  updateStatus(
+    @Param('callId', ParseIntPipe) callId: number,
+    @Body() payload: UpdateCallStatusDto,
+    @HospitalId() hospitalId: number,
+  ) {
+    return this.callsService.updateStatus(hospitalId, callId, payload.status);
   }
 }

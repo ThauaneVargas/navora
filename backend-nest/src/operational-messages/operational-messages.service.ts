@@ -7,12 +7,12 @@ import { CreateOperationalMessageDto } from './dto/create-operational-message.dt
 export class OperationalMessagesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list() {
-    const messages = await this.prisma.operationalMessage.findMany({ orderBy: { createdAt: 'desc' } });
+  async list(hospitalId: number) {
+    const messages = await this.prisma.operationalMessage.findMany({ where: { hospitalId }, orderBy: { createdAt: 'desc' } });
     return messages.map(this.toApi);
   }
 
-  async create(payload: CreateOperationalMessageDto) {
+  async create(hospitalId: number, payload: CreateOperationalMessageDto) {
     const recipient = payload.recipient || payload.to;
     const content = payload.content || payload.message;
 
@@ -22,6 +22,7 @@ export class OperationalMessagesService {
 
     const message = await this.prisma.operationalMessage.create({
       data: {
+        hospitalId,
         recipient: recipient.trim(),
         content: content.trim(),
         priority: payload.priority?.trim() || 'Media',
@@ -31,8 +32,8 @@ export class OperationalMessagesService {
     return this.toApi(message);
   }
 
-  async markRead(messageId: number) {
-    await this.find(messageId);
+  async markRead(hospitalId: number, messageId: number) {
+    await this.find(hospitalId, messageId);
     const message = await this.prisma.operationalMessage.update({
       where: { id: messageId },
       data: { readAt: new Date() },
@@ -40,9 +41,9 @@ export class OperationalMessagesService {
     return this.toApi(message);
   }
 
-  private async find(messageId: number) {
+  private async find(hospitalId: number, messageId: number) {
     const message = await this.prisma.operationalMessage.findUnique({ where: { id: messageId } });
-    if (!message) {
+    if (!message || message.hospitalId !== hospitalId) {
       throw new NotFoundException('Mensagem nao encontrada');
     }
     return message;

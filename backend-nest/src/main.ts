@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { RetentionService } from './privacy/retention.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -43,6 +44,10 @@ async function bootstrap() {
   );
 
   await app.listen(config.get<number>('PORT') ?? 8000);
+
+  // Prazo de guarda (LGPD): limpeza automatica so no servidor de verdade —
+  // os testes e2e montam o app sem passar por aqui.
+  app.get(RetentionService).start();
 }
 
 void bootstrap();

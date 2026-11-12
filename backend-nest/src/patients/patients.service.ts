@@ -37,7 +37,9 @@ export class PatientsService {
     private readonly authService: AuthService,
   ) {}
 
-  async register(payload: RegisterPatientDto) {
+  // hospitalId: onde a pessoa se cadastrou (so estatistica do painel). A conta
+  // vale em qualquer hospital que use o Navora.
+  async register(payload: RegisterPatientDto, hospitalId: number | null = null) {
     const email = payload.email.trim().toLowerCase();
     const existingUser = await this.prisma.user.findUnique({ where: { email } });
 
@@ -54,6 +56,7 @@ export class PatientsService {
           name: payload.name.trim(),
           phone: payload.phone.trim(),
           role: UserRole.PATIENT,
+          hospitalId,
           active: true,
         },
       });
@@ -73,6 +76,67 @@ export class PatientsService {
     return {
       access_token: await this.authService.issueAccessToken(patient.user),
       patient: this.toPatientResponse(patient),
+    };
+  }
+
+  async exportMe(user: AuthenticatedUser) {
+    this.ensurePatient(user);
+    const patient = await this.findPatientProfile(user.id);
+    const [calls, checkIns, notifications] = await Promise.all([
+      this.prisma.callRequest.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: 'desc' },
+        include: { hospital: { select: { name: true } } },
+      }),
+      this.prisma.checkIn.findMany({
+        where: { userId: user.id },
+        orderBy: { createdAt: 'desc' },
+        include: { hospital: { select: { name: true } } },
+      }),
+      this.prisma.notification.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' } }),
+    ]);
+
+    return {
+      exported_at: new Date().toISOString(),
+      about:
+        'Dados que o Navora guarda sobre voce. Historico de rotas, favoritos e foto de perfil ficam so no seu celular e nao aparecem aqui. Pedidos de visita nao ficam ligados a conta.',
+      account: {
+        name: patient.user.name,
+        email: patient.user.email,
+        phone: patient.user.phone,
+        created_at: patient.user.createdAt.toISOString(),
+      },
+      profile: {
+        accessibility: patient.accessibility,
+        emergency_contact: patient.emergencyContact,
+        privacy_consent_at: patient.privacyConsentAt?.toISOString() ?? null,
+        privacy_policy_version: patient.privacyPolicyVersion,
+      },
+      help_requests: calls.map((call) => ({
+        hospital: call.hospital?.name ?? null,
+        type: call.callType,
+        status: call.status,
+        location: call.location,
+        sector: call.sector,
+        phone: call.callerPhone,
+        emergency_contact: call.emergencyContact,
+        needs: call.needs,
+        created_at: call.createdAt.toISOString(),
+      })),
+      check_ins: checkIns.map((checkIn) => ({
+        hospital: checkIn.hospital?.name ?? null,
+        name: checkIn.patientName,
+        document: checkIn.document,
+        destination: checkIn.destinationLabel,
+        status: checkIn.status,
+        created_at: checkIn.createdAt.toISOString(),
+      })),
+      notifications: notifications.map((notification) => ({
+        title: notification.title,
+        description: notification.description,
+        read: notification.read,
+        created_at: notification.createdAt.toISOString(),
+      })),
     };
   }
 

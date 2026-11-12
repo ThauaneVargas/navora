@@ -14,6 +14,12 @@ import { findNavoraBeacon } from './ibeacon';
 const configuredApiUrl = process.env.EXPO_PUBLIC_NAVORA_API_URL;
 const API_BASE_URL = (configuredApiUrl || 'http://localhost:8000').replace(/\/$/, '');
 
+// Hospital em que o app esta (cada hospital cliente do Navora tem um codigo).
+// Vai em toda requisicao no header X-Hospital: o backend so mostra o mapa, os
+// beacons e recebe SOS/visita deste hospital. Sem a variavel, "hmc".
+const HOSPITAL_CODE = (process.env.EXPO_PUBLIC_HOSPITAL_CODE || 'hmc').trim().toLowerCase();
+const HOSPITAL_HEADERS = { 'X-Hospital': HOSPITAL_CODE };
+
 if (!configuredApiUrl) {
   console.warn(
     'EXPO_PUBLIC_NAVORA_API_URL nao configurada. Usando http://localhost:8000 apenas para desenvolvimento local/emulador.'
@@ -106,6 +112,7 @@ async function request(path, options = {}, fallback) {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       headers: {
         'Content-Type': 'application/json',
+        ...HOSPITAL_HEADERS,
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(headers || {}),
       },
@@ -143,12 +150,14 @@ async function request(path, options = {}, fallback) {
 
 async function navigationRequest(path, options = {}, fallbackData, normalizer = (value) => value) {
   try {
+    const { headers, ...fetchOptions } = options;
     const response = await fetch(`${API_BASE_URL}${path}`, {
       headers: {
         'Content-Type': 'application/json',
-        ...(options.headers || {}),
+        ...HOSPITAL_HEADERS,
+        ...(headers || {}),
       },
-      ...options,
+      ...fetchOptions,
     });
 
     if (!response.ok) {
@@ -169,6 +178,8 @@ export const navoraApi = {
   registerPatient: (payload) => request('/patients/register', { method: 'POST', body: JSON.stringify(payload) }),
   getMyPatientProfile: () => request('/patients/me', { authenticated: true }),
   updateMyPatientProfile: (payload) => request('/patients/me', { method: 'PUT', authenticated: true, body: JSON.stringify(payload) }),
+  // LGPD (portabilidade): tudo o que o servidor guarda da pessoa, em JSON.
+  exportMyData: () => request('/patients/me/export', { authenticated: true }),
   // LGPD: exclui a conta do paciente (pede a senha de novo).
   deleteMyAccount: (password) =>
     request('/patients/me', { method: 'DELETE', authenticated: true, body: JSON.stringify({ password }) }),

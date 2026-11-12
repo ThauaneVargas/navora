@@ -13,10 +13,10 @@ import { DenyVisitorAccessDto } from './dto/deny-visitor-access.dto';
 export class VisitorAccessService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list(status?: VisitorAccessStatus) {
+  async list(hospitalId: number, status?: VisitorAccessStatus) {
     const normalized = status ? this.normalizeStatus(status) : undefined;
     const requests = await this.prisma.visitorAccessRequest.findMany({
-      where: normalized ? { status: normalized } : undefined,
+      where: { hospitalId, ...(normalized ? { status: normalized } : {}) },
       orderBy: { createdAt: 'desc' },
     });
     return requests.map(mapVisitorAccessToApi);
@@ -25,22 +25,25 @@ export class VisitorAccessService {
   async get(requestId: number, access: { visitorToken?: string; user?: AuthenticatedUser } = {}) {
     const request = await this.find(requestId);
     const isStaff = access.user?.role === UserRole.ADMIN || access.user?.role === UserRole.RECEPTION;
-    if (!isStaff && !this.tokenMatches(request.accessTokenHash, access.visitorToken)) {
+    // Equipe so le pedido do proprio hospital; o visitante, com o codigo secreto.
+    const staffCanRead = isStaff && access.user?.hospitalId === request.hospitalId;
+    if (!staffCanRead && !this.tokenMatches(request.accessTokenHash, access.visitorToken)) {
       // Mesmo erro de "não existe", pra não confirmar quais ids existem.
       throw new NotFoundException('Solicitacao de visitante nao encontrada');
     }
     return mapVisitorAccessToApi(request);
   }
 
-  async create(payload: CreateVisitorAccessDto, user?: AuthenticatedUser) {
+  async create(payload: CreateVisitorAccessDto, user: AuthenticatedUser | undefined, hospitalId: number) {
     const area = this.normalizeArea(payload);
     const entrance = payload.entrance || payload.entry || this.defaultEntrance(area.areaId);
     const entry = payload.entry || entrance;
-    const destination = await this.findDestination(payload.requested_destination);
+    const destination = await this.findDestination(hospitalId, payload.requested_destination);
     const accessToken = randomBytes(24).toString('hex');
     const request = await this.prisma.visitorAccessRequest.create({
       data: {
         accessTokenHash: hashSecretToken(accessToken),
+        hospitalId,
         visitorName: payload.visitor_name?.trim() || user?.name || 'Visitante Navora',
         areaId: area.areaId,
         area: area.areaName,
@@ -68,8 +71,8 @@ export class VisitorAccessService {
     return { ...mapVisitorAccessToApi(request), access_token: accessToken };
   }
 
-  async approve(requestId: number, payload: AuthorizeVisitorAccessDto, actor?: AuthenticatedUser) {
-    const request = await this.find(requestId);
+  async approve(hospitalId: number, requestId: number, payload: AuthorizeVisitorAccessDto, actor?: AuthenticatedUser) {
+    const request = await this.find(requestId, hospitalId);
     const minutes = this.resolvePermissionMinutes(payload);
     const route = payload.authorizedRoute ?? payload.authorized_route ?? payload.allowed_route ?? this.defaultRoute(request);
     const authorizedAt = new Date();
@@ -94,8 +97,8 @@ export class VisitorAccessService {
     return mapVisitorAccessToApi(updated);
   }
 
-  async deny(requestId: number, payload: DenyVisitorAccessDto, actor?: AuthenticatedUser) {
-    await this.find(requestId);
+  async deny(hospitalId: number, requestId: number, payload: DenyVisitorAccessDto, actor?: AuthenticatedUser) {
+    await this.find(requestId, hospitalId);
     const reason = payload.deniedReason || payload.denial_reason;
     const updated = await this.prisma.visitorAccessRequest.update({
       where: { id: requestId },
@@ -115,8 +118,8 @@ export class VisitorAccessService {
     return mapVisitorAccessToApi(updated);
   }
 
-  async updateStatus(requestId: number, status: VisitorAccessStatus) {
-    const request = await this.find(requestId);
+  async updateStatus(hospitalId: number, requestId: number, status: VisitorAccessStatus) {
+    const request = await this.find(requestId, hospitalId);
     const normalizedStatus = this.normalizeStatus(status);
     this.ensureValidTransition(request.status, normalizedStatus);
     const updated = await this.prisma.visitorAccessRequest.update({
@@ -190,9 +193,10 @@ export class VisitorAccessService {
     return secretTokenMatches(storedHash, token);
   }
 
-  private async find(requestId: number) {
+  // Com hospitalId: pedido de outro hospital responde igual a "nao existe".
+  private async find(requestId: number, hospitalId?: number) {
     const request = await this.prisma.visitorAccessRequest.findUnique({ where: { id: requestId } });
-    if (!request) {
+    if (!request || (hospitalId !== undefined && request.hospitalId !== hospitalId)) {
       throw new NotFoundException('Solicitacao de visitante nao encontrada');
     }
     return request;
@@ -229,9 +233,10 @@ export class VisitorAccessService {
     return areaId === 'sus' ? 'Entrada pela frente' : 'Entrada pelos fundos';
   }
 
-  private findDestination(requestedDestination: string) {
+  private findDestination(hospitalId: number, requestedDestination: string) {
     return this.prisma.destination.findFirst({
       where: {
+        hospitalId,
         OR: [{ code: requestedDestination }, { name: requestedDestination }],
       },
       select: { id: true },

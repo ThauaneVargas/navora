@@ -7,9 +7,10 @@ import { AdminReportDto } from './dto/admin-report.dto';
 export class ReportsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async adminReport(payload: AdminReportDto = {}) {
+  async adminReport(hospitalId: number, payload: AdminReportDto = {}) {
     const range = this.dateRange(payload);
-    const createdAt = range ? { createdAt: range } : {};
+    const h = { hospitalId };
+    const createdAt = range ? { hospitalId, createdAt: range } : h;
 
     const [
       callsTotal,
@@ -39,10 +40,10 @@ export class ReportsService {
       this.prisma.checkIn.count({ where: createdAt }),
       this.prisma.checkIn.count({ where: { ...createdAt, status: CheckInStatus.WAITING } }),
       this.prisma.checkIn.count({ where: { ...createdAt, status: CheckInStatus.FINISHED } }),
-      this.prisma.beacon.count(),
-      this.prisma.beacon.count({ where: { status: 'Online' } }),
-      this.prisma.sector.count(),
-      this.prisma.destination.count(),
+      this.prisma.beacon.count({ where: h }),
+      this.prisma.beacon.count({ where: { ...h, status: 'Online' } }),
+      this.prisma.sector.count({ where: h }),
+      this.prisma.destination.count({ where: h }),
     ]);
 
     return {

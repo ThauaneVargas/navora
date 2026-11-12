@@ -9,7 +9,9 @@ type CountGroup<K extends string> = Record<K, string> & { _count: { _all: number
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async summary() {
+  // Tudo contado so dentro do hospital da equipe.
+  async summary(hospitalId: number) {
+    const h = { hospitalId };
     const [
       totalCalls,
       openCalls,
@@ -28,28 +30,30 @@ export class DashboardService {
       callTypeGroups,
       visitorStatusGroups,
     ] = await Promise.all([
-      this.prisma.callRequest.count(),
-      this.prisma.callRequest.count({ where: { status: { notIn: [CallStatus.CLOSED, CallStatus.CANCELED] } } }),
+      this.prisma.callRequest.count({ where: h }),
+      this.prisma.callRequest.count({ where: { ...h, status: { notIn: [CallStatus.CLOSED, CallStatus.CANCELED] } } }),
       this.prisma.callRequest.count({
-        where: { callType: CallType.SOS, status: { not: CallStatus.CLOSED } },
+        where: { ...h, callType: CallType.SOS, status: { not: CallStatus.CLOSED } },
       }),
       this.prisma.callRequest.count({
-        where: { callType: CallType.HELP, status: { notIn: [CallStatus.CLOSED, CallStatus.CANCELED] } },
+        where: { ...h, callType: CallType.HELP, status: { notIn: [CallStatus.CLOSED, CallStatus.CANCELED] } },
       }),
-      this.prisma.visitorAccessRequest.count({ where: { status: VisitorAccessStatus.PENDING } }),
-      this.prisma.visitorAccessRequest.count({ where: { status: VisitorAccessStatus.APPROVED } }),
-      this.prisma.visitorAccessRequest.count({ where: { status: VisitorAccessStatus.DENIED } }),
-      this.prisma.callRequest.count({ where: { status: CallStatus.CLOSED } }),
+      this.prisma.visitorAccessRequest.count({ where: { ...h, status: VisitorAccessStatus.PENDING } }),
+      this.prisma.visitorAccessRequest.count({ where: { ...h, status: VisitorAccessStatus.APPROVED } }),
+      this.prisma.visitorAccessRequest.count({ where: { ...h, status: VisitorAccessStatus.DENIED } }),
+      this.prisma.callRequest.count({ where: { ...h, status: CallStatus.CLOSED } }),
       this.prisma.beacon.findMany({
+        where: h,
         select: { status: true, battery: true, lastSignalAt: true, hardwareModel: true, ibeaconUuid: true },
       }),
-      this.prisma.sector.count(),
-      this.prisma.destination.count(),
-      this.prisma.user.count({ where: { role: UserRole.PATIENT } }),
-      this.prisma.user.count({ where: { role: { in: [UserRole.ADMIN, UserRole.RECEPTION] } } }),
-      this.prisma.callRequest.groupBy({ by: ['status'], _count: { _all: true } }),
-      this.prisma.callRequest.groupBy({ by: ['callType'], _count: { _all: true } }),
-      this.prisma.visitorAccessRequest.groupBy({ by: ['status'], _count: { _all: true } }),
+      this.prisma.sector.count({ where: h }),
+      this.prisma.destination.count({ where: h }),
+      // Paciente: os que se cadastraram neste hospital (a conta vale em todos).
+      this.prisma.user.count({ where: { ...h, role: UserRole.PATIENT } }),
+      this.prisma.user.count({ where: { ...h, role: { in: [UserRole.ADMIN, UserRole.RECEPTION] } } }),
+      this.prisma.callRequest.groupBy({ by: ['status'], where: h, _count: { _all: true } }),
+      this.prisma.callRequest.groupBy({ by: ['callType'], where: h, _count: { _all: true } }),
+      this.prisma.visitorAccessRequest.groupBy({ by: ['status'], where: h, _count: { _all: true } }),
     ]);
 
     const now = new Date();

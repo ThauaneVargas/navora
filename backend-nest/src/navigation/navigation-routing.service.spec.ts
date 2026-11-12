@@ -122,11 +122,15 @@ function makeService(options: {
   const destinations = options.destinations ?? baseDestinations;
   const prisma = {
     navigationNode: {
-      findUnique: async ({ where }: any) => nodes.find((item) => item.code === where.code) ?? null,
-      findMany: async () => [...nodes].sort((left, right) => left.code.localeCompare(right.code)),
+      // Todo o mapa do teste e do hospital 1.
+      findUnique: async ({ where }: any) =>
+        where.hospitalId_code.hospitalId === 1 ? nodes.find((item) => item.code === where.hospitalId_code.code) ?? null : null,
+      findMany: async ({ where }: any) =>
+        where.hospitalId === 1 ? [...nodes].sort((left, right) => left.code.localeCompare(right.code)) : [],
     },
     destination: {
-      findUnique: async ({ where }: any) => destinations.find((item) => item.code === where.code || item.id === where.id) ?? null,
+      findUnique: async ({ where }: any) =>
+        where.hospitalId_code.hospitalId === 1 ? destinations.find((item) => item.code === where.hospitalId_code.code) ?? null : null,
     },
     routeEdge: {
       findMany: async () => {
@@ -172,6 +176,7 @@ async function route(
   user?: any,
 ) {
   return service.routePreview(
+    1,
     {
       origin_node_code: origin,
       destination_code: destinationCode,
@@ -537,6 +542,13 @@ async function run() {
   assert.equal(topologicalOnlyRoute.route_found, false, 'rota topologica nao vira fallback inseguro');
   assert.equal(topologicalOnlyRoute.accessible_route_found, false);
   assert.equal(topologicalOnlyRoute.reason, 'Nao existe rota acessivel entre a origem e o destino efetivo.');
+
+  // Separacao por hospital: mapa de outro hospital nao e usado.
+  await assertRejectsWith(
+    'origem/destino de outro hospital',
+    () => makeService().routePreview(2, { origin_node_code: 'private-entry', destination_code: 'private-tomografia', subject: AccessSubject.PATIENT }),
+    NotFoundException,
+  );
 
   console.log('navigation routing tests passed');
 }

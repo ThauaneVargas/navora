@@ -49,7 +49,7 @@ async function run() {
 
   try {
     for (const code of touchedCodes) {
-      const original = await prisma.beacon.findUnique({ where: { code }, select: { lastSignalAt: true } });
+      const original = await prisma.beacon.findFirst({ where: { code, hospital: { code: 'hmc' } }, select: { lastSignalAt: true } });
       assert.ok(original, `${code} deve existir no seed`);
       originalLastSignalAt.set(code, original.lastSignalAt);
     }
@@ -362,7 +362,7 @@ async function run() {
   } finally {
     try {
       for (const [code, lastSignalAt] of originalLastSignalAt) {
-        await prisma.beacon.update({ where: { code }, data: { lastSignalAt } });
+        await prisma.beacon.updateMany({ where: { code, hospital: { code: 'hmc' } }, data: { lastSignalAt } });
       }
     } finally {
       await app.close();

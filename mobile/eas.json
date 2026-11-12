@@ -14,6 +14,7 @@
     "production": {
       "autoIncrement": true,
       "env": {
+        "EXPO_PUBLIC_HOSPITAL_CODE": "hmc",
         "EXPO_PUBLIC_NAVORA_API_URL": "https://navora-backend-kpio.onrender.com",
         "EXPO_PUBLIC_BLE_ENABLED": "true",
         "EXPO_PUBLIC_BEACON_DIAGNOSTICS": "false",

@@ -45,15 +45,15 @@ export class NavigationAccessService {
     this.clock = clock;
   }
 
-  async checkAccess(payload: AccessCheckDto) {
+  async checkAccess(hospitalId: number, payload: AccessCheckDto) {
     if (!payload.destination_id && !payload.destination_code) {
       throw new BadRequestException('Informe destination_id ou destination_code');
     }
 
     const destination = await this.prisma.destination.findFirst({
       where: payload.destination_id
-        ? { id: payload.destination_id }
-        : { code: payload.destination_code },
+        ? { id: payload.destination_id, hospitalId }
+        : { code: payload.destination_code, hospitalId },
       include: { area: true, sector: true, navigationNode: true },
     });
 
@@ -63,7 +63,7 @@ export class NavigationAccessService {
 
     const evaluatedAt = this.clock.now();
     const rules = await this.prisma.accessRule.findMany({
-      where: { enabled: true, subject: payload.subject },
+      where: { hospitalId, enabled: true, subject: payload.subject },
       include: {
         windows: { include: { fallbackDestination: true }, orderBy: { id: 'asc' } },
         fallbackDestination: true,
@@ -80,6 +80,7 @@ export class NavigationAccessService {
     const visitorAuthorization =
       payload.subject === AccessSubject.VISITOR
         ? await this.evaluateVisitorAuthorization(
+            hospitalId,
             payload.visitor_access_request_id,
             payload.visitor_access_token,
             destination.id,
@@ -107,6 +108,7 @@ export class NavigationAccessService {
     }
 
     const redirectDestination = await this.resolveRedirectDestination(
+      hospitalId,
       decision,
       baseEvaluation.redirectDestinationId,
       destination.area?.code,
@@ -240,6 +242,7 @@ export class NavigationAccessService {
   }
 
   private async evaluateVisitorAuthorization(
+    hospitalId: number,
     requestId: number | undefined,
     accessToken: string | undefined,
     destinationId: number,
@@ -254,7 +257,8 @@ export class NavigationAccessService {
     // Sem o codigo secreto do proprio pedido, a autorizacao nao vale: os ids
     // sao sequenciais e qualquer um poderia usar a liberacao de outra pessoa.
     // Mesma resposta de "nao encontrado" para nao confirmar quais ids existem.
-    if (!request || !secretTokenMatches(request.accessTokenHash, accessToken)) {
+    // Liberacao de outro hospital tambem nao vale aqui.
+    if (!request || request.hospitalId !== hospitalId || !secretTokenMatches(request.accessTokenHash, accessToken)) {
       return { status: null, valid: false, reason: 'Autorizacao de visitante nao encontrada.' };
     }
 
@@ -293,6 +297,7 @@ export class NavigationAccessService {
   }
 
   private async resolveRedirectDestination(
+    hospitalId: number,
     decision: AccessDecision,
     configuredDestinationId?: number | null,
     destinationAreaCode?: string,
@@ -304,7 +309,9 @@ export class NavigationAccessService {
       ? undefined
       : this.receptionCode(currentAreaCode || destinationAreaCode);
     const destination = await this.prisma.destination.findFirst({
-      where: configuredDestinationId ? { id: configuredDestinationId } : { code: fallbackCode },
+      where: configuredDestinationId
+        ? { id: configuredDestinationId, hospitalId }
+        : { code: fallbackCode, hospitalId },
     });
 
     if (!destination) return null;

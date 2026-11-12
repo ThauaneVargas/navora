@@ -43,18 +43,19 @@ type StaffRecord = {
 export class StaffService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list() {
+  // So a equipe do mesmo hospital do admin.
+  async list(hospitalId: number) {
     const users = await this.prisma.user.findMany({
-      where: { role: { in: STAFF_ROLES } },
+      where: { hospitalId, role: { in: STAFF_ROLES } },
       select: staffSelect,
       orderBy: [{ active: 'desc' }, { name: 'asc' }],
     });
     return users.map((user: StaffRecord) => this.toApi(user));
   }
 
-  async audit(userId: number) {
-    const staff = await this.findStaff(userId);
-    const [statusChanges, visitorDecisions] = await Promise.all([
+  async audit(hospitalId: number, userId: number) {
+    const staff = await this.findStaff(hospitalId, userId);
+    const [statusChanges, visitorDecisions, actions] = await Promise.all([
       this.prisma.userStatusChange.findMany({
         where: { userId },
         orderBy: { createdAt: 'desc' },
@@ -73,6 +74,12 @@ export class StaffService {
           decidedAt: true,
           deniedReason: true,
         },
+      }),
+      // Registro geral do que o funcionario fez no painel (audit_logs).
+      this.prisma.auditLog.findMany({
+        where: { actorId: userId, hospitalId },
+        orderBy: { createdAt: 'desc' },
+        take: 100,
       }),
     ]);
 
@@ -94,11 +101,19 @@ export class StaffService {
         denied_reason: decision.deniedReason,
         decided_at: decision.decidedAt?.toISOString() ?? null,
       })),
+      actions: actions.map((entry) => ({
+        id: entry.id,
+        action: entry.action,
+        entity: entry.entity,
+        entity_id: entry.entityId,
+        details: entry.details,
+        created_at: entry.createdAt.toISOString(),
+      })),
     };
   }
 
-  async deactivate(userId: number, actor: AuthenticatedUser, payload: ChangeStaffStatusDto = {}) {
-    const staff = await this.findStaff(userId);
+  async deactivate(hospitalId: number, userId: number, actor: AuthenticatedUser, payload: ChangeStaffStatusDto = {}) {
+    const staff = await this.findStaff(hospitalId, userId);
 
     if (staff.id === actor.id) {
       throw new BadRequestException('Voce nao pode desativar o seu proprio acesso');
@@ -107,7 +122,8 @@ export class StaffService {
       throw new ConflictException('Este funcionario ja esta desativado');
     }
     if (staff.role === UserRole.ADMIN) {
-      const activeAdmins = await this.prisma.user.count({ where: { role: UserRole.ADMIN, active: true } });
+      // "Ultimo admin" e por hospital: cada hospital precisa de pelo menos um.
+      const activeAdmins = await this.prisma.user.count({ where: { hospitalId, role: UserRole.ADMIN, active: true } });
       if (activeAdmins <= 1) {
         throw new BadRequestException('Nao e possivel desativar o ultimo administrador ativo');
       }
@@ -116,8 +132,8 @@ export class StaffService {
     return this.changeStatus(staff.id, actor.id, UserStatusAction.DEACTIVATED, payload.reason);
   }
 
-  async reactivate(userId: number, actor: AuthenticatedUser, payload: ChangeStaffStatusDto = {}) {
-    const staff = await this.findStaff(userId);
+  async reactivate(hospitalId: number, userId: number, actor: AuthenticatedUser, payload: ChangeStaffStatusDto = {}) {
+    const staff = await this.findStaff(hospitalId, userId);
 
     if (staff.active) {
       throw new ConflictException('Este funcionario ja esta ativo');
@@ -146,9 +162,10 @@ export class StaffService {
     return this.toApi(updated as StaffRecord);
   }
 
-  private async findStaff(userId: number): Promise<StaffRecord> {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: staffSelect });
-    if (!user || !STAFF_ROLES.includes(user.role)) {
+  // Funcionario de outro hospital: mesmo 404 de "nao existe".
+  private async findStaff(hospitalId: number, userId: number): Promise<StaffRecord> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { ...staffSelect, hospitalId: true } });
+    if (!user || !STAFF_ROLES.includes(user.role) || user.hospitalId !== hospitalId) {
       throw new NotFoundException('Funcionario nao encontrado');
     }
     return user as StaffRecord;

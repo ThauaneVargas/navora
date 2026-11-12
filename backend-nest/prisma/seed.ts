@@ -28,6 +28,11 @@ if (!isLocalDatabase && !customDemoPassword) {
 }
 const demoPassword = customDemoPassword || 'navora-demo-123';
 
+// Todo o seed e do HMC. Outro hospital: `npm run hospital:create`.
+const HOSPITAL = { code: 'hmc', name: 'Hospital Marco Capute' };
+let hospitalId = 0;
+const withHospital = <T extends object>(rows: T[]) => rows.map((row) => ({ ...row, hospitalId }));
+
 const areaSeeds = [
   { code: 'private', name: 'HMC Private', label: 'Private', description: 'Rotas e setores do atendimento particular/convenio.' },
   { code: 'sus', name: 'Hospital Marco Capute', label: 'SUS', description: 'Rotas e setores do atendimento SUS.' },
@@ -156,6 +161,7 @@ async function upsertDemoUser(data: {
       name: data.name,
       phone: data.phone,
       role: data.role,
+      hospitalId,
       active: true,
       ...(customDemoPassword ? { passwordHash } : {}),
     },
@@ -165,6 +171,7 @@ async function upsertDemoUser(data: {
       name: data.name,
       phone: data.phone,
       role: data.role,
+      hospitalId,
       active: true,
     },
     select: { id: true, role: true },
@@ -210,12 +217,20 @@ async function upsertDemoUser(data: {
 }
 
 async function main() {
+  const hospital = await prisma.hospital.upsert({
+    where: { code: HOSPITAL.code },
+    update: {},
+    create: HOSPITAL,
+    select: { id: true },
+  });
+  hospitalId = hospital.id;
+
   const areas = new Map<string, { id: number }>();
   for (const area of areaSeeds) {
     const saved = await prisma.hospitalArea.upsert({
-      where: { code: area.code },
+      where: { hospitalId_code: { hospitalId, code: area.code } },
       update: area,
-      create: area,
+      create: { ...area, hospitalId },
       select: { id: true, code: true },
     });
     areas.set(saved.code, saved);
@@ -225,7 +240,7 @@ async function main() {
   for (const sector of sectorSeeds) {
     const area = areas.get(sector.areaCode);
     const saved = await prisma.sector.upsert({
-      where: { code: sector.code },
+      where: { hospitalId_code: { hospitalId, code: sector.code } },
       update: {
         name: sector.name,
         floor: sector.floor,
@@ -234,6 +249,7 @@ async function main() {
       },
       create: {
         code: sector.code,
+        hospitalId,
         name: sector.name,
         floor: sector.floor,
         serviceType: sector.serviceType,
@@ -270,7 +286,7 @@ async function main() {
     const area = areas.get(node.areaCode);
     const sector = sectors.get(node.sectorCode);
     const saved = await prisma.navigationNode.upsert({
-      where: { code: node.code },
+      where: { hospitalId_code: { hospitalId, code: node.code } },
       update: {
         label: node.label,
         type: node.type,
@@ -284,6 +300,7 @@ async function main() {
       },
       create: {
         code: node.code,
+        hospitalId,
         label: node.label,
         type: node.type,
         floor: node.floor,
@@ -304,7 +321,7 @@ async function main() {
     const node = nodes.get(entrance.nodeCode);
     if (!area) continue;
     await prisma.entrance.upsert({
-      where: { code: entrance.code },
+      where: { hospitalId_code: { hospitalId, code: entrance.code } },
       update: {
         name: entrance.name,
         entryKey: entrance.entryKey,
@@ -313,6 +330,7 @@ async function main() {
       },
       create: {
         code: entrance.code,
+        hospitalId,
         name: entrance.name,
         entryKey: entrance.entryKey,
         areaId: area.id,
@@ -361,7 +379,7 @@ async function main() {
     const sector = sectors.get(destination.sectorCode);
     const node = nodes.get(destination.nodeCode);
     const saved = await prisma.destination.upsert({
-      where: { code: destination.code },
+      where: { hospitalId_code: { hospitalId, code: destination.code } },
       update: {
         name: destination.name,
         icon: destination.icon,
@@ -376,6 +394,7 @@ async function main() {
       },
       create: {
         code: destination.code,
+        hospitalId,
         name: destination.name,
         icon: destination.icon,
         category: destination.category,
@@ -413,7 +432,7 @@ async function main() {
     const fallbackDestination = rule.fallbackDestinationCode ? destinations.get(rule.fallbackDestinationCode) : undefined;
 
     return prisma.accessRule.upsert({
-      where: { code: rule.code },
+      where: { hospitalId_code: { hospitalId, code: rule.code } },
       update: {
         name: rule.name,
         enabled: true,
@@ -431,6 +450,7 @@ async function main() {
       },
       create: {
         code: rule.code,
+        hospitalId,
         name: rule.name,
         enabled: true,
         subject: rule.subject,
@@ -586,17 +606,18 @@ async function main() {
       navigationNodeId: nodes.get(node)?.id,
     };
     await prisma.beacon.upsert({
-      where: { code },
+      where: { hospitalId_code: { hospitalId, code } },
       update: bleIdentity,
-      create: { code, status: 'Online', ...details, ...bleIdentity },
+      create: { code, hospitalId, status: 'Online', ...details, ...bleIdentity },
     });
   }
 
   await prisma.beacon.upsert({
-    where: { code: 'SIM-20' },
+    where: { hospitalId_code: { hospitalId, code: 'SIM-20' } },
     update: { navigationNodeId: nodes.get('corridor-a')?.id },
     create: {
       code: 'SIM-20',
+      hospitalId,
       name: 'Corredor compartilhado',
       area: 'shared',
       areaName: 'Compartilhado',
@@ -615,7 +636,7 @@ async function main() {
   const calls = await prisma.callRequest.count();
   if (calls === 0) {
     await prisma.callRequest.createMany({
-      data: [
+      data: withHospital([
         {
           userType: 'patient',
           userName: 'Mariana Souza',
@@ -646,14 +667,14 @@ async function main() {
           priority: Priority.MEDIUM,
           status: CallStatus.PENDING,
         },
-      ],
+      ]),
     });
   }
 
   const visitorAccess = await prisma.visitorAccessRequest.count();
   if (visitorAccess === 0) {
     await prisma.visitorAccessRequest.createMany({
-      data: [
+      data: withHospital([
         {
           visitorName: 'Maria Souza',
           areaId: 'private',
@@ -688,14 +709,14 @@ async function main() {
           allowedRoute: 'Recepcao Hospital Marco Capute -> rota autorizada -> destino',
           allowedTime: '30 minutos',
         },
-      ],
+      ]),
     });
   }
 
   const checkIns = await prisma.checkIn.count();
   if (checkIns === 0) {
     await prisma.checkIn.createMany({
-      data: [
+      data: withHospital([
         {
           patientName: 'Paciente Demo',
           document: 'PAT-DEMO-001',
@@ -716,14 +737,14 @@ async function main() {
           destinationId: destinations.get('sus-laboratorio')?.id,
           sectorId: sectors.get('sus-laboratory')?.id,
         },
-      ],
+      ]),
     });
   }
 
   const operationalMessages = await prisma.operationalMessage.count();
   if (operationalMessages === 0) {
     await prisma.operationalMessage.createMany({
-      data: [
+      data: withHospital([
         {
           recipient: 'Recepcao',
           content: 'Monitorar chamados HELP e SOS pendentes durante a demonstracao.',
@@ -736,7 +757,7 @@ async function main() {
           priority: 'Media',
           direction: 'Enviada',
         },
-      ],
+      ]),
     });
   }
 }

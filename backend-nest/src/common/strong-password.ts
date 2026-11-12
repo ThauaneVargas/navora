@@ -6,6 +6,18 @@ import { IsString, Matches, MaxLength, MinLength } from 'class-validator';
 // MaxLength 72: o bcrypt ignora o que passar disso.
 const MESSAGE = 'A senha precisa ter pelo menos 8 caracteres, com letra, numero e simbolo, e sem espaco';
 
+// Mesma regra fora dos DTOs (ex.: script que cria o admin de um hospital novo).
+export function isStrongPassword(value: string) {
+  return (
+    value.length >= 8 &&
+    value.length <= 72 &&
+    /[A-Za-z]/.test(value) &&
+    /\d/.test(value) &&
+    /[^A-Za-z0-9\s]/.test(value) &&
+    /^\S+$/.test(value)
+  );
+}
+
 export function StrongPassword() {
   return applyDecorators(
     IsString(),

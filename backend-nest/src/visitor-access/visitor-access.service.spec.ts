@@ -13,8 +13,10 @@ function makePrisma() {
       findFirst: async () => ({ id: 10 }),
     },
     visitorAccessRequest: {
-      findMany: async ({ where }: { where?: { status?: VisitorAccessStatus } } = {}) =>
-        requests.filter((request) => !where?.status || request.status === where.status),
+      findMany: async ({ where }: { where?: { hospitalId?: number; status?: VisitorAccessStatus } } = {}) =>
+        requests
+          .filter((request) => request.hospitalId === where?.hospitalId)
+          .filter((request) => !where?.status || request.status === where.status),
       findUnique: async ({ where }: { where: { id: number } }) =>
         requests.find((request) => request.id === where.id) || null,
       create: async ({ data }: { data: Record<string, any> }) => {
@@ -62,7 +64,7 @@ async function run() {
     reason: 'Visita',
     accessibility: 'Nao',
     status: VisitorAccessStatus.PENDING,
-  });
+  }, undefined, 1);
   assert.equal(created.status, VisitorAccessStatus.PENDING);
   assert.equal(created.destination_id, 10);
 
@@ -72,20 +74,21 @@ async function run() {
     area_id: 'private',
     requested_destination: 'Visita / Internacao Private',
     status: VisitorAccessStatus.APPROVED,
-  } as any);
+  } as any, undefined, 1);
   assert.equal(selfApproved.status, VisitorAccessStatus.PENDING, 'pedido sempre nasce pendente');
   prisma.requests.splice(prisma.requests.findIndex((r: any) => r.id === selfApproved.id), 1);
 
-  const pending = await service.list(VisitorAccessStatus.PENDING);
+  const pending = await service.list(1, VisitorAccessStatus.PENDING);
   assert.equal(pending.length, 1);
 
   const approved = await service.approve(
+    1,
     created.id,
     {
       release_type: 'Liberar rota ate o destino',
       release_time: '30 minutos',
     },
-    { id: 2, name: 'Recepcao', email: 'recepcao@navora.com', phone: null, role: 'RECEPTION' as any, active: true },
+    { id: 2, name: 'Recepcao', email: 'recepcao@navora.com', phone: null, role: 'RECEPTION' as any, hospitalId: 1, active: true },
   );
   assert.equal(approved.status, VisitorAccessStatus.APPROVED);
   assert.equal(approved.decided_by_id, 2, 'registra qual funcionario autorizou');
@@ -98,26 +101,43 @@ async function run() {
   const tracked = await service.get(created.id, { visitorToken: created.access_token });
   assert.equal(tracked.status, VisitorAccessStatus.APPROVED);
 
-  const inRoute = await service.updateStatus(created.id, VisitorAccessStatus.IN_ROUTE);
+  const inRoute = await service.updateStatus(1, created.id, VisitorAccessStatus.IN_ROUTE);
   assert.equal(inRoute.status, VisitorAccessStatus.IN_ROUTE);
 
-  const finished = await service.updateStatus(created.id, VisitorAccessStatus.FINISHED);
+  const finished = await service.updateStatus(1, created.id, VisitorAccessStatus.FINISHED);
   assert.equal(finished.status, VisitorAccessStatus.FINISHED);
   assert.ok(finished.finished_at);
 
-  await assert.rejects(() => service.updateStatus(created.id, VisitorAccessStatus.PENDING), BadRequestException);
+  await assert.rejects(() => service.updateStatus(1, created.id, VisitorAccessStatus.PENDING), BadRequestException);
   await assert.rejects(() => service.get(999), NotFoundException);
 
   const denied = await service.create({
     visitor_name: 'Visitante Negado',
     requested_destination: 'private-imaging',
-  } as any);
-  const deniedResult = await service.deny(denied.id, {
+  } as any, undefined, 1);
+  const deniedResult = await service.deny(1, denied.id, {
     denial_reason: 'Destino restrito',
     deniedReason: 'Destino restrito',
   });
   assert.equal(deniedResult.status, VisitorAccessStatus.DENIED);
   assert.equal(deniedResult.denied_reason, 'Destino restrito');
+
+  // Separacao por hospital: a recepcao do hospital 2 nao ve, nao le e nao decide
+  // pedido do hospital 1 (mesmo 404 de "nao existe").
+  const reception = (hospitalId: number) =>
+    ({ id: 2, name: 'Recepcao', email: 'r@x', phone: null, role: 'RECEPTION' as any, hospitalId, active: true });
+  assert.equal(prisma.requests[0].hospitalId, 1, 'pedido guarda o hospital');
+  assert.equal((await service.list(2)).length, 0, 'outro hospital nao lista o pedido');
+  assert.equal((await service.get(created.id, { user: reception(1) })).id, created.id, 'recepcao do hospital le o pedido');
+  await assert.rejects(() => service.get(created.id, { user: reception(2) }), NotFoundException, 'recepcao de outro hospital nao le');
+  const otherPending = await service.create({ visitor_name: 'Outro', requested_destination: 'private-imaging' } as any, undefined, 1);
+  await assert.rejects(() => service.approve(2, otherPending.id, {} as any, reception(2)), NotFoundException, 'nao aprova de outro hospital');
+  await assert.rejects(() => service.deny(2, otherPending.id, {} as any, reception(2)), NotFoundException, 'nao nega de outro hospital');
+  await assert.rejects(
+    () => service.updateStatus(2, otherPending.id, VisitorAccessStatus.CANCELED),
+    NotFoundException,
+    'nao muda status de outro hospital',
+  );
 
   console.log('visitor access service tests passed');
 }

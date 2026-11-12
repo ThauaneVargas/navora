@@ -7,25 +7,27 @@ import { CreateCheckInDto } from './dto/create-check-in.dto';
 export class CheckInsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async list() {
-    const checkIns = await this.prisma.checkIn.findMany({ orderBy: { createdAt: 'desc' } });
+  async list(hospitalId: number) {
+    const checkIns = await this.prisma.checkIn.findMany({ where: { hospitalId }, orderBy: { createdAt: 'desc' } });
     return checkIns.map(this.toApi);
   }
 
-  async get(checkInId: number) {
-    return this.toApi(await this.find(checkInId));
+  async get(hospitalId: number, checkInId: number) {
+    return this.toApi(await this.find(hospitalId, checkInId));
   }
 
-  async create(payload: CreateCheckInDto) {
+  async create(hospitalId: number, payload: CreateCheckInDto) {
     const patientName = payload.patient_name || payload.patient;
     const destinationLabel = payload.destination_label || payload.destination;
 
     if (!patientName?.trim() || !destinationLabel?.trim()) {
       throw new BadRequestException('Nome do paciente e destino sao obrigatorios');
     }
+    await this.ensureSameHospital(hospitalId, payload);
 
     const checkIn = await this.prisma.checkIn.create({
       data: {
+        hospitalId,
         patientName: patientName.trim(),
         document: payload.document?.trim() || null,
         destinationLabel: destinationLabel.trim(),
@@ -40,8 +42,8 @@ export class CheckInsService {
     return this.toApi(checkIn);
   }
 
-  async updateStatus(checkInId: number, status: CheckInStatus) {
-    const checkIn = await this.find(checkInId);
+  async updateStatus(hospitalId: number, checkInId: number, status: CheckInStatus) {
+    const checkIn = await this.find(hospitalId, checkInId);
     this.ensureValidTransition(checkIn.status, status);
 
     const updated = await this.prisma.checkIn.update({
@@ -51,12 +53,37 @@ export class CheckInsService {
     return this.toApi(updated);
   }
 
-  private async find(checkInId: number) {
+  private async find(hospitalId: number, checkInId: number) {
     const checkIn = await this.prisma.checkIn.findUnique({ where: { id: checkInId } });
-    if (!checkIn) {
+    // De outro hospital: mesmo 404 de "nao existe".
+    if (!checkIn || checkIn.hospitalId !== hospitalId) {
       throw new NotFoundException('Check-in nao encontrado');
     }
     return checkIn;
+  }
+
+  // Destino, setor e pedido de visita informados pelo painel precisam ser do
+  // mesmo hospital: senao bastaria mandar o id de outro hospital no corpo.
+  private async ensureSameHospital(hospitalId: number, payload: CreateCheckInDto) {
+    const checks: Array<Promise<{ hospitalId: number } | null>> = [];
+    if (payload.destination_id) {
+      checks.push(this.prisma.destination.findUnique({ where: { id: payload.destination_id }, select: { hospitalId: true } }));
+    }
+    if (payload.sector_id) {
+      checks.push(this.prisma.sector.findUnique({ where: { id: payload.sector_id }, select: { hospitalId: true } }));
+    }
+    if (payload.visitor_access_request_id) {
+      checks.push(
+        this.prisma.visitorAccessRequest.findUnique({
+          where: { id: payload.visitor_access_request_id },
+          select: { hospitalId: true },
+        }),
+      );
+    }
+    const found = await Promise.all(checks);
+    if (found.some((record) => !record || record.hospitalId !== hospitalId)) {
+      throw new BadRequestException('Destino, setor ou visita nao pertence a este hospital');
+    }
   }
 
   private ensureValidTransition(current: CheckInStatus, next: CheckInStatus) {

@@ -6,6 +6,9 @@ export type SafeUser = {
   email: string;
   phone: string | null;
   role: UserRole;
+  // Equipe: hospital onde trabalha (o unico que enxerga). Paciente: onde se
+  // cadastrou (so estatistica). Vem do banco a cada requisicao, nao do token.
+  hospitalId: number | null;
   active: boolean;
   createdAt?: Date;
   updatedAt?: Date;

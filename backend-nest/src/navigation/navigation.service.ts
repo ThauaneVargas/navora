@@ -5,11 +5,12 @@ import { PrismaService } from '../database/prisma.service';
 export class NavigationService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async bootstrap() {
+  // Todo o mapa e por hospital: um hospital nunca ve o mapa do outro.
+  async bootstrap(hospitalId: number) {
     const [areas, entrances, destinations] = await Promise.all([
-      this.areas(),
-      this.entrances(),
-      this.destinations(),
+      this.areas(hospitalId),
+      this.entrances(hospitalId),
+      this.destinations(hospitalId),
     ]);
 
     return {
@@ -19,8 +20,9 @@ export class NavigationService {
     };
   }
 
-  async areas() {
+  async areas(hospitalId: number) {
     return this.prisma.hospitalArea.findMany({
+      where: { hospitalId },
       orderBy: { code: 'asc' },
       include: {
         entrances: {
@@ -31,8 +33,9 @@ export class NavigationService {
     });
   }
 
-  async entrances() {
+  async entrances(hospitalId: number) {
     return this.prisma.entrance.findMany({
+      where: { hospitalId },
       orderBy: { code: 'asc' },
       include: {
         area: true,
@@ -41,8 +44,9 @@ export class NavigationService {
     });
   }
 
-  async sectors() {
+  async sectors(hospitalId: number) {
     return this.prisma.sector.findMany({
+      where: { hospitalId },
       orderBy: [{ area: { code: 'asc' } }, { name: 'asc' }],
       include: {
         area: true,
@@ -52,8 +56,9 @@ export class NavigationService {
     });
   }
 
-  async destinations() {
+  async destinations(hospitalId: number) {
     return this.prisma.destination.findMany({
+      where: { hospitalId },
       orderBy: [{ area: { code: 'asc' } }, { name: 'asc' }],
       include: {
         area: true,
@@ -63,9 +68,9 @@ export class NavigationService {
     });
   }
 
-  async destination(destinationId: number) {
-    const destination = await this.prisma.destination.findUnique({
-      where: { id: destinationId },
+  async destination(hospitalId: number, destinationId: number) {
+    const destination = await this.prisma.destination.findFirst({
+      where: { id: destinationId, hospitalId },
       include: {
         area: true,
         sector: true,
@@ -80,9 +85,10 @@ export class NavigationService {
     return destination;
   }
 
-  async map() {
+  async map(hospitalId: number) {
     const [nodes, edges] = await Promise.all([
       this.prisma.navigationNode.findMany({
+        where: { hospitalId },
         orderBy: { code: 'asc' },
         include: {
           area: true,
@@ -92,6 +98,7 @@ export class NavigationService {
         },
       }),
       this.prisma.routeEdge.findMany({
+        where: { fromNode: { hospitalId } },
         orderBy: { id: 'asc' },
         include: {
           fromNode: true,
