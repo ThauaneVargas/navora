@@ -157,7 +157,14 @@ export default function App() {
   useEffect(() => {
     let active = true;
 
-    navoraApi.getNavigationBootstrap().then((result) => {
+    // Abriu com o mapa salvo (sinal fraco) e a API respondeu depois: atualiza.
+    const onUpdate = (result) => {
+      if (!active) return;
+      setNavigationData(result.data);
+      setNavigationSource(result.source);
+    };
+
+    navoraApi.getNavigationBootstrap({ onUpdate }).then((result) => {
       if (!active) return;
 
       setNavigationData(result.data);
@@ -767,6 +774,42 @@ export default function App() {
 
     setVisitorAccessRequest(
       null
+    );
+  };
+
+  // Depois de "Editar cadastro" no Perfil: só atualiza os dados da conta.
+  // Não usa handlePatientReady, que é o "entrar" — ele voltava o app pro modo
+  // paciente e apagava a rota em andamento e o pedido de visita.
+  const handleProfileUpdated = (
+    patient = {}
+  ) => {
+    const apiUser =
+      patient?.apiUser ||
+      patient?.user;
+
+    setUserProfile((current) =>
+      current
+        ? {
+            ...current,
+            name:
+              apiUser?.name?.split(' ')[0] ||
+              current.name,
+            fullName:
+              apiUser?.name ||
+              current.fullName,
+            phone:
+              apiUser?.phone ||
+              current.phone,
+            email:
+              apiUser?.email ||
+              current.email,
+            accessibility:
+              patient?.accessibility ||
+              {},
+            emergencyContact:
+              patient?.emergencyContact,
+          }
+        : current
     );
   };
 
@@ -2620,6 +2663,10 @@ export default function App() {
 
             onPatientReady={
               handlePatientReady
+            }
+
+            onProfileUpdated={
+              handleProfileUpdated
             }
 
             onVisitorReady={

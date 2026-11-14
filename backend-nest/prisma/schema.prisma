@@ -109,6 +109,60 @@ enum NotificationCategory {
   HELP_SOS
 }
 
+// Cada hospital cliente do Navora. Tudo que e operacional (chamados, visitas,
+// check-ins, mensagens) e todo o mapa (areas, setores, nos, destinos, beacons,
+// regras) pertence a um hospital, e a equipe so enxerga o proprio hospital.
+// Paciente/visitante tem uma conta so e pode usar o app em qualquer hospital.
+model Hospital {
+  id        Int      @id @default(autoincrement())
+  // Codigo curto que o app manda no header X-Hospital (ex.: "hmc").
+  code      String   @unique
+  name      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  users                 User[]
+  callRequests          CallRequest[]
+  visitorAccessRequests VisitorAccessRequest[]
+  checkIns              CheckIn[]
+  operationalMessages   OperationalMessage[]
+  beacons               Beacon[]
+  areas                 HospitalArea[]
+  entrances             Entrance[]
+  sectors               Sector[]
+  navigationNodes       NavigationNode[]
+  destinations          Destination[]
+  accessRules           AccessRule[]
+  auditLogs             AuditLog[]
+
+  @@map("hospitals")
+}
+
+// Registro do que a equipe fez (LGPD art. 37): quem, o que, em qual registro,
+// quando. Nao guarda o corpo da requisicao (pode ter dado pessoal), so a acao.
+// O banco recusa UPDATE nesta tabela (trigger).
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  hospitalId Int      @map("hospital_id")
+  actorId    Int      @map("actor_id")
+  // Ex.: "call.status", "visitor.approve", "staff.deactivate".
+  action     String
+  entity     String
+  entityId   String?  @map("entity_id")
+  // So campos de controle (ex.: status novo), nunca nome/telefone/documento.
+  details    Json     @default("{}")
+  ip         String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  hospital Hospital @relation(fields: [hospitalId], references: [id])
+  actor    User     @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: Restrict)
+
+  @@index([hospitalId, createdAt])
+  @@index([actorId, createdAt])
+  @@map("audit_logs")
+}
+
 model Notification {
   id          Int                  @id @default(autoincrement())
   userId      Int                  @map("user_id")
@@ -126,40 +180,47 @@ model Notification {
 }
 
 model User {
-  id                   Int       @id @default(autoincrement())
-  email                String    @unique
-  passwordHash         String    @map("password_hash")
-  googleId             String?   @unique @map("google_id")
-  name                 String
-  phone                String?
-  role                 UserRole
-  active               Boolean   @default(true)
-  passwordResetToken   String?   @unique @map("password_reset_token")
-  passwordResetExpires DateTime? @map("password_reset_expires")
+  id                    Int       @id @default(autoincrement())
+  email                 String    @unique
+  passwordHash          String    @map("password_hash")
+  googleId              String?   @unique @map("google_id")
+  name                  String
+  phone                 String?
+  role                  UserRole
+  // Equipe (RECEPTION/ADMIN): hospital onde trabalha — obrigatorio (CHECK no
+  // banco) e e o unico que ela enxerga. Paciente: hospital onde se cadastrou,
+  // so para estatistica; a conta vale em qualquer hospital.
+  hospitalId            Int?      @map("hospital_id")
+  active                Boolean   @default(true)
+  passwordResetToken    String?   @unique @map("password_reset_token")
+  passwordResetExpires  DateTime? @map("password_reset_expires")
   // Tokens emitidos antes desta data sao recusados (troca/redefinicao de senha).
-  passwordChangedAt    DateTime? @map("password_changed_at")
+  passwordChangedAt     DateTime? @map("password_changed_at")
   // Tentativas erradas do codigo de recuperacao; na 5a o codigo e descartado.
-  passwordResetAttempts Int      @default(0) @map("password_reset_attempts")
+  passwordResetAttempts Int       @default(0) @map("password_reset_attempts")
   // Regra de seguranca: funcionarios (RECEPTION/ADMIN) nunca sao excluidos,
   // apenas desativados, para preservar a auditoria do que fizeram no sistema.
   // Um trigger no PostgreSQL bloqueia DELETE desses usuarios.
-  deactivatedAt        DateTime? @map("deactivated_at")
-  deactivatedById      Int?      @map("deactivated_by_id")
-  createdAt            DateTime  @default(now()) @map("created_at")
-  updatedAt            DateTime  @updatedAt @map("updated_at")
+  deactivatedAt         DateTime? @map("deactivated_at")
+  deactivatedById       Int?      @map("deactivated_by_id")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
 
+  hospital       Hospital?       @relation(fields: [hospitalId], references: [id], onDelete: Restrict)
   staffProfile   StaffProfile?
   patientProfile PatientProfile?
   checkIns       CheckIn[]
   notifications  Notification[]
 
-  deactivatedBy      User?  @relation("UserDeactivatedBy", fields: [deactivatedById], references: [id], onDelete: Restrict)
-  deactivatedUsers   User[] @relation("UserDeactivatedBy")
-  statusChanges      UserStatusChange[] @relation("UserStatusChangeTarget")
-  statusChangesMade  UserStatusChange[] @relation("UserStatusChangeActor")
-  visitorDecisions   VisitorAccessRequest[] @relation("VisitorAccessDecidedBy")
-  callRequests       CallRequest[]          @relation("CallRequestUser")
+  deactivatedBy     User?                  @relation("UserDeactivatedBy", fields: [deactivatedById], references: [id], onDelete: Restrict)
+  deactivatedUsers  User[]                 @relation("UserDeactivatedBy")
+  statusChanges     UserStatusChange[]     @relation("UserStatusChangeTarget")
+  statusChangesMade UserStatusChange[]     @relation("UserStatusChangeActor")
+  visitorDecisions  VisitorAccessRequest[] @relation("VisitorAccessDecidedBy")
+  callRequests      CallRequest[]          @relation("CallRequestUser")
+  auditLogs         AuditLog[]             @relation("AuditLogActor")
 
+  @@index([hospitalId])
   @@map("users")
 }
 
@@ -185,18 +246,18 @@ model UserStatusChange {
 }
 
 model PatientProfile {
-  id               Int      @id @default(autoincrement())
-  userId           Int      @unique @map("user_id")
+  id                   Int       @id @default(autoincrement())
+  userId               Int       @unique @map("user_id")
   // LGPD (minimização, 29/10): CPF, data de nascimento e observações (alergias)
   // saíram do cadastro e do banco — não eram usados para nada.
-  accessibility    Json     @default("{}")
-  emergencyContact String?  @map("emergency_contact")
+  accessibility        Json      @default("{}")
+  emergencyContact     String?   @map("emergency_contact")
   // LGPD: quando e em qual versão da política o paciente deu o consentimento
   // (dados de saúde são sensíveis — art. 11 exige consentimento específico).
   privacyConsentAt     DateTime? @map("privacy_consent_at")
   privacyPolicyVersion String?   @map("privacy_policy_version")
-  createdAt        DateTime @default(now()) @map("created_at")
-  updatedAt        DateTime @updatedAt @map("updated_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
 
   user User @relation(fields: [userId], references: [id])
 
@@ -219,39 +280,42 @@ model StaffProfile {
 }
 
 model CallRequest {
-  id          Int        @id @default(autoincrement())
-  userType    String     @default("patient") @map("user_type")
-  userName    String     @default("Paciente Navora") @map("user_name")
-  area        String     @default("private")
-  areaName    String     @default("HMC Private") @map("area_name")
-  patientName String     @map("patient_name")
-  callType    CallType   @map("call_type")
-  reason      String?
-  location    String
-  sector      String
-  beaconCode  String?    @map("beacon_code")
-  message     String?
-  emergencyContact String? @map("emergency_contact")
-  status      CallStatus @default(PENDING)
-  priority    Priority   @default(MEDIUM)
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
+  id               Int        @id @default(autoincrement())
+  userType         String     @default("patient") @map("user_type")
+  userName         String     @default("Paciente Navora") @map("user_name")
+  area             String     @default("private")
+  areaName         String     @default("HMC Private") @map("area_name")
+  patientName      String     @map("patient_name")
+  callType         CallType   @map("call_type")
+  reason           String?
+  location         String
+  sector           String
+  beaconCode       String?    @map("beacon_code")
+  message          String?
+  emergencyContact String?    @map("emergency_contact")
+  status           CallStatus @default(PENDING)
+  priority         Priority   @default(MEDIUM)
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
 
   // Telefone de quem pediu (do perfil, quando tem conta).
-  callerPhone String?    @map("caller_phone")
+  callerPhone     String? @map("caller_phone")
   // Necessidades de acessibilidade: codigos em CALL_NEEDS (calls/call-codes.ts).
   // O app nao pergunta mais "o que esta acontecendo" (dado de saude; 29/10).
-  needs       Json       @default("[]")
+  needs           Json    @default("[]")
   // Hash do codigo secreto com que o celular acompanha o chamado.
   accessTokenHash String? @map("access_token_hash")
 
   // Conta que abriu o chamado (login obrigatorio desde 29/10). Nulo = chamado
   // de antes da regra ou de conta excluida depois.
-  userId      Int?       @map("user_id")
-  user        User?      @relation("CallRequestUser", fields: [userId], references: [id], onDelete: SetNull)
+  userId Int?  @map("user_id")
+  user   User? @relation("CallRequestUser", fields: [userId], references: [id], onDelete: SetNull)
+
+  hospitalId Int      @map("hospital_id")
+  hospital   Hospital @relation(fields: [hospitalId], references: [id])
 
   @@index([userId])
-  @@index([updatedAt])
+  @@index([hospitalId, updatedAt])
   @@map("call_requests")
 }
 
@@ -295,25 +359,30 @@ model VisitorAccessRequest {
   createdAt            DateTime            @default(now()) @map("created_at")
   updatedAt            DateTime            @updatedAt @map("updated_at")
 
+  hospitalId Int @map("hospital_id")
+
+  hospital    Hospital     @relation(fields: [hospitalId], references: [id])
   destination Destination? @relation(fields: [destinationId], references: [id])
   decidedBy   User?        @relation("VisitorAccessDecidedBy", fields: [decidedById], references: [id], onDelete: Restrict)
-  checkIns CheckIn[]
+  checkIns    CheckIn[]
 
+  @@index([hospitalId, createdAt])
   @@map("visitor_access_requests")
 }
 
 model Beacon {
-  id           Int      @id @default(autoincrement())
-  code         String   @unique
-  name         String   @default("")
-  area         String   @default("shared")
-  areaName     String   @default("Compartilhado") @map("area_name")
-  location     String   @default("")
-  battery      Int      @default(100)
-  sector       String
-  status       String   @default("Online")
-  navigationNodeId Int? @map("navigation_node_id")
-  lastSignalAt DateTime @default(now()) @map("last_signal_at")
+  id               Int      @id @default(autoincrement())
+  hospitalId       Int      @map("hospital_id")
+  code             String
+  name             String   @default("")
+  area             String   @default("shared")
+  areaName         String   @default("Compartilhado") @map("area_name")
+  location         String   @default("")
+  battery          Int      @default(100)
+  sector           String
+  status           String   @default("Online")
+  navigationNodeId Int?     @map("navigation_node_id")
+  lastSignalAt     DateTime @default(now()) @map("last_signal_at")
 
   // Identidade iBeacon do aparelho físico (Feasycom FSC-BP104D). Fica nula nos
   // beacons só simulados. UUID guardado em minúsculas, com hífens.
@@ -326,51 +395,62 @@ model Beacon {
   // não usar o "RSSI at 1m" de fábrica.
   measuredPower Int?    @map("measured_power")
 
+  hospital       Hospital        @relation(fields: [hospitalId], references: [id])
   navigationNode NavigationNode? @relation(fields: [navigationNodeId], references: [id])
 
+  // Codigo e identidade iBeacon sao unicos DENTRO do hospital: dois hospitais
+  // podem ter beacons com o UUID de fabrica e o mesmo major/minor.
   // Dois aparelhos com o mesmo UUID+major+minor seriam indistinguíveis pro app.
   // (No Postgres, linhas com esses campos nulos — beacons simulados — não conflitam.)
-  @@unique([ibeaconUuid, ibeaconMajor, ibeaconMinor])
+  @@unique([hospitalId, code])
+  @@unique([hospitalId, ibeaconUuid, ibeaconMajor, ibeaconMinor])
   @@map("beacons")
 }
 
 model HospitalArea {
   id          Int      @id @default(autoincrement())
-  code        String   @unique
+  hospitalId  Int      @map("hospital_id")
+  code        String
   name        String
   label       String?
   description String?
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  entrances        Entrance[]
-  sectors          Sector[]
-  navigationNodes  NavigationNode[]
-  destinations     Destination[]
-  accessRules      AccessRule[]
+  hospital        Hospital         @relation(fields: [hospitalId], references: [id])
+  entrances       Entrance[]
+  sectors         Sector[]
+  navigationNodes NavigationNode[]
+  destinations    Destination[]
+  accessRules     AccessRule[]
 
+  @@unique([hospitalId, code])
   @@map("hospital_areas")
 }
 
 model Entrance {
-  id               Int             @id @default(autoincrement())
-  code             String          @unique
+  id               Int      @id @default(autoincrement())
+  hospitalId       Int      @map("hospital_id")
+  code             String
   name             String
-  entryKey         String?         @map("entry_key")
-  areaId           Int             @map("area_id")
-  navigationNodeId Int?            @map("navigation_node_id")
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
+  entryKey         String?  @map("entry_key")
+  areaId           Int      @map("area_id")
+  navigationNodeId Int?     @map("navigation_node_id")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
+  hospital       Hospital        @relation(fields: [hospitalId], references: [id])
   area           HospitalArea    @relation(fields: [areaId], references: [id])
-  navigationNode NavigationNode?  @relation(fields: [navigationNodeId], references: [id])
+  navigationNode NavigationNode? @relation(fields: [navigationNodeId], references: [id])
 
+  @@unique([hospitalId, code])
   @@map("entrances")
 }
 
 model Sector {
   id          Int      @id @default(autoincrement())
-  code        String   @unique
+  hospitalId  Int      @map("hospital_id")
+  code        String
   name        String
   floor       String?
   serviceType String?  @map("service_type")
@@ -378,6 +458,7 @@ model Sector {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
+  hospital        Hospital         @relation(fields: [hospitalId], references: [id])
   area            HospitalArea?    @relation(fields: [areaId], references: [id])
   navigationNodes NavigationNode[]
   destinations    Destination[]
@@ -385,12 +466,14 @@ model Sector {
   staffProfiles   StaffProfile[]
   checkIns        CheckIn[]
 
+  @@unique([hospitalId, code])
   @@map("sectors")
 }
 
 model NavigationNode {
   id          Int                @id @default(autoincrement())
-  code        String             @unique
+  hospitalId  Int                @map("hospital_id")
+  code        String
   label       String
   type        NavigationNodeType @default(OTHER)
   floor       String?
@@ -403,14 +486,17 @@ model NavigationNode {
   createdAt   DateTime           @default(now()) @map("created_at")
   updatedAt   DateTime           @updatedAt @map("updated_at")
 
-  area              HospitalArea? @relation(fields: [areaId], references: [id])
-  sector            Sector?       @relation(fields: [sectorId], references: [id])
-  entrances         Entrance[]
-  destinations      Destination[]
-  beacons           Beacon[]
-  outgoingRouteEdges RouteEdge[]  @relation("RouteEdgeFromNode")
-  incomingRouteEdges RouteEdge[]  @relation("RouteEdgeToNode")
+  hospital           Hospital      @relation(fields: [hospitalId], references: [id])
+  area               HospitalArea? @relation(fields: [areaId], references: [id])
+  sector             Sector?       @relation(fields: [sectorId], references: [id])
+  entrances          Entrance[]
+  destinations       Destination[]
+  beacons            Beacon[]
+  // Arestas nao tem hospital_id proprio: pertencem ao hospital dos seus nos.
+  outgoingRouteEdges RouteEdge[]   @relation("RouteEdgeFromNode")
+  incomingRouteEdges RouteEdge[]   @relation("RouteEdgeToNode")
 
+  @@unique([hospitalId, code])
   @@map("navigation_nodes")
 }
 
@@ -437,7 +523,8 @@ model RouteEdge {
 
 model Destination {
   id               Int      @id @default(autoincrement())
-  code             String   @unique
+  hospitalId       Int      @map("hospital_id")
+  code             String
   name             String
   icon             String?
   category         String
@@ -451,21 +538,24 @@ model Destination {
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  area           HospitalArea?   @relation(fields: [areaId], references: [id])
-  sector         Sector?         @relation(fields: [sectorId], references: [id])
-  navigationNode NavigationNode? @relation(fields: [navigationNodeId], references: [id])
-  accessRules    AccessRule[]
-  fallbackForAccessRules AccessRule[] @relation("AccessRuleFallback")
-  fallbackForAccessWindows AccessWindow[] @relation("AccessWindowFallback")
-  visitorAccessRequests VisitorAccessRequest[]
-  checkIns CheckIn[]
+  hospital                 Hospital               @relation(fields: [hospitalId], references: [id])
+  area                     HospitalArea?          @relation(fields: [areaId], references: [id])
+  sector                   Sector?                @relation(fields: [sectorId], references: [id])
+  navigationNode           NavigationNode?        @relation(fields: [navigationNodeId], references: [id])
+  accessRules              AccessRule[]
+  fallbackForAccessRules   AccessRule[]           @relation("AccessRuleFallback")
+  fallbackForAccessWindows AccessWindow[]         @relation("AccessWindowFallback")
+  visitorAccessRequests    VisitorAccessRequest[]
+  checkIns                 CheckIn[]
 
+  @@unique([hospitalId, code])
   @@map("destinations")
 }
 
 model AccessRule {
   id                    Int             @id @default(autoincrement())
-  code                  String          @unique
+  hospitalId            Int             @map("hospital_id")
+  code                  String
   name                  String
   enabled               Boolean         @default(true)
   subject               AccessSubject
@@ -482,12 +572,14 @@ model AccessRule {
   createdAt             DateTime        @default(now()) @map("created_at")
   updatedAt             DateTime        @updatedAt @map("updated_at")
 
+  hospital            Hospital       @relation(fields: [hospitalId], references: [id])
   area                HospitalArea?  @relation(fields: [areaId], references: [id])
   sector              Sector?        @relation(fields: [sectorId], references: [id])
   destination         Destination?   @relation(fields: [destinationId], references: [id])
   fallbackDestination Destination?   @relation("AccessRuleFallback", fields: [fallbackDestinationId], references: [id])
   windows             AccessWindow[]
 
+  @@unique([hospitalId, code])
   @@map("access_rules")
 }
 
@@ -505,7 +597,7 @@ model AccessWindow {
   fallbackDestinationId Int?           @map("fallback_destination_id")
 
   rule                AccessRule   @relation(fields: [ruleId], references: [id])
-  fallbackDestination Destination?  @relation("AccessWindowFallback", fields: [fallbackDestinationId], references: [id])
+  fallbackDestination Destination? @relation("AccessWindowFallback", fields: [fallbackDestinationId], references: [id])
 
   @@map("access_windows")
 }
@@ -522,26 +614,33 @@ model CheckIn {
   destinationId          Int?          @map("destination_id")
   sectorId               Int?          @map("sector_id")
   visitorAccessRequestId Int?          @map("visitor_access_request_id")
+  hospitalId             Int           @map("hospital_id")
   createdAt              DateTime      @default(now()) @map("created_at")
   updatedAt              DateTime      @updatedAt @map("updated_at")
 
+  hospital             Hospital              @relation(fields: [hospitalId], references: [id])
   user                 User?                 @relation(fields: [userId], references: [id])
   destination          Destination?          @relation(fields: [destinationId], references: [id])
   sector               Sector?               @relation(fields: [sectorId], references: [id])
   visitorAccessRequest VisitorAccessRequest? @relation(fields: [visitorAccessRequestId], references: [id])
 
+  @@index([hospitalId, createdAt])
   @@map("check_ins")
 }
 
 model OperationalMessage {
-  id        Int       @id @default(autoincrement())
-  recipient String
-  content   String
-  priority  String    @default("Media")
-  direction String    @default("Enviada")
-  readAt    DateTime? @map("read_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  id         Int       @id @default(autoincrement())
+  recipient  String
+  content    String
+  priority   String    @default("Media")
+  direction  String    @default("Enviada")
+  readAt     DateTime? @map("read_at")
+  hospitalId Int       @map("hospital_id")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
+  hospital Hospital @relation(fields: [hospitalId], references: [id])
+
+  @@index([hospitalId, createdAt])
   @@map("operational_messages")
 }

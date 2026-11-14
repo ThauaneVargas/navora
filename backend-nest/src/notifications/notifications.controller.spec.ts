@@ -3,7 +3,7 @@ import { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 import { NotificationsController } from './notifications.controller';
 
-const user: AuthenticatedUser = { id: 10, name: 'Paciente', email: 'p@test.com', phone: null, role: UserRole.PATIENT, active: true };
+const user: AuthenticatedUser = { id: 10, name: 'Paciente', email: 'p@test.com', phone: null, role: UserRole.PATIENT, hospitalId: null, active: true };
 
 function makeService(overrides: Partial<Record<string, (...args: any[]) => any>> = {}) {
   return {

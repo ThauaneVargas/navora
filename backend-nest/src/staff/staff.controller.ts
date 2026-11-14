@@ -5,6 +5,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { HospitalId } from '../hospitals/hospital-id.decorator';
 import { ChangeStaffStatusDto } from './dto/change-staff-status.dto';
 import { StaffService } from './staff.service';
 
@@ -15,13 +16,13 @@ export class StaffController {
   constructor(private readonly staffService: StaffService) {}
 
   @Get()
-  list() {
-    return this.staffService.list();
+  list(@HospitalId() hospitalId: number) {
+    return this.staffService.list(hospitalId);
   }
 
   @Get(':userId/audit')
-  audit(@Param('userId', ParseIntPipe) userId: number) {
-    return this.staffService.audit(userId);
+  audit(@Param('userId', ParseIntPipe) userId: number, @HospitalId() hospitalId: number) {
+    return this.staffService.audit(hospitalId, userId);
   }
 
   @Patch(':userId/deactivate')
@@ -29,8 +30,9 @@ export class StaffController {
     @Param('userId', ParseIntPipe) userId: number,
     @CurrentUser() actor: AuthenticatedUser,
     @Body() payload: ChangeStaffStatusDto,
+    @HospitalId() hospitalId: number,
   ) {
-    return this.staffService.deactivate(userId, actor, payload);
+    return this.staffService.deactivate(hospitalId, userId, actor, payload);
   }
 
   @Patch(':userId/reactivate')
@@ -38,8 +40,9 @@ export class StaffController {
     @Param('userId', ParseIntPipe) userId: number,
     @CurrentUser() actor: AuthenticatedUser,
     @Body() payload: ChangeStaffStatusDto,
+    @HospitalId() hospitalId: number,
   ) {
-    return this.staffService.reactivate(userId, actor, payload);
+    return this.staffService.reactivate(hospitalId, userId, actor, payload);
   }
 
   // Regra de seguranca: funcionarios nunca sao excluidos, apenas desativados.

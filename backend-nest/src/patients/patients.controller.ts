@@ -1,10 +1,12 @@
 import { Body, Controller, Delete, Get, Post, Put, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthenticatedUser } from '../auth/auth.types';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { OptionalHospitalId } from '../hospitals/hospital-id.decorator';
 import { DeleteAccountDto } from './dto/delete-account.dto';
 import { RegisterPatientDto } from './dto/register-patient.dto';
 import { UpdateAccessibilityDto } from './dto/update-accessibility.dto';
@@ -16,8 +18,18 @@ export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
   @Post('register')
-  register(@Body() payload: RegisterPatientDto) {
-    return this.patientsService.register(payload);
+  register(@Body() payload: RegisterPatientDto, @OptionalHospitalId() hospitalId: number | null) {
+    return this.patientsService.register(payload, hospitalId);
+  }
+
+  // LGPD art. 18, V (portabilidade): tudo o que o Navora guarda da pessoa,
+  // num JSON que o app oferece para salvar/compartilhar.
+  @Get('me/export')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.PATIENT)
+  exportMe(@CurrentUser() user: AuthenticatedUser) {
+    return this.patientsService.exportMe(user);
   }
 
   @Get('me')

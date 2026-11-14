@@ -82,14 +82,17 @@ function windowRule(overrides: Record<string, any> = {}) {
 function makeService(rules: any[], visitorRequest?: any, now = new Date('2026-01-05T12:00:00.000Z')) {
   const prisma = {
     destination: {
+      // Todo o mapa do teste e do hospital 1.
       findFirst: async ({ where }: any) => {
+        if (where.hospitalId !== 1) return null;
         if (where.id !== undefined) return destinations.find((item) => item.id === where.id) ?? null;
         if (where.code !== undefined) return destinations.find((item) => item.code === where.code) ?? null;
         return null;
       },
     },
     accessRule: {
-      findMany: async ({ where }: any) => rules.filter((item) => item.enabled === where.enabled && item.subject === where.subject),
+      findMany: async ({ where }: any) =>
+        where.hospitalId === 1 ? rules.filter((item) => item.enabled === where.enabled && item.subject === where.subject) : [],
     },
     visitorAccessRequest: {
       findUnique: async ({ where }: any) => (visitorRequest?.id === where.id ? visitorRequest : null),
@@ -171,6 +174,19 @@ async function run() {
   await assertDecision('paciente na SUS indo para destino da Private', makeService([]), { destination_id: 6, subject: AccessSubject.PATIENT, current_area_code: 'sus' }, AccessDecision.REDIRECT_TO_RECEPTION);
   await assertDecision('paciente na Private indo para destino da Private', makeService([]), { destination_id: 6, subject: AccessSubject.PATIENT, current_area_code: 'private' }, AccessDecision.ALLOW);
 
+  // Separacao por hospital: destino de outro hospital "nao existe", e a
+  // liberacao de visita de um hospital nao vale no outro.
+  await assert.rejects(
+    () => makeService([]).checkAccess(2, { destination_id: 6, subject: AccessSubject.PATIENT } as any),
+    /Destino nao encontrado/,
+    'destino de outro hospital',
+  );
+  const visitorRule = rule({ code: 'visitor-auth', subject: AccessSubject.VISITOR, scope: AccessRuleScope.ACCESS_LEVEL, accessLevel: 'visitor_authorization', decision: AccessDecision.REQUIRE_AUTHORIZATION });
+  await assertDecision('liberacao de visita de outro hospital nao vale', makeService(
+    [visitorRule],
+    visitor(VisitorAccessStatus.APPROVED, { destinationId: 4, hospitalId: 2 }),
+  ), { destination_id: 4, subject: AccessSubject.VISITOR, visitor_access_request_id: 99, visitor_access_token: 'segredo-99' }, AccessDecision.REQUIRE_AUTHORIZATION);
+
   console.log('navigation access tests passed');
 }
 
@@ -178,6 +194,7 @@ function visitor(status: VisitorAccessStatus, overrides: Record<string, any> = {
   return {
     id: 99,
     accessTokenHash: hashSecretToken('segredo-99'),
+    hospitalId: 1,
     status,
     destinationId: null,
     requestedDestination: 'Visita / Internacao Private',
@@ -189,7 +206,7 @@ function visitor(status: VisitorAccessStatus, overrides: Record<string, any> = {
 }
 
 async function assertDecision(label: string, service: NavigationAccessService, payload: any, expected: AccessDecision) {
-  const result = await service.checkAccess(payload);
+  const result = await service.checkAccess(1, payload);
   assert.equal(result.decision, expected, label);
 }
 

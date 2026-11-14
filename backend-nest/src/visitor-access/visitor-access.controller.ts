@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../auth/optional-jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { HospitalId } from '../hospitals/hospital-id.decorator';
 import { AuthorizeVisitorAccessDto } from './dto/authorize-visitor-access.dto';
 import { CreateVisitorAccessDto } from './dto/create-visitor-access.dto';
 import { DenyVisitorAccessDto } from './dto/deny-visitor-access.dto';
@@ -19,8 +20,11 @@ export class VisitorAccessController {
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.RECEPTION)
-  list(@Query('status', new ParseEnumPipe(VisitorAccessStatus, { optional: true })) status?: VisitorAccessStatus) {
-    return this.visitorAccessService.list(status);
+  list(
+    @HospitalId() hospitalId: number,
+    @Query('status', new ParseEnumPipe(VisitorAccessStatus, { optional: true })) status?: VisitorAccessStatus,
+  ) {
+    return this.visitorAccessService.list(hospitalId, status);
   }
 
   // O visitante não tem conta: lê o próprio pedido com o código secreto que
@@ -38,8 +42,8 @@ export class VisitorAccessController {
   // Modo visita exige login (29/10): o pedido sai com o nome da conta.
   @Post()
   @UseGuards(JwtAuthGuard)
-  create(@Body() payload: CreateVisitorAccessDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.visitorAccessService.create(payload, user);
+  create(@Body() payload: CreateVisitorAccessDto, @CurrentUser() user: AuthenticatedUser, @HospitalId() hospitalId: number) {
+    return this.visitorAccessService.create(payload, user, hospitalId);
   }
 
   @Patch(':requestId/approve')
@@ -49,8 +53,9 @@ export class VisitorAccessController {
     @Param('requestId', ParseIntPipe) requestId: number,
     @Body() payload: AuthorizeVisitorAccessDto,
     @CurrentUser() actor: AuthenticatedUser,
+    @HospitalId() hospitalId: number,
   ) {
-    return this.visitorAccessService.approve(requestId, payload, actor);
+    return this.visitorAccessService.approve(hospitalId, requestId, payload, actor);
   }
 
   @Patch(':requestId/authorize')
@@ -60,8 +65,9 @@ export class VisitorAccessController {
     @Param('requestId', ParseIntPipe) requestId: number,
     @Body() payload: AuthorizeVisitorAccessDto,
     @CurrentUser() actor: AuthenticatedUser,
+    @HospitalId() hospitalId: number,
   ) {
-    return this.visitorAccessService.approve(requestId, payload, actor);
+    return this.visitorAccessService.approve(hospitalId, requestId, payload, actor);
   }
 
   @Patch(':requestId/deny')
@@ -71,14 +77,19 @@ export class VisitorAccessController {
     @Param('requestId', ParseIntPipe) requestId: number,
     @Body() payload: DenyVisitorAccessDto,
     @CurrentUser() actor: AuthenticatedUser,
+    @HospitalId() hospitalId: number,
   ) {
-    return this.visitorAccessService.deny(requestId, payload, actor);
+    return this.visitorAccessService.deny(hospitalId, requestId, payload, actor);
   }
 
   @Patch(':requestId/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN, UserRole.RECEPTION)
-  updateStatus(@Param('requestId', ParseIntPipe) requestId: number, @Body() payload: UpdateVisitorAccessStatusDto) {
-    return this.visitorAccessService.updateStatus(requestId, payload.status);
+  updateStatus(
+    @Param('requestId', ParseIntPipe) requestId: number,
+    @Body() payload: UpdateVisitorAccessStatusDto,
+    @HospitalId() hospitalId: number,
+  ) {
+    return this.visitorAccessService.updateStatus(hospitalId, requestId, payload.status);
   }
 }

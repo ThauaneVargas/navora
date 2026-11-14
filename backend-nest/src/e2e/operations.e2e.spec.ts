@@ -172,7 +172,10 @@ async function run() {
     assert.equal(patientReport.status, 403);
     const invalidReport = await request(httpServer).post('/reports/admin').set('Authorization', `Bearer ${adminToken}`).send({ from: 'not-a-date' });
     assert.equal(invalidReport.status, 400);
-    const report = await request(httpServer).post('/reports/admin').set('Authorization', `Bearer ${receptionToken}`).send({ period: 'e2e' });
+    // Relatorio e so do admin (o painel da recepcao nao tem essa tela).
+    const receptionReport = await request(httpServer).post('/reports/admin').set('Authorization', `Bearer ${receptionToken}`).send({ period: 'e2e' });
+    assert.equal(receptionReport.status, 403);
+    const report = await request(httpServer).post('/reports/admin').set('Authorization', `Bearer ${adminToken}`).send({ period: 'e2e' });
     assert.equal(report.status, 201);
     assert.equal(report.body.source, 'api');
     assert.equal(report.body.period, 'e2e');

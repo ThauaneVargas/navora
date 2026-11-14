@@ -25,6 +25,7 @@ export class AuthService {
   async login(payload: LoginDto) {
     const user = await this.prisma.user.findUnique({
       where: { email: payload.email.trim().toLowerCase() },
+      include: { hospital: { select: { active: true } } },
     });
 
     if (!user) {
@@ -32,7 +33,7 @@ export class AuthService {
     }
 
     const validPassword = await bcrypt.compare(payload.password, user.passwordHash);
-    if (!validPassword || !user.active) {
+    if (!validPassword || !user.active || !this.staffHospitalActive(user)) {
       throw new UnauthorizedException('Credenciais invalidas');
     }
 
@@ -47,9 +48,18 @@ export class AuthService {
 
     try {
       const payload = await this.jwtService.verifyAsync<JwtPayload>(token, { secret });
-      const user = await this.prisma.user.findUnique({ where: { id: payload.sub } });
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        include: { hospital: { select: { active: true } } },
+      });
 
       if (!user?.active || user.email !== payload.email || user.role !== payload.role) {
+        throw new UnauthorizedException('Credenciais invalidas');
+      }
+
+      // Equipe so existe dentro de um hospital ativo: hospital desligado
+      // (contrato encerrado) derruba as sessoes do painel na hora.
+      if (!this.staffHospitalActive(user)) {
         throw new UnauthorizedException('Credenciais invalidas');
       }
 
@@ -65,11 +75,22 @@ export class AuthService {
     }
   }
 
+  // O painel mostra o nome do hospital no topo (a equipe sabe onde esta).
   async me(user: SafeUser) {
-    return user;
+    if (!user.hospitalId) return { ...user, hospital: null };
+    const hospital = await this.prisma.hospital.findUnique({
+      where: { id: user.hospitalId },
+      select: { id: true, code: true, name: true },
+    });
+    return { ...user, hospital };
   }
 
-  async registerStaff(payload: RegisterStaffDto) {
+  // Funcionario novo nasce no hospital de quem cadastrou: um admin nunca cria
+  // conta em outro hospital.
+  async registerStaff(payload: RegisterStaffDto, actor: SafeUser) {
+    if (!actor.hospitalId) {
+      throw new BadRequestException('Conta sem hospital vinculado');
+    }
     const existing = await this.prisma.user.findUnique({
       where: { email: payload.email.trim().toLowerCase() },
     });
@@ -85,6 +106,7 @@ export class AuthService {
         email: payload.email.trim().toLowerCase(),
         passwordHash,
         role: payload.role as any,
+        hospitalId: actor.hospitalId,
         active: true,
       },
     });
@@ -255,10 +277,16 @@ export class AuthService {
       email: user.email,
       phone: user.phone,
       role: user.role,
+      hospitalId: user.hospitalId ?? null,
       active: user.active,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     };
+  }
+
+  private staffHospitalActive(user: { role: UserRole; hospitalId?: number | null; hospital?: { active: boolean } | null }) {
+    if (user.role === UserRole.PATIENT) return true;
+    return Boolean(user.hospitalId) && user.hospital?.active !== false;
   }
 
   private async signUser(user: Pick<User, 'id' | 'email' | 'role'>) {

@@ -32,8 +32,8 @@ export class AuthController {
   @Post('register-staff')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  registerStaff(@Body() payload: RegisterStaffDto) {
-    return this.authService.registerStaff(payload);
+  registerStaff(@Body() payload: RegisterStaffDto, @CurrentUser() actor: AuthenticatedUser) {
+    return this.authService.registerStaff(payload, actor);
   }
 
   @Post('forgot-password')

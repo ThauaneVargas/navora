@@ -1,6 +1,6 @@
 # Navora — LGPD e segurança
 
-Atualizado em 29/10/2026 (cadastro mínimo e login obrigatório). Este documento descreve **o que o sistema faz hoje** com dados pessoais e **o que ainda falta** para operar com pacientes reais. Não é parecer jurídico: os itens marcados como "decisão" precisam de validação com o hospital e, de preferência, com um advogado.
+Atualizado em 07/11/2026 (separação por hospital, auditoria, prazo de guarda, baixar dados). Antes: 29/10/2026 (cadastro mínimo e login obrigatório). Este documento descreve **o que o sistema faz hoje** com dados pessoais e **o que ainda falta** para operar com pacientes reais. Não é parecer jurídico: os itens marcados como "decisão" precisam de validação com o hospital e, de preferência, com um advogado.
 
 ## 1. Que dados existem e onde
 
@@ -22,9 +22,16 @@ Atualizado em 29/10/2026 (cadastro mínimo e login obrigatório). Este documento
 | Histórico de rotas (destinos iniciados) | sistema | só no aparelho (`routeHistoryStorage`), últimas 12; "Sair" apaga — o destino pode revelar saúde | pode revelar saúde |
 | Visita em andamento (pedido + código secreto) | sistema | só no aparelho, até a visita terminar/expirar/ser negada (ou 24 h sem resposta); "Sair" apaga | — |
 
-Hospedagem: Render (backend e Postgres), região **Oregon, EUA** (confirmado no painel em 23/10 — o `backend-nest/render.yaml` diz `ohio`, mas os serviços reais foram criados em Oregon). Isso é **transferência internacional** (art. 33) — está informado na política do app; ver "decisões" abaixo.
+Hospedagem (desde 03/11): API no Render e banco no **Neon** (criptografado em disco), ambos em **Oregon, EUA**. Histórico: antes o Postgres também era do Render, região **Oregon, EUA** (confirmado no painel em 23/10 — o `backend-nest/render.yaml` diz `ohio`, mas os serviços reais foram criados em Oregon). Isso é **transferência internacional** (art. 33) — está informado na política do app; ver "decisões" abaixo.
 
 ## 2. O que já está implementado
+
+**Separação por hospital, auditoria e prazo de guarda (07/11) — detalhes no item 29 de `docs/historico.md`**
+- Cada hospital tem um `id`; chamados, visitas, check-ins, mensagens e todo o mapa pertencem a um hospital. A equipe só enxerga o hospital da própria conta (o header `X-Hospital` é ignorado para ela). Paciente usa a mesma conta em qualquer hospital.
+- `audit_logs`: quem da equipe fez/abriu o quê, quando e de qual IP — sem dado pessoal no registro, e o banco não deixa editar (art. 37).
+- Prazo de guarda automático em produção: visita apagada em 30 dias; chamado/check-in anonimizado em 180; notificação apagada em 90; auditoria em 5 anos (art. 15/16). Prazos mudam por variável de ambiente — **se o hospital definir outro prazo, mudar a env e a política juntas.**
+- Baixar meus dados (art. 18, V): botão na tela Privacidade → JSON com conta, perfil, chamados, check-ins e notificações.
+- Painel com cabeçalhos de segurança (CSP, HSTS, anti-iframe) no `web-admin/vercel.json`.
 
 **Consentimento (art. 7º, I e art. 11, I)**
 - Cadastro de paciente só cria conta com aceite explícito: caixa de seleção no fim do cadastro (`PatientRegisterScreen.js`), com a política legível ali mesmo. O backend recusa (`400`) cadastro sem `acceptedPrivacyPolicy: true` e grava data e versão aceita.
@@ -60,12 +67,16 @@ Hospedagem: Render (backend e Postgres), região **Oregon, EUA** (confirmado no 
 - **Papéis**: em geral o hospital é o **controlador** (decide para que os dados servem) e o Navora é o **operador**. Isso precisa estar num contrato entre os dois.
 - **Encarregado (DPO)** e um canal de contato de privacidade de verdade (e-mail). Hoje a política manda falar com a recepção.
 - **Transferência internacional**: manter servidor nos EUA (exige cláusulas contratuais/consentimento específico) ou migrar para região no Brasil (ex.: AWS São Paulo, Azure Brazil South) — junto da decisão de hospedagem paga.
-- **Prazo de guarda**: quanto tempo manter pedidos de visita, chamados e check-ins. Sugestão: apagar pedidos de visita após 30 dias e anonimizar chamados após o prazo que o hospital exigir. Hoje nada é apagado automaticamente.
+- **Prazo de guarda**: implementado em 07/11 com padrões sugeridos (30/180/90 dias, auditoria 5 anos). Falta o hospital confirmar os prazos — prontuário/registro de atendimento pode ter prazo legal próprio.
+- **RIPD** (relatório de impacto): hospital costuma pedir quando há dado de saúde.
+- **Plano de incidente** (art. 48): a ANPD pede comunicação em até 3 dias úteis.
 - **Termos de uso** (além da política).
 
 **Melhorias técnicas (sem pressa)**
 - Envio de e-mail para "Esqueci minha senha" (hoje o código não chega ao usuário em produção).
-- Registro de auditoria: quem da equipe viu/alterou o quê.
-- Backup do banco e plano de resposta a incidente (art. 48: comunicar ANPD e titulares).
-- Exportar os dados do paciente num arquivo (portabilidade, art. 18, V).
+- ~~Registro de auditoria~~ **feito em 07/11** (`audit_logs`).
+- Backup do banco (o Neon grátis guarda pouco histórico de restauração; aumentar no plano pago).
+- ~~Exportar os dados do paciente~~ **feito em 07/11** (`GET /patients/me/export`).
+- Criptografia de campo (documento do check-in, contato de emergência, acessibilidade) — maior, para quando houver contrato.
+- 2FA (código de aplicativo autenticador) para administradores do painel.
 - O backend antigo `backend/` (Python) não é usado — apagar para não ser publicado por engano.

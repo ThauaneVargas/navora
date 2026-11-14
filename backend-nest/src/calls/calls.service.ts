@@ -13,15 +13,22 @@ export class CallsService {
 
   // `updatedSince`: so os chamados criados/alterados depois dessa data (o painel
   // consulta a cada poucos segundos para o SOS aparecer quase na hora).
-  async list(updatedSince?: Date) {
+  // So os chamados do hospital da equipe que pergunta.
+  async list(hospitalId: number, updatedSince?: Date) {
     const calls = await this.prisma.callRequest.findMany({
-      where: updatedSince ? { updatedAt: { gt: updatedSince } } : undefined,
+      where: { hospitalId, ...(updatedSince ? { updatedAt: { gt: updatedSince } } : {}) },
       orderBy: { createdAt: 'desc' },
     });
     return calls.map(mapCallToApi);
   }
 
-  async create(payload: CreateCallDto, user: AuthenticatedUser, forcedType?: CallType, forcedPriority?: Priority) {
+  async create(
+    payload: CreateCallDto,
+    user: AuthenticatedUser,
+    hospitalId: number,
+    forcedType?: CallType,
+    forcedPriority?: Priority,
+  ) {
     const callType = this.normalizeType(forcedType ?? payload.call_type ?? CallType.HELP);
     const priority = forcedPriority ?? payload.priority ?? Priority.MEDIUM;
     const userName = payload.user_name || payload.patient_name || user.name || 'Paciente Navora';
@@ -46,6 +53,7 @@ export class CallsService {
         status: CallStatus.PENDING,
         priority,
         userId: user.id,
+        hospitalId,
         callerPhone: payload.caller_phone?.trim() || user.phone || null,
         needs: [...new Set(payload.needs ?? [])],
         accessTokenHash: hashSecretToken(accessToken),
@@ -77,17 +85,18 @@ export class CallsService {
     };
   }
 
-  createHelp(payload: CreateCallDto, user: AuthenticatedUser) {
-    return this.create(payload, user, CallType.HELP, Priority.MEDIUM);
+  createHelp(payload: CreateCallDto, user: AuthenticatedUser, hospitalId: number) {
+    return this.create(payload, user, hospitalId, CallType.HELP, Priority.MEDIUM);
   }
 
-  createSos(payload: CreateCallDto, user: AuthenticatedUser) {
-    return this.create(payload, user, CallType.SOS, Priority.CRITICAL);
+  createSos(payload: CreateCallDto, user: AuthenticatedUser, hospitalId: number) {
+    return this.create(payload, user, hospitalId, CallType.SOS, Priority.CRITICAL);
   }
 
-  async updateStatus(callId: number, status: CallStatus) {
+  async updateStatus(hospitalId: number, callId: number, status: CallStatus) {
     const call = await this.prisma.callRequest.findUnique({ where: { id: callId } });
-    if (!call) {
+    // Chamado de outro hospital: mesmo 404 de "nao existe".
+    if (!call || call.hospitalId !== hospitalId) {
       throw new NotFoundException('Chamado nao encontrado');
     }
     this.ensureValidTransition(call.status, status);

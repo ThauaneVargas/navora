@@ -62,8 +62,8 @@ function makePrisma(seed: any[] = []) {
 import { UserRole } from '@prisma/client';
 import type { AuthenticatedUser } from '../auth/auth.types';
 
-const user: AuthenticatedUser = { id: 10, name: 'Paciente', email: 'p@test.com', phone: null, role: UserRole.PATIENT, active: true };
-const otherUser: AuthenticatedUser = { id: 99, name: 'Outro', email: 'o@test.com', phone: null, role: UserRole.PATIENT, active: true };
+const user: AuthenticatedUser = { id: 10, name: 'Paciente', email: 'p@test.com', phone: null, role: UserRole.PATIENT, hospitalId: null, active: true };
+const otherUser: AuthenticatedUser = { id: 99, name: 'Outro', email: 'o@test.com', phone: null, role: UserRole.PATIENT, hospitalId: null, active: true };
 
 async function run() {
   // ── findAll ──────────────────────────────────────────────────────────────

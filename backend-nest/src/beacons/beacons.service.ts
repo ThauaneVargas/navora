@@ -10,16 +10,17 @@ export class BeaconsService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async list() {
+  async list(hospitalId: number) {
     const beacons = await this.prisma.beacon.findMany({
+      where: { hospitalId },
       orderBy: { code: 'asc' },
       include: { navigationNode: true },
     });
     return beacons.map(mapBeaconToApi);
   }
 
-  async detect(payload: DetectBeaconDto) {
-    const beacon = await this.findDetectedBeacon(payload);
+  async detect(hospitalId: number, payload: DetectBeaconDto) {
+    const beacon = await this.findDetectedBeacon(hospitalId, payload);
     if (!beacon) {
       return { detected: false };
     }
@@ -30,7 +31,7 @@ export class BeaconsService {
     const fromRealBle = !(payload.beaconCode || payload.beacon_code);
     if (fromRealBle) {
       await this.prisma.beacon.update({
-        where: { code: beacon.code },
+        where: { id: beacon.id },
         data: { lastSignalAt: new Date() },
       });
     }
@@ -55,11 +56,14 @@ export class BeaconsService {
 
   // Código interno tem prioridade (compatibilidade com o app atual); senão,
   // usa o trio iBeacon lido pelo celular. Sem um dos dois completo: não detecta.
-  private async findDetectedBeacon(payload: DetectBeaconDto) {
+  private async findDetectedBeacon(hospitalId: number, payload: DetectBeaconDto) {
     const code = payload.beaconCode || payload.beacon_code;
     if (code) {
       this.logger.debug(`beacon_detection_received code=${code}`);
-      const beacon = await this.prisma.beacon.findUnique({ where: { code }, include: { navigationNode: true } });
+      const beacon = await this.prisma.beacon.findUnique({
+        where: { hospitalId_code: { hospitalId, code } },
+        include: { navigationNode: true },
+      });
       if (!beacon) this.logger.debug(`beacon_unknown code=${code}`);
       return beacon;
     }
@@ -73,7 +77,14 @@ export class BeaconsService {
 
     this.logger.debug(`beacon_detection_received ibeacon=${major}/${minor} rssi=${rssi ?? 'n/a'}`);
     const beacon = await this.prisma.beacon.findUnique({
-      where: { ibeaconUuid_ibeaconMajor_ibeaconMinor: { ibeaconUuid: uuid, ibeaconMajor: major, ibeaconMinor: minor } },
+      where: {
+        hospitalId_ibeaconUuid_ibeaconMajor_ibeaconMinor: {
+          hospitalId,
+          ibeaconUuid: uuid,
+          ibeaconMajor: major,
+          ibeaconMinor: minor,
+        },
+      },
       include: { navigationNode: true },
     });
     if (!beacon) this.logger.debug(`beacon_unknown ibeacon=${major}/${minor}`);

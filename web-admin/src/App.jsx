@@ -2705,6 +2705,7 @@ function StaffAuditView({ account }) {
 
   const changes = state.data?.status_changes || [];
   const decisions = state.data?.visitor_decisions || [];
+  const actions = state.data?.actions || [];
   const when = (value) => (value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '-');
 
   return (
@@ -2734,9 +2735,41 @@ function StaffAuditView({ account }) {
           ))}
         </ul>
       ) : <p className="form-note">Nenhuma autorizacao ou recusa registrada para este funcionario.</p>}
+      <h3>Acoes no painel (ultimas 100)</h3>
+      {actions.length ? (
+        <ul className="staff-audit-list">
+          {actions.map((entry) => (
+            <li key={entry.id}>
+              <b>{auditActionLabels[entry.action] || entry.action}{entry.entity_id ? ` #${entry.entity_id}` : ''}</b>
+              <span>{when(entry.created_at)}{entry.details?.status ? ` - novo status: ${entry.details.status}` : ''}</span>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="form-note">Nenhuma acao registrada para este funcionario.</p>}
     </div>
   );
 }
+
+// Acoes gravadas pela auditoria do backend (audit/audit.interceptor.ts).
+const auditActionLabels = {
+  'auth.login': 'Entrou no painel',
+  'auth.registerStaff': 'Cadastrou funcionario',
+  'calls.updateStatus': 'Alterou chamado',
+  'visitoraccess.approve': 'Autorizou visita',
+  'visitoraccess.authorize': 'Autorizou visita',
+  'visitoraccess.deny': 'Negou visita',
+  'visitoraccess.updateStatus': 'Alterou visita',
+  'visitoraccess.get.view': 'Abriu pedido de visita',
+  'checkins.create': 'Fez check-in',
+  'checkins.updateStatus': 'Alterou check-in',
+  'checkins.get.view': 'Abriu check-in',
+  'operationalmessages.create': 'Enviou mensagem',
+  'operationalmessages.markRead': 'Leu mensagem',
+  'staff.deactivate': 'Desativou funcionario',
+  'staff.reactivate': 'Reativou funcionario',
+  'staff.audit.view': 'Abriu historico de funcionario',
+  'reports.adminReport': 'Gerou relatorio',
+};
 
 function VisitorDenyForm({ visitor, onSubmit }) {
   const [reason, setReason] = useState('Horario de visita encerrado');

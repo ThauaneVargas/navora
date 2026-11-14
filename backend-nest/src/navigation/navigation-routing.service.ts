@@ -57,11 +57,13 @@ export class NavigationRoutingService {
     private readonly navigationInstructionsService: NavigationInstructionsService,
   ) {}
 
-  async routePreview(payload: RoutePreviewDto, user?: AuthenticatedUser) {
+  async routePreview(hospitalId: number, payload: RoutePreviewDto, user?: AuthenticatedUser) {
     const [origin, requestedDestination] = await Promise.all([
-      this.prisma.navigationNode.findUnique({ where: { code: payload.origin_node_code } }),
+      this.prisma.navigationNode.findUnique({
+        where: { hospitalId_code: { hospitalId, code: payload.origin_node_code } },
+      }),
       this.prisma.destination.findUnique({
-        where: { code: payload.destination_code },
+        where: { hospitalId_code: { hospitalId, code: payload.destination_code } },
         include: { area: true, sector: true, navigationNode: true },
       }),
     ]);
@@ -78,7 +80,7 @@ export class NavigationRoutingService {
       throw new BadRequestException('Destino nao possui no de navegacao associado');
     }
 
-    const access = await this.navigationAccessService.checkAccess({
+    const access = await this.navigationAccessService.checkAccess(hospitalId, {
       destination_code: payload.destination_code,
       subject: payload.subject,
       current_area_code: payload.current_area_code,
@@ -107,7 +109,7 @@ export class NavigationRoutingService {
 
     const effectiveDestination =
       access.decision === AccessDecision.REDIRECT_TO_RECEPTION
-        ? await this.resolveRedirectDestination(access.redirect_destination?.code)
+        ? await this.resolveRedirectDestination(hospitalId, access.redirect_destination?.code)
         : requestedDestination;
     const effectiveDestinationNode = effectiveDestination.navigationNode;
 
@@ -116,9 +118,9 @@ export class NavigationRoutingService {
     }
 
     const accessibility = await this.resolveAccessibility(payload, user);
-    const route = await this.shortestPath(origin.id, effectiveDestinationNode.id, accessibility);
+    const route = await this.shortestPath(hospitalId, origin.id, effectiveDestinationNode.id, accessibility);
     const unrestrictedRoute = !route.found && accessibility.hasRoutingConstraint
-      ? await this.shortestPath(origin.id, effectiveDestinationNode.id)
+      ? await this.shortestPath(hospitalId, origin.id, effectiveDestinationNode.id)
       : null;
     const noAccessibleRoute = Boolean(accessibility.hasRoutingConstraint && !route.found && unrestrictedRoute?.found);
 
@@ -147,13 +149,13 @@ export class NavigationRoutingService {
     };
   }
 
-  private async resolveRedirectDestination(destinationCode?: string) {
+  private async resolveRedirectDestination(hospitalId: number, destinationCode?: string) {
     if (!destinationCode) {
       throw new BadRequestException('Destino de redirecionamento nao definido');
     }
 
     const destination = await this.prisma.destination.findUnique({
-      where: { code: destinationCode },
+      where: { hospitalId_code: { hospitalId, code: destinationCode } },
       include: { area: true, sector: true, navigationNode: true },
     });
 
@@ -216,10 +218,16 @@ export class NavigationRoutingService {
     return value === true;
   }
 
-  private async shortestPath(originNodeId: number, destinationNodeId: number, preferences?: RouteAccessibilityPreferences) {
+  private async shortestPath(
+    hospitalId: number,
+    originNodeId: number,
+    destinationNodeId: number,
+    preferences?: RouteAccessibilityPreferences,
+  ) {
+    // Grafo so do hospital atual (arestas pertencem ao hospital dos seus nos).
     const [nodes, edges] = await Promise.all([
-      this.prisma.navigationNode.findMany({ orderBy: { code: 'asc' } }),
-      this.prisma.routeEdge.findMany({ orderBy: { id: 'asc' } }),
+      this.prisma.navigationNode.findMany({ where: { hospitalId }, orderBy: { code: 'asc' } }),
+      this.prisma.routeEdge.findMany({ where: { fromNode: { hospitalId } }, orderBy: { id: 'asc' } }),
     ]) as [NodeRecord[], EdgeRecord[]];
 
     const nodesById = new Map(nodes.map((node) => [node.id, node]));

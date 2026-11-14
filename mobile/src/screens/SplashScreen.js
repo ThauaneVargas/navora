@@ -5,12 +5,10 @@ import {
   Easing,
   Image,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, {
   Circle,
   Defs,
@@ -136,8 +134,7 @@ export const SplashScreen = ({
   ready = true,
 }) => {
   const { width, height } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
-  const { appColors, t } = useApp();
+  const { appColors } = useApp();
 
   const layout = useMemo(() => {
     const stageWidth = Math.min(width, 430);
@@ -153,9 +150,8 @@ export const SplashScreen = ({
       logoSize: Math.min(stageWidth * 0.15, 60),
       nameWidth,
       nameHeight: nameWidth / 6.89,
-      loadingBottom: Math.max(stageHeight * 0.045, 34) + insets.bottom,
     };
-  }, [width, height, insets.bottom]);
+  }, [width, height]);
 
   const styles = useMemo(() => createStyles(layout), [layout]);
 
@@ -405,10 +401,6 @@ export const SplashScreen = ({
           </Svg>
         </View>
 
-        <View style={styles.loadingArea}>
-          <Text style={styles.loadingText}>{t('common.loading')}</Text>
-        </View>
-
         {/* Transição: esmaece para a cor de fundo da próxima tela (Login/Home), no tema atual. */}
         <View
           pointerEvents="none"
@@ -426,7 +418,6 @@ const createStyles = ({
   logoSize,
   nameWidth,
   nameHeight,
-  loadingBottom,
 }) => StyleSheet.create({
   container: {
     flex: 1,
@@ -511,20 +502,6 @@ const createStyles = ({
     height: 5,
     borderRadius: 7,
     backgroundColor: 'rgba(122, 16, 33, 0.22)',
-  },
-
-  loadingArea: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: loadingBottom,
-    alignItems: 'center',
-  },
-
-  loadingText: {
-    color: '#7B1027',
-    fontSize: 13,
-    fontWeight: '600',
   },
 });
 

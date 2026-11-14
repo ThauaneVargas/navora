@@ -8,7 +8,8 @@ function makePrisma() {
 
   return {
     operationalMessage: {
-      findMany: async () => [...messages].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+      findMany: async ({ where }: any = {}) =>
+        messages.filter((message) => message.hospitalId === where?.hospitalId).sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
       findUnique: async ({ where }: { where: { id: number } }) =>
         messages.find((message) => message.id === where.id) || null,
       create: async ({ data }: { data: Record<string, any> }) => {
@@ -34,7 +35,7 @@ function makePrisma() {
 async function run() {
   const service = new OperationalMessagesService(makePrisma() as any);
 
-  const created = await service.create({
+  const created = await service.create(1, {
     to: 'Recepcao',
     message: 'Aviso operacional',
     priority: 'Alta',
@@ -44,14 +45,16 @@ async function run() {
   assert.equal(created.priority, 'Alta');
   assert.equal(created.direction, 'Enviada');
 
-  const listed = await service.list();
+  const listed = await service.list(1);
   assert.equal(listed.length, 1);
 
-  const read = await service.markRead(created.id);
+  const read = await service.markRead(1, created.id);
   assert.ok(read.read_at);
 
-  await assert.rejects(() => service.create({ to: '', message: '' }), BadRequestException);
-  await assert.rejects(() => service.markRead(999), NotFoundException);
+  await assert.rejects(() => service.create(1, { to: '', message: '' }), BadRequestException);
+  await assert.rejects(() => service.markRead(1, 999), NotFoundException);
+  assert.equal((await service.list(2)).length, 0, 'outro hospital nao ve a mensagem');
+  await assert.rejects(() => service.markRead(2, created.id), NotFoundException, 'outro hospital nao marca como lida');
 
   console.log('operational messages service tests passed');
 }

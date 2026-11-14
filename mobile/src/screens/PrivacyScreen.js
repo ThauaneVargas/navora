@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert, Share } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
 import Header from '../components/Header';
@@ -15,7 +15,26 @@ export default function PrivacyScreen({ navigate, goBack, userProfile, onLogout 
   const styles = useMemo(() => createStyles(appColors), [appColors]);
   const [password, setPassword] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const hasAccount = Boolean(userProfile?.hasAccount);
+
+  // LGPD (portabilidade): o servidor monta o JSON e o celular abre o
+  // "Compartilhar" do sistema (salvar em arquivo, mandar por e-mail etc.).
+  const exportData = async () => {
+    setExporting(true);
+    try {
+      const data = await navoraApi.exportMyData();
+      await Share.share({ title: t('privacy.exportTitle'), message: JSON.stringify(data, null, 2) });
+    } catch (error) {
+      if (isNetworkError(error)) {
+        Alert.alert(t('common.noConnection'), t('privacy.offline'));
+      } else {
+        Alert.alert(t('privacy.exportFailTitle'), t('privacy.exportFail'));
+      }
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const deleteAccount = async () => {
     setDeleting(true);
@@ -80,6 +99,24 @@ export default function PrivacyScreen({ navigate, goBack, userProfile, onLogout 
           <Text style={styles.cardBody}>{section.body}</Text>
         </View>
       ))}
+
+      {hasAccount ? (
+        <View style={[styles.card, shadows.card]}>
+          <View style={styles.cardHeader}>
+            <View style={styles.cardIcon}>
+              <MaterialCommunityIcons name="download-outline" size={20} color={appColors.primary} />
+            </View>
+            <Text style={styles.cardTitle}>{t('privacy.exportTitle')}</Text>
+          </View>
+          <Text style={[styles.cardBody, styles.exportText]}>{t('privacy.exportText')}</Text>
+          <SecondaryButton
+            title={exporting ? t('privacy.exporting') : t('privacy.exportTitle')}
+            icon="download-outline"
+            disabled={exporting}
+            onPress={exportData}
+          />
+        </View>
+      ) : null}
 
       {hasAccount ? (
         <View style={[styles.card, styles.dangerCard, shadows.card]}>
@@ -193,6 +230,9 @@ const createStyles = (colors) => StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     fontWeight: '700',
+  },
+  exportText: {
+    marginBottom: 12,
   },
   dangerCard: {
     borderColor: colors.danger,

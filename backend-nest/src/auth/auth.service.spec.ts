@@ -18,6 +18,9 @@ function user(overrides: Record<string, any> = {}) {
     name: overrides.name ?? 'Admin Navora',
     phone: overrides.phone ?? null,
     role: overrides.role ?? UserRole.ADMIN,
+    // Equipe pertence a um hospital (o include traz se ele esta ativo).
+    hospitalId: 'hospitalId' in overrides ? overrides.hospitalId : (overrides.role ?? UserRole.ADMIN) === UserRole.PATIENT ? null : 1,
+    hospital: 'hospital' in overrides ? overrides.hospital : { active: true },
     active: overrides.active ?? true,
     passwordChangedAt: null as Date | null,
     createdAt: new Date('2026-01-01T00:00:00.000Z'),
@@ -33,6 +36,9 @@ function makeService(users: any[]) {
         if (where.id) return users.find((item) => item.id === where.id) ?? null;
         return null;
       },
+    },
+    hospital: {
+      findUnique: async ({ where }: any) => (where.id === 1 ? { id: 1, code: 'hmc', name: 'Hospital Marco Capute' } : null),
     },
   };
   const config = {
@@ -104,6 +110,19 @@ async function run() {
   const me = await controller.me(validated);
   assert.equal(me.email, activeAdmin.email, '/auth/me retorna usuario autenticado');
   assert.equal(Object.prototype.hasOwnProperty.call(me, 'passwordHash'), false, '/auth/me nao serializa passwordHash');
+  assert.equal(me.hospital?.name, 'Hospital Marco Capute', '/auth/me diz em qual hospital a equipe esta');
+  assert.equal(validated.hospitalId, 1, 'usuario autenticado traz o hospital do banco');
+
+  // Equipe sem hospital, ou com hospital desligado, nao entra.
+  const orphanStaff = user({ id: 30, email: 'orfao@navora.com', hospitalId: null, hospital: null, passwordHash });
+  await expectUnauthorized('equipe sem hospital', () => makeService([orphanStaff]).login({ email: orphanStaff.email, password: 'senha-correta' }));
+  const closedHospitalStaff = user({ id: 31, email: 'fechado@navora.com', hospital: { active: false }, passwordHash });
+  await expectUnauthorized('hospital desligado', () => makeService([closedHospitalStaff]).login({ email: closedHospitalStaff.email, password: 'senha-correta' }));
+  const switchable = user({ id: 32, email: 'sessao@navora.com', passwordHash });
+  const switchableService = makeService([switchable]);
+  const switchableLogin = await switchableService.login({ email: switchable.email, password: 'senha-correta' });
+  (switchable as any).hospital = { active: false };
+  await expectUnauthorized('hospital desligado derruba sessao aberta', () => switchableService.validateToken(switchableLogin.access_token));
 
   const guard = new JwtAuthGuard(service);
   const validContext = makeContext(`Bearer ${login.access_token}`);

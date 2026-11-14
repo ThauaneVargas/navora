@@ -13,10 +13,11 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import CenteredFormScreen from '../components/CenteredFormScreen';
 import { navoraApi, isNetworkError } from '../services/api';
 
-export default function ForgotPasswordScreen({ navigate, goBack }) {
+export default function ForgotPasswordScreen({ navigate, goBack, routeParams = {} }) {
   const { appColors: colors, t } = useApp();
   const styles = useThemeStyles();
-  const [email, setEmail] = useState('');
+  // Vindo de "Segurança da conta" no Perfil, já abre com o e-mail da conta.
+  const [email, setEmail] = useState(routeParams.email || '');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
 
