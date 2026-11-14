@@ -78,7 +78,8 @@
       ],
       "./plugins/withShortCmakeStaging",
       "./plugins/withReleaseMinifyOff",
-      "./plugins/withNoAutofillHighlight"
+      "./plugins/withNoAutofillHighlight",
+      "expo-sqlite"
     ]
   }
 }

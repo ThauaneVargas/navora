@@ -10,7 +10,6 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
   useWindowDimensions,
@@ -51,6 +50,8 @@ import {
   removeProfilePhotoUri,
   saveProfilePhotoUri,
 } from '../services/profilePhotoService';
+import styles from './profile/profileStyles';
+import { PhotoMenuItem, ProfileSection } from './profile/ProfileRows';
 
 
 function getInitials(
@@ -370,6 +371,30 @@ export default function ProfileScreen({
     userProfile?.authSource === 'api' ||
     Boolean(userProfile?.hasAccount);
 
+  // Paciente e visitante usam a mesma conta (login obrigatório desde 29/10):
+  // os dois podem editar o cadastro. Antes o modo visitante não tinha edição.
+  const canEditAccount = hasAccount;
+
+  // Segurança da conta: antes abria Configurações (igual ao item
+  // "Configurações"). Agora oferece o que existe de segurança de verdade.
+  const openSecurity = () => {
+    Alert.alert(
+      t('profile.security'),
+      t('profile.securityText'),
+      [
+        {
+          text: t('profile.changePassword'),
+          onPress: () => navigate('ForgotPassword', { email: userProfile?.email || '' }),
+        },
+        {
+          text: t('profile.deleteAccount'),
+          onPress: () => navigate('Privacy'),
+        },
+        { text: t('common.close'), style: 'cancel' },
+      ]
+    );
+  };
+
   const openAccountHelp = () => {
     Alert.alert(
       t('profile.accountHelp'),
@@ -394,7 +419,7 @@ export default function ProfileScreen({
           ? [
               {
                 text: t('profile.security'),
-                onPress: () => navigate('Settings', { section: 'security' }),
+                onPress: openSecurity,
               },
             ]
           : []),
@@ -415,13 +440,13 @@ export default function ProfileScreen({
         t('profile.personalDataSub'),
 
       onPress:
-        isVisitor
-          ? undefined
-          : () =>
+        canEditAccount
+          ? () =>
               navigate(
                 'PatientRegister',
                 { mode: 'edit', initialValues: buildEditInitialValues(userProfile) }
-              ),
+              )
+          : undefined,
     },
 
     {
@@ -437,13 +462,13 @@ export default function ProfileScreen({
       highlight: true,
 
       onPress:
-        isVisitor
-          ? undefined
-          : () =>
+        canEditAccount
+          ? () =>
               navigate(
                 'PatientRegister',
                 { mode: 'edit', initialValues: buildEditInitialValues(userProfile), focus: 'emergencyContact' }
-              ),
+              )
+          : undefined,
     },
 
     // Desde 29/10 só se entra com conta, então isto não aparece mais; fica
@@ -481,14 +506,7 @@ export default function ProfileScreen({
       subtitle:
         t('profile.securitySub'),
 
-      onPress: () =>
-        navigate(
-          'Settings',
-          {
-            section:
-              'security',
-          }
-        ),
+      onPress: openSecurity,
     },
 
     {
@@ -863,7 +881,7 @@ export default function ProfileScreen({
             </View>
 
 
-            {!isVisitor && (
+            {canEditAccount && (
               <Pressable
                 onPress={() =>
                   navigate(
@@ -1445,739 +1463,3 @@ export default function ProfileScreen({
 }
 
 
-function ProfileSection({
-  title,
-  items,
-  appColors,
-}) {
-  return (
-    <View
-      style={
-        styles.section
-      }
-    >
-      <Text
-        style={[
-          styles.sectionTitle,
-
-          {
-            color:
-              appColors.text,
-          },
-        ]}
-      >
-        {title}
-      </Text>
-
-
-      <View
-        style={[
-          styles.sectionCard,
-
-          {
-            backgroundColor:
-              appColors.surface,
-
-            borderColor:
-              appColors.border,
-          },
-
-          shadows.card,
-        ]}
-      >
-        {items.map(
-          (
-            item,
-            index
-          ) => {
-            const isLast =
-              index ===
-              items.length - 1;
-
-            return (
-              <Pressable
-                key={
-                  item.title
-                }
-                disabled={
-                  !item.onPress
-                }
-                onPress={
-                  item.onPress
-                }
-                style={({ pressed }) => [
-                  styles.row,
-
-                  !isLast && {
-                    borderBottomWidth:
-                      1,
-
-                    borderBottomColor:
-                      appColors.border,
-                  },
-
-                  pressed &&
-                    item.onPress &&
-                    styles.rowPressed,
-                ]}
-              >
-                <View
-                  style={[
-                    styles.rowIcon,
-
-                    {
-                      backgroundColor:
-                        item.highlight
-                          ? appColors.surfaceAlt
-                          : appColors.iconBg,
-                    },
-                  ]}
-                >
-                  <MaterialCommunityIcons
-                    name={
-                      item.icon
-                    }
-                    size={20}
-                    color={
-                      item.highlight
-                        ? appColors.danger
-                        : appColors.primary
-                    }
-                  />
-                </View>
-
-
-                <View
-                  style={
-                    styles.rowCopy
-                  }
-                >
-                  <Text
-                    style={[
-                      styles.itemTitle,
-
-                      {
-                        color:
-                          appColors.text,
-                      },
-                    ]}
-                  >
-                    {item.title}
-                  </Text>
-
-
-                  {!!item.subtitle && (
-                    <Text
-                      numberOfLines={
-                        2
-                      }
-                      style={[
-                        styles.itemSubtitle,
-
-                        {
-                          color:
-                            appColors.muted,
-                        },
-                      ]}
-                    >
-                      {
-                        item.subtitle
-                      }
-                    </Text>
-                  )}
-                </View>
-
-
-                {item.onPress && (
-                  <MaterialCommunityIcons
-                    name="chevron-right"
-                    size={21}
-                    color={
-                      appColors.muted
-                    }
-                  />
-                )}
-              </Pressable>
-            );
-          }
-        )}
-      </View>
-    </View>
-  );
-}
-
-
-function PhotoMenuItem({
-  icon,
-  title,
-  subtitle,
-  appColors,
-  danger = false,
-  onPress,
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.photoMenuItem,
-
-        {
-          borderBottomColor:
-            appColors.border,
-        },
-
-        pressed &&
-          styles.pressed,
-      ]}
-    >
-      <View
-        style={[
-          styles.photoMenuIcon,
-
-          {
-            backgroundColor:
-              danger
-                ? appColors.surfaceAlt
-                : appColors.iconBg,
-          },
-        ]}
-      >
-        <MaterialCommunityIcons
-          name={icon}
-          size={22}
-          color={
-            danger
-              ? appColors.danger
-              : appColors.primary
-          }
-        />
-      </View>
-
-
-      <View
-        style={
-          styles.photoMenuCopy
-        }
-      >
-        <Text
-          style={[
-            styles.photoMenuItemTitle,
-
-            {
-              color:
-                danger
-                  ? appColors.danger
-                  : appColors.text,
-            },
-          ]}
-        >
-          {title}
-        </Text>
-
-        <Text
-          style={[
-            styles.photoMenuItemSubtitle,
-
-            {
-              color:
-                appColors.muted,
-            },
-          ]}
-        >
-          {subtitle}
-        </Text>
-      </View>
-
-      <MaterialCommunityIcons
-        name="chevron-right"
-        size={21}
-        color={
-          appColors.muted
-        }
-      />
-    </Pressable>
-  );
-}
-
-
-const styles =
-  StyleSheet.create({
-    stage: {
-      flex: 1,
-    },
-
-    content: {
-      width: '100%',
-      maxWidth: 430,
-
-      alignSelf: 'center',
-
-      paddingHorizontal: 16,
-    },
-
-    profileCard: {
-      minHeight: 104,
-
-      marginTop: 16,
-
-      paddingHorizontal: 14,
-      paddingVertical: 14,
-
-      borderRadius: 20,
-      borderWidth: 1,
-
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-
-    avatarButton: {
-      width: 72,
-      height: 72,
-
-      borderRadius: 36,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-
-      position: 'relative',
-    },
-
-    profilePhoto: {
-      width: 72,
-      height: 72,
-
-      borderRadius: 36,
-    },
-
-    initials: {
-      color: '#FFFFFF',
-
-      fontSize: 22,
-      fontWeight: '900',
-    },
-
-    cameraBadge: {
-      position: 'absolute',
-
-      right: -2,
-      bottom: -2,
-
-      width: 27,
-      height: 27,
-
-      borderRadius: 14,
-
-      borderWidth: 2,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    profileCopy: {
-      flex: 1,
-      minWidth: 0,
-
-      marginLeft: 14,
-    },
-
-    profileName: {
-      fontSize: 18,
-      lineHeight: 23,
-
-      fontWeight: '800',
-    },
-
-    profileRole: {
-      marginTop: 3,
-
-      fontSize: 12,
-      fontWeight: '700',
-    },
-
-    profileHint: {
-      marginTop: 5,
-
-      fontSize: 11,
-      lineHeight: 15,
-
-      fontWeight: '500',
-    },
-
-    editButton: {
-      width: 36,
-      height: 36,
-
-      marginLeft: 8,
-
-      borderRadius: 18,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    themeCard: {
-      minHeight: 68,
-
-      marginTop: 12,
-
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-
-      borderRadius: 18,
-      borderWidth: 1,
-
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-
-    mainIcon: {
-      width: 40,
-      height: 40,
-
-      borderRadius: 13,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    themeCopy: {
-      flex: 1,
-      minWidth: 0,
-
-      marginLeft: 11,
-      marginRight: 10,
-    },
-
-    switchTrack: {
-      width: 48,
-      height: 28,
-
-      padding: 3,
-
-      borderRadius: 14,
-
-      justifyContent: 'center',
-    },
-
-    switchKnob: {
-      width: 22,
-      height: 22,
-
-      borderRadius: 11,
-
-      backgroundColor:
-        '#FFFFFF',
-    },
-
-    switchKnobActive: {
-      alignSelf: 'flex-end',
-    },
-
-    section: {
-      marginTop: 20,
-    },
-
-    sectionTitle: {
-      marginBottom: 9,
-
-      fontSize: 16,
-      fontWeight: '800',
-    },
-
-    sectionCard: {
-      overflow: 'hidden',
-
-      borderRadius: 18,
-      borderWidth: 1,
-    },
-
-    row: {
-      minHeight: 64,
-
-      paddingHorizontal: 14,
-      paddingVertical: 10,
-
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-
-    rowPressed: {
-      opacity: 0.72,
-    },
-
-    rowIcon: {
-      width: 40,
-      height: 40,
-
-      borderRadius: 13,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    rowCopy: {
-      flex: 1,
-      minWidth: 0,
-
-      marginLeft: 11,
-      marginRight: 7,
-    },
-
-    itemTitle: {
-      fontSize: 14,
-      fontWeight: '700',
-    },
-
-    itemSubtitle: {
-      marginTop: 3,
-
-      fontSize: 11.5,
-      lineHeight: 16,
-
-      fontWeight: '500',
-    },
-
-    logoutButton: {
-      height: 54,
-
-      marginTop: 22,
-      marginBottom: 10,
-
-      borderRadius: 16,
-      borderWidth: 1,
-
-      flexDirection: 'row',
-
-      alignItems: 'center',
-      justifyContent: 'center',
-
-      gap: 8,
-    },
-
-    logoutText: {
-      fontSize: 14,
-      fontWeight: '800',
-    },
-
-    modalOverlay: {
-      flex: 1,
-
-      backgroundColor:
-        'rgba(0,0,0,0.48)',
-
-      justifyContent:
-        'flex-end',
-
-      paddingHorizontal: 14,
-      paddingBottom: 16,
-    },
-
-    photoMenu: {
-      width: '100%',
-      maxWidth: 430,
-
-      alignSelf: 'center',
-
-      borderRadius: 24,
-      borderWidth: 1,
-
-      paddingHorizontal: 16,
-      paddingTop: 10,
-      paddingBottom: 16,
-    },
-
-    modalHandle: {
-      width: 42,
-      height: 4,
-
-      borderRadius: 4,
-
-      backgroundColor:
-        '#C8C8CE',
-
-      alignSelf: 'center',
-
-      marginBottom: 16,
-    },
-
-    photoMenuTitle: {
-      fontSize: 19,
-      fontWeight: '800',
-    },
-
-    photoMenuSubtitle: {
-      marginTop: 4,
-      marginBottom: 12,
-
-      fontSize: 12,
-      lineHeight: 17,
-
-      fontWeight: '500',
-    },
-
-    photoMenuItem: {
-      minHeight: 66,
-
-      borderBottomWidth: 1,
-
-      flexDirection: 'row',
-      alignItems: 'center',
-
-      paddingVertical: 10,
-    },
-
-    photoMenuIcon: {
-      width: 42,
-      height: 42,
-
-      borderRadius: 14,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    photoMenuCopy: {
-      flex: 1,
-
-      marginLeft: 12,
-      marginRight: 8,
-    },
-
-    photoMenuItemTitle: {
-      fontSize: 14,
-      fontWeight: '700',
-    },
-
-    photoMenuItemSubtitle: {
-      marginTop: 3,
-
-      fontSize: 11.5,
-      lineHeight: 16,
-
-      fontWeight: '500',
-    },
-
-    cancelButton: {
-      height: 48,
-
-      marginTop: 14,
-
-      borderRadius: 15,
-      borderWidth: 1,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    cancelButtonText: {
-      fontSize: 14,
-      fontWeight: '700',
-    },
-
-    confirmOverlay: {
-      flex: 1,
-
-      backgroundColor:
-        'rgba(0,0,0,0.5)',
-
-      alignItems: 'center',
-      justifyContent: 'center',
-
-      paddingHorizontal: 24,
-    },
-
-    confirmCard: {
-      width: '100%',
-      maxWidth: 380,
-
-      borderRadius: 22,
-      borderWidth: 1,
-
-      padding: 20,
-
-      alignItems: 'center',
-    },
-
-    confirmIcon: {
-      width: 52,
-      height: 52,
-
-      borderRadius: 18,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-
-      marginBottom: 14,
-    },
-
-    confirmTitle: {
-      fontSize: 19,
-      fontWeight: '800',
-
-      textAlign: 'center',
-    },
-
-    confirmText: {
-      marginTop: 8,
-
-      fontSize: 13,
-      lineHeight: 19,
-
-      textAlign: 'center',
-    },
-
-    confirmActions: {
-      width: '100%',
-
-      flexDirection: 'row',
-
-      gap: 10,
-
-      marginTop: 20,
-    },
-
-    confirmCancel: {
-      flex: 1,
-
-      height: 48,
-
-      borderRadius: 15,
-      borderWidth: 1,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    confirmCancelText: {
-      fontSize: 14,
-      fontWeight: '700',
-    },
-
-    confirmRemove: {
-      flex: 1,
-
-      height: 48,
-
-      borderRadius: 15,
-
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-
-    confirmRemoveText: {
-      color: '#FFFFFF',
-
-      fontSize: 14,
-      fontWeight: '800',
-    },
-
-    pressed: {
-      opacity: 0.82,
-
-      transform: [
-        {
-          scale: 0.98,
-        },
-      ],
-    },
-  });

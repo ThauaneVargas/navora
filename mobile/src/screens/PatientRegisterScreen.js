@@ -75,7 +75,7 @@ const buildSelectedFromAccessibility = (accessibility = {}) =>
       .map(([key]) => [accessibilityKeyToLabel[key], true])
   );
 
-export default function PatientRegisterScreen({ navigate, onPatientReady, routeParams = {} }) {
+export default function PatientRegisterScreen({ navigate, onPatientReady, onProfileUpdated, routeParams = {} }) {
   const { appColors, t, language } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
   const policy = useMemo(() => getPrivacyPolicy(language), [language]);
@@ -154,7 +154,8 @@ export default function PatientRegisterScreen({ navigate, onPatientReady, routeP
         await navoraApi.updateMyPatientProfile(editPayload);
         const authUser = await navoraApi.getAuthMe();
         const patient = await navoraApi.getMyPatientProfile();
-        onPatientReady?.({ ...patient, apiUser: authUser, authSource: 'api', hasAccount: true });
+        // Só atualiza os dados (mantém modo paciente/visitante, rota e visita).
+        (onProfileUpdated || onPatientReady)?.({ ...patient, apiUser: authUser, authSource: 'api', hasAccount: true });
         Alert.alert(t('register.updatedTitle'), t('register.updated'));
         navigate('Profile');
       } catch (error) {

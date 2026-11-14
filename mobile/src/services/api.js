@@ -10,6 +10,30 @@ import {
 } from './navigationAdapter';
 import { getAuthToken } from './authToken';
 import { findNavoraBeacon } from './ibeacon';
+import {
+  loadNavigationSnapshot,
+  loadRoutePreview,
+  saveNavigationSnapshot,
+  saveRoutePreview,
+} from './offlineDatabase';
+import { setConnectionStatus } from './connectionStatus';
+
+// Com mapa já salvo no celular, não espera a API mais que isso para abrir:
+// sinal fraco no hospital (subsolo, elevador) deixava o app parado no splash.
+// A resposta que chegar depois atualiza o mapa em segundo plano (onUpdate).
+const BOOTSTRAP_WAIT_WITH_CACHE_MS = 6000;
+
+async function fetchNavigationBootstrap() {
+  const response = await fetch(`${API_BASE_URL}/navigation/bootstrap`, {
+    headers: { 'Content-Type': 'application/json', ...HOSPITAL_HEADERS },
+  });
+  setConnectionStatus({ offline: false });
+  if (!response.ok) throw new Error(`Erro na API Navora: ${response.status}`);
+  const raw = await response.json();
+  await saveNavigationSnapshot(HOSPITAL_CODE, raw);
+  setConnectionStatus({ syncedAt: new Date().toISOString() });
+  return normalizeApiEnvelope(normalizeNavigationBootstrap(raw), 'api');
+}
 
 const configuredApiUrl = process.env.EXPO_PUBLIC_NAVORA_API_URL;
 const API_BASE_URL = (configuredApiUrl || 'http://localhost:8000').replace(/\/$/, '');
@@ -17,7 +41,7 @@ const API_BASE_URL = (configuredApiUrl || 'http://localhost:8000').replace(/\/$/
 // Hospital em que o app esta (cada hospital cliente do Navora tem um codigo).
 // Vai em toda requisicao no header X-Hospital: o backend so mostra o mapa, os
 // beacons e recebe SOS/visita deste hospital. Sem a variavel, "hmc".
-const HOSPITAL_CODE = (process.env.EXPO_PUBLIC_HOSPITAL_CODE || 'hmc').trim().toLowerCase();
+export const HOSPITAL_CODE = (process.env.EXPO_PUBLIC_HOSPITAL_CODE || 'hmc').trim().toLowerCase();
 const HOSPITAL_HEADERS = { 'X-Hospital': HOSPITAL_CODE };
 
 if (!configuredApiUrl) {
@@ -120,6 +144,8 @@ async function request(path, options = {}, fallback) {
       ...fetchOptions,
     });
     clearTimeout(timeoutId);
+    // Qualquer resposta (até erro 4xx) quer dizer que o servidor foi alcançado.
+    setConnectionStatus({ offline: false });
     const data = await parseResponse(response);
 
     if (!response.ok) {
@@ -141,6 +167,7 @@ async function request(path, options = {}, fallback) {
             { network: true, timeout: isTimeout }
           );
     if (apiError.network) {
+      setConnectionStatus({ offline: true });
       if (typeof fallback === 'function') return fallback(apiError);
       if (fallback !== undefined) return fallback;
     }
@@ -239,8 +266,43 @@ export const navoraApi = {
     request('/auth/reset-password', { method: 'POST', body: JSON.stringify({ email, token, newPassword }) }),
   loginWithGoogle: (idToken) => request('/auth/google', { method: 'POST', body: JSON.stringify({ idToken }) }, null),
   getRoutes: () => request('/routes', {}, []),
-  getNavigationBootstrap: () =>
-    navigationRequest('/navigation/bootstrap', {}, fallbackNavigationBootstrap, normalizeNavigationBootstrap),
+  // Com internet: usa a API e guarda o mapa no banco local (offlineDatabase).
+  // Sem internet: lê do banco local; nunca baixou -> dados fixos (fallback).
+  // Dado do banco local volta com source 'api' (é a resposta da API, só que
+  // salva) e offline: true, pra as telas usarem os destinos reais.
+  // onUpdate(result): chamado se a API responder depois de o app já ter
+  // aberto com o mapa salvo.
+  getNavigationBootstrap: async ({ onUpdate } = {}) => {
+    const saved = await loadNavigationSnapshot(HOSPITAL_CODE);
+    if (saved?.syncedAt) setConnectionStatus({ syncedAt: saved.syncedAt });
+    const fromApi = fetchNavigationBootstrap();
+
+    if (!saved) {
+      try {
+        return await fromApi;
+      } catch {
+        setConnectionStatus({ offline: true });
+        return normalizeApiEnvelope(normalizeNavigationBootstrap(fallbackNavigationBootstrap), 'fallback');
+      }
+    }
+
+    const TIMED_OUT = Symbol('timeout');
+    const first = await Promise.race([
+      fromApi.catch(() => null),
+      new Promise((resolve) => setTimeout(() => resolve(TIMED_OUT), BOOTSTRAP_WAIT_WITH_CACHE_MS)),
+    ]);
+    if (first && first !== TIMED_OUT) return first;
+
+    setConnectionStatus({ offline: true });
+    if (first === TIMED_OUT) {
+      fromApi.then((result) => onUpdate?.(result)).catch(() => {});
+    }
+    return {
+      ...normalizeApiEnvelope(normalizeNavigationBootstrap(saved), 'api'),
+      offline: true,
+      syncedAt: saved.syncedAt,
+    };
+  },
   getNavigationAreas: () =>
     navigationRequest('/navigation/areas', {}, fallbackNavigationBootstrap.areas, normalizeAreas),
   getNavigationDestinations: (filters = {}) => {
@@ -267,9 +329,22 @@ export const navoraApi = {
         authenticated: payload?.subject === 'PATIENT',
         body: JSON.stringify(payload),
       });
+      saveRoutePreview(HOSPITAL_CODE, payload, data);
       return normalizeApiEnvelope(normalizeRoutePreview(data, 'api', fallbackDestination), 'api');
     } catch (error) {
       if (isNetworkError(error)) {
+        // Mesma rota já calculada com internet: usa a salva no banco local.
+        const saved = await loadRoutePreview(HOSPITAL_CODE, payload);
+        if (saved) {
+          return normalizeApiEnvelope(
+            {
+              ...normalizeRoutePreview(saved.preview, 'api', fallbackDestination),
+              offlineCache: true,
+              savedAt: saved.savedAt,
+            },
+            'api'
+          );
+        }
         return normalizeApiEnvelope(
           normalizeRoutePreview(fallbackRoutePreview(payload, fallbackDestination), 'fallback', fallbackDestination),
           'fallback'

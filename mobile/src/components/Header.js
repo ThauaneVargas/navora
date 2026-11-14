@@ -14,6 +14,9 @@ import {
 } from '../context/AppContext';
 
 import HeaderIconButton from './HeaderIconButton';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useConnectionStatus } from '../services/connectionStatus';
+import { localeFor } from '../i18n';
 
 import {
   APP_MAX_WIDTH,
@@ -52,7 +55,23 @@ export default function Header({
   const {
     appColors,
     t,
+    language,
   } = useApp();
+
+  const connection =
+    useConnectionStatus();
+
+  const offlineLabel =
+    connection.syncedAt
+      ? t('offline.bannerSaved', {
+          date: new Date(connection.syncedAt).toLocaleString(localeFor(language), {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+          }),
+        })
+      : t('offline.banner');
 
   const availableWidth =
     IS_WEB
@@ -214,6 +233,29 @@ export default function Header({
             />
           )}
         </View>
+
+        {/* SEM CONEXÃO: aviso discreto de que os dados vêm do celular. */}
+        {connection.offline ? (
+          <View
+            accessibilityRole="text"
+            style={styles.offlineRow}
+          >
+            <MaterialCommunityIcons
+              name="wifi-off"
+              size={14}
+              color={appColors.muted}
+            />
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.offlineText,
+                { color: appColors.muted },
+              ]}
+            >
+              {offlineLabel}
+            </Text>
+          </View>
+        ) : null}
       </View>
 
 
@@ -301,6 +343,20 @@ const styles =
     sideSpacer: {
       width: 42,
       height: 42,
+    },
+
+    offlineRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 6,
+      paddingTop: 4,
+    },
+
+    offlineText: {
+      fontSize: 12,
+      lineHeight: 16,
+      fontWeight: '600',
     },
 
     centerArea: {

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Switch } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
@@ -6,19 +6,41 @@ import Header from '../components/Header';
 import { shadows } from '../theme/colors';
 import { useApp } from '../context/AppContext';
 import LanguagePicker from '../components/LanguagePicker';
+import { HOSPITAL_CODE } from '../services/api';
+import { getOfflineDatabaseInfo, subscribeOfflineDatabase } from '../services/offlineDatabase';
+import { localeFor } from '../i18n';
 
 export default function SettingsScreen({ navigate, goBack }) {
-  const { appColors, isDark, toggleTheme, t } = useApp();
+  const { appColors, isDark, toggleTheme, t, language } = useApp();
   const styles = useMemo(() => createStyles(appColors), [appColors]);
 
-  const [prefs, setPrefs] = useState({
-    routeAlerts: true,
-    sosVibration: true,
-    voiceGuidance: false,
-    offlineMode: true,
-  });
+  // O que o banco local (SQLite) já guardou para usar sem internet.
+  const [offlineInfo, setOfflineInfo] = useState(null);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => getOfflineDatabaseInfo(HOSPITAL_CODE).then((info) => active && setOfflineInfo(info));
+    refresh();
+    const unsubscribe = subscribeOfflineDatabase(refresh);
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, []);
 
-  const toggle = (key) => setPrefs((current) => ({ ...current, [key]: !current[key] }));
+  const offlineSubtitle = offlineInfo?.syncedAt
+    ? t('settings.offlineSaved', {
+        destinations: offlineInfo.destinations,
+        routes: offlineInfo.routes,
+        date: new Date(offlineInfo.syncedAt).toLocaleString(localeFor(language), {
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      })
+    : offlineInfo
+      ? t('settings.offlineEmpty')
+      : t('settings.offlineModeSub');
 
   return (
     <Screen>
@@ -49,75 +71,16 @@ export default function SettingsScreen({ navigate, goBack }) {
         />
       </View>
 
-      <SectionLabel label={t('settings.notifications')} styles={styles} />
-      <View style={[styles.group, shadows.card]}>
-        <SettingRow
-          icon="routes"
-          title={t('settings.routeAlerts')}
-          subtitle={t('settings.routeAlertsSub')}
-          styles={styles}
-          appColors={appColors}
-          last={false}
-          trailing={
-            <Switch
-              value={prefs.routeAlerts}
-              onValueChange={() => toggle('routeAlerts')}
-              trackColor={{ false: appColors.border, true: appColors.primary }}
-              thumbColor="#FFFFFF"
-            />
-          }
-        />
-        <SettingRow
-          icon="alarm-light-outline"
-          title={t('settings.sosVibration')}
-          subtitle={t('settings.sosVibrationSub')}
-          styles={styles}
-          appColors={appColors}
-          last={false}
-          trailing={
-            <Switch
-              value={prefs.sosVibration}
-              onValueChange={() => toggle('sosVibration')}
-              trackColor={{ false: appColors.border, true: appColors.primary }}
-              thumbColor="#FFFFFF"
-            />
-          }
-        />
-        <SettingRow
-          icon="volume-high"
-          title={t('settings.voiceGuidance')}
-          subtitle={t('settings.voiceGuidanceSub')}
-          styles={styles}
-          appColors={appColors}
-          last
-          trailing={
-            <Switch
-              value={prefs.voiceGuidance}
-              onValueChange={() => toggle('voiceGuidance')}
-              trackColor={{ false: appColors.border, true: appColors.primary }}
-              thumbColor="#FFFFFF"
-            />
-          }
-        />
-      </View>
-
       <SectionLabel label={t('settings.dataConnection')} styles={styles} />
       <View style={[styles.group, shadows.card]}>
         <SettingRow
-          icon="wifi-off"
+          icon="database-outline"
           title={t('settings.offlineMode')}
-          subtitle={t('settings.offlineModeSub')}
+          subtitle={offlineSubtitle}
           styles={styles}
           appColors={appColors}
           last={false}
-          trailing={
-            <Switch
-              value={prefs.offlineMode}
-              onValueChange={() => toggle('offlineMode')}
-              trackColor={{ false: appColors.border, true: appColors.primary }}
-              thumbColor="#FFFFFF"
-            />
-          }
+          noChevron
         />
         <SettingRow
           icon="shield-lock-outline"
