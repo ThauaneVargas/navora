@@ -273,6 +273,8 @@ export default {
     helpSos: 'Ajuda / SOS',
     foodTitle: 'Lanchonete e café',
     foodSub: 'Comida fresca e café perto da recepção',
+    snackTitle: 'Café e lanches',
+    snackSub: 'Geladeira com lanches e café perto da recepção',
     selectedDestination: 'Destino selecionado',
     entranceIdentified: 'Entrada identificada',
     setByReception: 'Definido pela recepção',

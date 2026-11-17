@@ -159,6 +159,8 @@ export const destinations = [
   { id: 'sus-exame-sangue', icon: 'test-tube', name: 'Exame de sangue', area: 'sus', category: 'Exames', floor: 'Piso Terreo', distance: '155 m', time: '3 min', accessLevel: 'patient', externalPatientAccess: true },
   { id: 'sus-bathroom', icon: 'toilet', name: 'Banheiro SUS', area: 'sus', category: 'Servicos', floor: 'Piso Terreo', distance: '70 m', time: '1 min', accessLevel: 'visitor_allowed' },
   { id: 'sus-waiting', icon: 'seat-outline', name: 'Sala de espera SUS', area: 'sus', category: 'Servicos', floor: 'Piso Terreo', distance: '80 m', time: '1 min', accessLevel: 'visitor_allowed' },
+  // Geladeira com lanches e café perto da recepção do SUS (sem planta; distância estimada).
+  { id: 'sus-cafe', icon: 'coffee-outline', name: 'Café e lanches (autoatendimento)', area: 'sus', category: 'Alimentacao', floor: 'Piso Terreo', distance: '10 m', time: '1 min', accessLevel: 'public' },
   { id: 'sus-exit', icon: 'exit-run', name: 'Saida SUS', area: 'sus', category: 'Servicos', floor: 'Piso Terreo', distance: '95 m', time: '2 min', accessLevel: 'public' },
   { id: 'sus-visita', icon: 'account-heart-outline', name: 'Visita / Internacao Hospital Marco Capute', area: 'sus', category: 'Visita', floor: '1o Andar', distance: '220 m', time: '4 min', accessLevel: 'visitor_authorization' },
   { id: 'shared-lost', icon: 'compass-outline', name: 'Recepcao mais proxima', area: 'shared', category: 'Servicos', floor: 'Piso Terreo', distance: '50 m', time: '1 min', accessLevel: 'public' },

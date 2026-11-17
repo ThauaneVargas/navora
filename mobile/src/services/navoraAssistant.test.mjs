@@ -92,10 +92,12 @@ test('"como chegar" ao hospital vs. a um setor', () => {
   assert.equal(ask('como chegar na tomografia').intent, 'destination');
 });
 
-test('lanchonete só existe no Private: no SUS o assistente não inventa uma', () => {
-  const answer = ask('onde fica a lanchonete', patientSus);
-  assert.notEqual(answer.actionParams?.query, 'Lanchonete SUS');
-  assert.match(answer.text, /HMC Private/);
+test('no SUS não tem lanchonete: fome/café levam à geladeira do próprio SUS', () => {
+  for (const phrase of ['onde fica a lanchonete', 'estou com fome', 'quero um cafe']) {
+    const answer = ask(phrase, patientSus);
+    assert.equal(answer.intent, 'destination', phrase);
+    assert.equal(answer.actionParams.query, 'Café e lanches (autoatendimento)', phrase);
+  }
 });
 
 test('banheiro do Marco Capute é destino, não troca de unidade', () => {

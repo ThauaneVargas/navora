@@ -272,6 +272,8 @@ export default {
     helpSos: 'Ayuda / SOS',
     foodTitle: 'Cafetería y café',
     foodSub: 'Comida fresca y café cerca de la recepción',
+    snackTitle: 'Café y meriendas',
+    snackSub: 'Nevera con meriendas y café cerca de la recepción',
     selectedDestination: 'Destino seleccionado',
     entranceIdentified: 'Entrada identificada',
     setByReception: 'Definido por la recepción',

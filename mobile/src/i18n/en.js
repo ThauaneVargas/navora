@@ -272,6 +272,8 @@ export default {
     helpSos: 'Help / SOS',
     foodTitle: 'Snack bar and coffee',
     foodSub: 'Fresh food and coffee near the reception',
+    snackTitle: 'Coffee and snacks',
+    snackSub: 'Snack and coffee fridge near the reception',
     selectedDestination: 'Selected destination',
     entranceIdentified: 'Entrance identified',
     setByReception: 'Set by the reception',

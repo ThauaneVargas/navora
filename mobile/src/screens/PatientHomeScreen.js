@@ -74,6 +74,12 @@ const DENIED_STATUSES =
   ]);
 
 
+// Card "Alimentação" da tela inicial, por unidade (o que existe em cada uma).
+const FOOD_CARD_KEYS = {
+  private: { title: 'home.foodTitle', sub: 'home.foodSub' },
+  sus: { title: 'home.snackTitle', sub: 'home.snackSub' },
+};
+
 export default function PatientHomeScreen({
   navigate,
 
@@ -1100,15 +1106,16 @@ export default function PatientHomeScreen({
             </View>
 
             {/*
-             * Lanchonete e ponto de café: só o HMC Private tem (planta de
-             * 17/11). Card inteiro em vez de um 5º card na linha, que ficaria
-             * apertado demais. Abre a busca já na categoria Alimentação.
+             * Alimentação: Private tem lanchonete + ponto de café; SUS tem a
+             * geladeira de lanches e café perto da recepção (17/11). Card
+             * inteiro em vez de um 5º card na linha, que ficaria apertado
+             * demais. Abre a busca já na categoria Alimentação.
              */}
-            {area.id === 'private' && (
+            {FOOD_CARD_KEYS[area.id] && (
               <Pressable
                 onPress={() => navigate('Search', { category: 'Alimentacao' })}
                 accessibilityRole="button"
-                accessibilityLabel={`${t('home.foodTitle')}. ${t('home.foodSub')}`}
+                accessibilityLabel={`${t(FOOD_CARD_KEYS[area.id].title)}. ${t(FOOD_CARD_KEYS[area.id].sub)}`}
                 style={({ pressed }) => [
                   styles.rowCard,
                   styles.foodCard,
@@ -1124,10 +1131,10 @@ export default function PatientHomeScreen({
                 </View>
                 <View style={styles.cardCopy}>
                   <Text numberOfLines={1} style={[styles.cardTitle, { color: appColors.text }]}>
-                    {t('home.foodTitle')}
+                    {t(FOOD_CARD_KEYS[area.id].title)}
                   </Text>
                   <Text numberOfLines={2} style={[styles.cardSubtitle, { color: appColors.muted }]}>
-                    {t('home.foodSub')}
+                    {t(FOOD_CARD_KEYS[area.id].sub)}
                   </Text>
                 </View>
                 <MaterialCommunityIcons name="chevron-right" size={22} color={appColors.primary} />
