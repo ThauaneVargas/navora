@@ -44,6 +44,7 @@ export default function SearchScreen({
   const [onlyFavorites, setOnlyFavorites] = useState(Boolean(routeParams.favoritesOnly));
   const { isFavorite, toggleFavorite } = useFavorites();
   const area = getAreaById(userProfile.area);
+  const userArea = userProfile.area || 'private';
   const profileLabel = userProfile.type === 'visitor' ? t('common.visitor') : t('common.patient');
   const sourceDestinations = navigationSource === 'api' ? navigationData?.destinations || destinations : destinations;
   const isVisitor = userProfile.type === 'visitor';
@@ -72,14 +73,18 @@ export default function SearchScreen({
   const visibleDestinations = useMemo(() => {
     const q = normalize(query);
     return sourceDestinations.filter((destination) => {
+      // Só destinos da unidade em que a pessoa está (+ áreas comuns). Com a API
+      // online a lista vem das duas unidades: antes o paciente do SUS via o
+      // banheiro do Private. Offline o canAccessDestination já filtrava.
+      const inUserArea = destination.area === userArea || destination.area === 'shared';
       const baseAccess = navigationSource === 'api' ? true : canAccessDestination(destination, userProfile);
-      const matchesAccess = baseAccess && visitorCanSeeDestination(destination);
+      const matchesAccess = inUserArea && baseAccess && visitorCanSeeDestination(destination);
       const matchesFilter = filter === 'Todos' || destination.category === filter;
       const matchesQuery = !q || normalize(`${destination.name} ${destination.category}`).includes(q);
       const matchesFavorite = !onlyFavorites || isFavorite(destination);
       return matchesAccess && matchesFilter && matchesQuery && matchesFavorite;
     });
-  }, [filter, isFavorite, navigationSource, onlyFavorites, query, sourceDestinations, userProfile, visitorApproved, visitorAccessRequest]);
+  }, [filter, isFavorite, navigationSource, onlyFavorites, query, sourceDestinations, userArea, userProfile, visitorApproved, visitorAccessRequest]);
 
   const wrongAreaDestination = useMemo(() => {
     if (navigationSource === 'api') return null;
