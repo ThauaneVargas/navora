@@ -16,16 +16,27 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: DATABASE_URL
-        fromDatabase:
-          name: navora-db-2
-          property: connectionString
-      - key: JWT_SECRET
-        generateValue: true
+      # Segredos: `sync: false` = o valor fica SÓ no painel do Render, nunca
+      # neste arquivo (o repositório é público). O servidor não sobe em produção
+      # se faltar algum ou se o JWT_SECRET for fraco (src/config/env.validation.ts).
+      # Ver docs/seguranca-chaves.md.
+      - key: DATABASE_URL # Neon (desde 03/11/2026)
+        sync: false
+      - key: JWT_SECRET # mínimo 32 caracteres aleatórios
+        sync: false
+      - key: CORS_ORIGINS # https://navora-nine.vercel.app
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: GOOGLE_CLIENT_IDS
+        sync: false
       - key: PORT
         value: "3000"
-
-databases:
-  - name: navora-db-2
-    plan: free
-    region: oregon

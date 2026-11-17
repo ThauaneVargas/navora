@@ -1,9 +1,10 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { DatabaseUnavailableFilter } from './common/database-unavailable.filter';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -34,6 +35,8 @@ async function bootstrap() {
     origin: corsOrigins,
     credentials: true,
   });
+  // Banco fora/lento -> 503 com mensagem clara (o app trata como passageiro).
+  app.useGlobalFilters(new DatabaseUnavailableFilter(app.get(HttpAdapterHost).httpAdapter));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

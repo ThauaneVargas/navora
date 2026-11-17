@@ -1106,86 +1106,6 @@ export default function PatientHomeScreen({
                 </Text>
               )}
           </View>
-
-          {/*
-           * 6. NAVORA IA
-           */}
-
-          <Pressable
-            onPress={() => navigate('Assistant')}
-            accessibilityRole="button"
-            accessibilityLabel={`${t('home.aiTitle')}. ${t('home.aiSub')}`}
-            style={({ pressed }) => [
-              styles.aiCard,
-              {
-                backgroundColor: appColors.surface,
-                borderColor: appColors.border,
-              },
-              pressed && styles.pressed,
-            ]}
-          >
-            <View style={[styles.tile46, { backgroundColor: appColors.iconBg }]}>
-              <MaterialCommunityIcons name="star-four-points" size={23} color={appColors.primary} />
-            </View>
-
-            <View style={styles.cardCopy}>
-              <View style={styles.aiTitleRow}>
-                <Text numberOfLines={1} style={[styles.cardTitle, { color: appColors.text }]}>
-                  {t('home.aiTitle')}
-                </Text>
-
-                <View style={[styles.aiBadge, { backgroundColor: appColors.iconBg }]}>
-                  <Text
-                    style={[styles.aiBadgeText, { color: appColors.primary }]}
-                    maxFontSizeMultiplier={1.2}
-                  >
-                    {t('home.assistant')}
-                  </Text>
-                </View>
-              </View>
-
-              <Text numberOfLines={2} style={[styles.cardSubtitle, { color: appColors.muted }]}>
-                {t('home.aiSub')}
-              </Text>
-            </View>
-
-            <View style={[styles.arrowTile, { backgroundColor: appColors.iconBg }]}>
-              <MaterialCommunityIcons name="chevron-right" size={20} color={appColors.primary} />
-            </View>
-          </Pressable>
-
-          {/*
-           * 7. ACESSIBILIDADE
-           */}
-
-          <Pressable
-            onPress={() => navigate('Accessibility')}
-            accessibilityRole="button"
-            accessibilityLabel={`${t('home.accessibility')}. ${t('home.adjustRoute')}`}
-            style={({ pressed }) => [
-              styles.rowCard,
-              {
-                backgroundColor: appColors.surface,
-                borderColor: appColors.border,
-              },
-              pressed && styles.pressed,
-            ]}
-          >
-            <View style={[styles.tile40, { backgroundColor: appColors.iconBg }]}>
-              <MaterialCommunityIcons name="wheelchair-accessibility" size={21} color={appColors.primary} />
-            </View>
-
-            <View style={styles.cardCopy}>
-              <Text numberOfLines={1} style={[styles.cardTitle, { color: appColors.text }]}>
-                {t('home.accessibility')}
-              </Text>
-              <Text numberOfLines={2} style={[styles.cardSubtitle, { color: appColors.muted }]}>
-                {t('home.adjustRoute')}
-              </Text>
-            </View>
-
-            <MaterialCommunityIcons name="chevron-right" size={22} color={appColors.primary} />
-          </Pressable>
         </ScrollView>
 
         <BottomTabs
@@ -1490,23 +1410,6 @@ function getRemainingTime(
 
 const styles =
   StyleSheet.create({
-    cardSubtitle: {
-      fontSize: 13,
-      lineHeight: 18,
-      fontWeight: '600',
-    },
-
-    cardTitle: {
-      fontSize: 16,
-      fontWeight: '900',
-      flexShrink: 1,
-    },
-
-    cardCopy: {
-      flex: 1,
-      minWidth: 0,
-      gap: 3,
-    },
 
     quickRow: {
       flexDirection: 'row',
@@ -1539,14 +1442,6 @@ const styles =
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
-    },
-
-    arrowTile: {
-      width: 32,
-      height: 32,
-      borderRadius: 11,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
 
     tile46: {
@@ -1754,16 +1649,6 @@ const styles =
      * IA
      */
 
-    aiCard: {
-      minHeight: 76,
-      borderRadius: 20,
-      borderWidth: 1,
-      padding: 12,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-
     aiMainIcon: {
       width: 50,
 
@@ -1787,27 +1672,9 @@ const styles =
       marginRight: 7,
     },
 
-    aiTitleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: 8,
-    },
-
     aiTitle: {
       fontSize: 15,
 
-      fontWeight: '900',
-    },
-
-    aiBadge: {
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-      borderRadius: 999,
-    },
-
-    aiBadgeText: {
-      fontSize: 11,
       fontWeight: '900',
     },
 

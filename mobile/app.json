@@ -15,9 +15,6 @@
       "buildNumber": "1",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "config": {
-        "googleMapsApiKey": "AIzaSyDCmuG1j9cHkWDUKm17061ECLmdjlgqGiw"
       }
     },
     "android": {
@@ -25,12 +22,7 @@
         "foregroundImage": "./assets/images/icone_app_adaptive.png",
         "backgroundColor": "#FFFFFF"
       },
-      "package": "com.navora.app",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyDCmuG1j9cHkWDUKm17061ECLmdjlgqGiw"
-        }
-      }
+      "package": "com.navora.app"
     },
     "web": {
       "favicon": "./assets/images/icone_app.png"

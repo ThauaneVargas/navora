@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { BeaconsModule } from './beacons/beacons.module';
 import { CallsModule } from './calls/calls.module';
 import { CheckInsModule } from './check-ins/check-ins.module';
+import { validateEnv } from './config/env.validation';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
@@ -19,7 +20,9 @@ import { VisitorAccessModule } from './visitor-access/visitor-access.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
+    // validateEnv: em produção o servidor não sobe sem as chaves obrigatórias
+    // ou com JWT_SECRET fraco/de exemplo (ver src/config/env.validation.ts).
+    ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 200 }]),
     DatabaseModule,
     AuthModule,

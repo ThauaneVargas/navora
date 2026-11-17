@@ -1,4 +1,5 @@
 import { Body, Controller, Delete, Get, Post, Put, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { UserRole } from '@prisma/client';
 import { CurrentUser } from '../auth/current-user.decorator';
 import { AuthenticatedUser } from '../auth/auth.types';
@@ -15,7 +16,10 @@ import { PatientsService } from './patients.service';
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
+  // Limite próprio contra criação de contas em massa (o global é 200/min).
+  // 10/min por IP: no Wi-Fi do hospital várias pessoas saem pelo mesmo IP.
   @Post('register')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   register(@Body() payload: RegisterPatientDto) {
     return this.patientsService.register(payload);
   }

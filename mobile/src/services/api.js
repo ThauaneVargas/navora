@@ -95,6 +95,10 @@ async function parseResponse(response) {
 }
 
 const REQUEST_TIMEOUT_MS = 60000;
+// Leitura do mapa/destinos: se a rede do hospital travar, cai no mapa offline
+// (navigationAdapter.js) em vez de deixar a tela carregando sem fim.
+const NAVIGATION_TIMEOUT_MS = 30000;
+const SERVER_UNAVAILABLE_STATUSES = new Set([502, 503, 504]);
 
 async function request(path, options = {}, fallback) {
   const { authenticated = false, headers, ...fetchOptions } = options;
@@ -116,8 +120,13 @@ async function request(path, options = {}, fallback) {
     const data = await parseResponse(response);
 
     if (!response.ok) {
+      // 502/503/504 = servidor ou banco fora do ar por um momento (Render
+      // acordando, banco indisponível). Para o app é o mesmo que estar sem
+      // rede: usa o modo offline, tenta de novo (SOS) e mostra o aviso certo.
+      const serverUnavailable = SERVER_UNAVAILABLE_STATUSES.has(response.status);
       throw new NavoraApiError(`Erro na API Navora: ${response.status}`, {
         status: response.status,
+        network: serverUnavailable,
         payload: data,
       });
     }
@@ -142,12 +151,15 @@ async function request(path, options = {}, fallback) {
 }
 
 async function navigationRequest(path, options = {}, fallbackData, normalizer = (value) => value) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), NAVIGATION_TIMEOUT_MS);
   try {
     const response = await fetch(`${API_BASE_URL}${path}`, {
       headers: {
         'Content-Type': 'application/json',
         ...(options.headers || {}),
       },
+      signal: controller.signal,
       ...options,
     });
 
@@ -159,6 +171,8 @@ async function navigationRequest(path, options = {}, fallbackData, normalizer = 
   } catch (error) {
     const data = typeof fallbackData === 'function' ? fallbackData(error) : fallbackData;
     return normalizeApiEnvelope(normalizer(data), 'fallback');
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
