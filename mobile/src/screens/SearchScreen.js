@@ -15,7 +15,7 @@ import {
   getReceptionDestination,
 } from '../data/routes';
 
-const filters = ['Todos', 'Exames', 'Atendimento', 'Servicos', 'Visita'];
+const filters = ['Todos', 'Exames', 'Atendimento', 'Servicos', 'Alimentacao', 'Visita'];
 
 const normalize = (value = '') =>
   value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');

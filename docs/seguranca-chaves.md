@@ -45,13 +45,15 @@ App mobile / Painel web  ──(só JWT do usuário)──▶  API NestJS (Rende
    - Render → serviço `navora-backend` → Environment → `JWT_SECRET` → colar → salvar. (Todos precisam entrar de novo no app/painel — esperado.)
    - Neon → projeto `navora` → Roles → resetar a senha → copiar a nova connection string → `DATABASE_URL` no Render.
    - Conferir que `CORS_ORIGINS` no Render tem `https://navora-nine.vercel.app` — senão, com esta branch, a API não sobe.
-2. **Trocar a chave do Google Maps** (Google Cloud Console → APIs e serviços → Credenciais):
-   - Criar uma chave nova; **restringir**: Android (pacote `com.navora.app` + SHA-1 do certificado — pegar com `npx eas-cli credentials`) e iOS (bundle `com.navora.app`); restringir as APIs a *Maps SDK for Android* e *Maps SDK for iOS*.
-   - Apagar a chave antiga `AIzaSyDC…`.
-   - Colocar a nova em `mobile/.env` (`GOOGLE_MAPS_API_KEY=...`) para o build local.
-   - Para o build EAS: `cd mobile; npx eas-cli env:create --name GOOGLE_MAPS_API_KEY --value <chave> --environment production --visibility sensitive`.
-   - Chave de SDK de mapa sempre fica dentro do APK; o que protege é a restrição acima.
-3. Apagar no Neon os projetos que não são usados (`navora-producao` e os dois `navora-staging`) — cada um tem senha própria e só aumenta o que pode vazar.
+2. **Trocar a chave do Google Maps** — só Android (no iPhone o app usa o Apple Maps, não precisa de chave). No Google Cloud Console (console.cloud.google.com), no projeto da chave antiga:
+   1. **APIs e serviços → Biblioteca:** conferir que "Maps SDK for Android" está ativada.
+   2. **Pegar o SHA-1 do certificado** do APK: `cd C:\dev\navora\mobile; npx eas-cli credentials -p android` → perfil `production` → copiar o "SHA1 Fingerprint". Para os APKs de teste locais (chave debug), também o SHA-1 de `cd android; .\gradlew signingReport` (variante `debug`).
+   3. **Credenciais → Criar credenciais → Chave de API.** Na chave nova: *Restrições de aplicativo* = **Apps Android** → adicionar pacote `com.navora.app` + cada SHA-1 do passo 2. *Restrições de API* = **Restringir chave** → só "Maps SDK for Android". Salvar.
+   4. **Já agora, restringir a chave antiga `AIzaSyDC…` do mesmo jeito** (Apps Android + SHA-1). Assim ela para de funcionar fora do app, mas os APKs já instalados continuam com mapa.
+   5. Cadastrar a nova no EAS: `cd C:\dev\navora\mobile; npx eas-cli env:create --name GOOGLE_MAPS_API_KEY --value "<chave nova>" --environment production --visibility sensitive`. E no `mobile/.env` (`GOOGLE_MAPS_API_KEY=<chave nova>`) para o build local.
+   6. Gerar o APK novo; quando ele estiver instalado nos celulares de teste, **apagar a chave antiga** (Credenciais → lixeira).
+   - Se um dia publicar na Play Store, somar o SHA-1 da "Assinatura de apps do Google Play" (Play Console → Integridade do app) na restrição da chave.
+3. ~~Apagar no Neon os projetos sem uso~~ (feito em 17/11: `navora-producao` e os dois `navora-staging`; recuperáveis até 24/11).
 4. No Render, configurar `Health Check Path` = `/health` (hoje está vazio): o Render passa a detectar banco fora.
 5. Fazer o deploy desta branch (`git push origin fix/seguranca-chaves:main`) **depois** do passo 1 — se o Render estiver sem `CORS_ORIGINS` ou com segredo fraco, o deploy novo falha e o antigo continua no ar (nada cai).
 6. Gerar APK novo depois do passo 2 (sem a chave o mapa do "Como chegar" fica em branco no Android).

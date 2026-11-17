@@ -9,9 +9,12 @@
 // Sem prefixo EXPO_PUBLIC_ de propósito: a chave só é usada na configuração
 // nativa do mapa, não precisa entrar no código JS do app.
 //
+// Só Android: no iPhone o mapa usa o Apple Maps (ExternalRouteScreen só pede
+// PROVIDER_GOOGLE no Android), então o iOS não precisa de chave do Google.
+//
 // Observação: chave de SDK nativo do Maps sempre acaba dentro do APK. A
-// proteção real é a RESTRIÇÃO da chave no Google Cloud (pacote com.navora.app +
-// SHA-1 no Android, bundle com.navora.app no iOS, só a API do Maps SDK).
+// proteção real é a RESTRIÇÃO da chave no Google Cloud (app Android
+// com.navora.app + SHA-1 do certificado, só a API "Maps SDK for Android").
 
 module.exports = ({ config }) => {
   const googleMapsApiKey = process.env.GOOGLE_MAPS_API_KEY?.trim();
@@ -26,10 +29,6 @@ module.exports = ({ config }) => {
 
   return {
     ...config,
-    ios: {
-      ...config.ios,
-      config: { ...config.ios?.config, googleMapsApiKey },
-    },
     android: {
       ...config.android,
       config: {

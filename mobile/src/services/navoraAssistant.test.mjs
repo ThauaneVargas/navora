@@ -92,6 +92,12 @@ test('"como chegar" ao hospital vs. a um setor', () => {
   assert.equal(ask('como chegar na tomografia').intent, 'destination');
 });
 
+test('lanchonete só existe no Private: no SUS o assistente não inventa uma', () => {
+  const answer = ask('onde fica a lanchonete', patientSus);
+  assert.notEqual(answer.actionParams?.query, 'Lanchonete SUS');
+  assert.match(answer.text, /HMC Private/);
+});
+
 test('banheiro do Marco Capute é destino, não troca de unidade', () => {
   assert.equal(ask('onde fica o banheiro do marco capute', patientSus).actionParams.query, 'Banheiro SUS');
 });
@@ -113,6 +119,10 @@ const REAL_PHRASES_PATIENT_PRIVATE = [
   ['quero sair daqui', 'destination', 'Saida Private'],
   ['acabou meu exame, como saio?', 'destination', 'Saida Private'],
   ['onde posso esperar', 'destination', 'Sala de espera Private'],
+  ['onde fica a lanchonete', 'destination', 'Lanchonete'],
+  ['estou com fome, onde posso comer?', 'destination', 'Lanchonete'],
+  ['quero um cafe', 'destination', 'Café e lanches (autoatendimento)'],
+  ['tem cafezinho aqui?', 'destination', 'Café e lanches (autoatendimento)'],
   ['tenho exame de urina', 'destination', 'Laboratorio Private'],
   ['quero marcar uma consulta', 'no_scheduling'],
   ['como faço pra agendar exame', 'no_scheduling'],

@@ -65,6 +65,11 @@ const nodeSeeds = [
   { code: 'private-laboratory', label: 'Laboratorio Private', type: NavigationNodeType.ROOM, floor: 'Piso Terreo', x: 58, y: 68, z: 0, areaCode: 'private', sectorCode: 'private-laboratory' },
   { code: 'private-bathroom', label: 'Banheiro Private', type: NavigationNodeType.BATHROOM, floor: 'Piso Terreo', x: 34, y: 36, z: 0, areaCode: 'private', sectorCode: 'private-services' },
   { code: 'private-waiting', label: 'Sala de espera Private', type: NavigationNodeType.ROOM, floor: 'Piso Terreo', x: 36, y: 72, z: 0, areaCode: 'private', sectorCode: 'private-services' },
+  // Planta do HMC Private (17/11): lanchonete ao lado da recepção principal;
+  // ponto de autoatendimento (geladeira com lanches e café) perto da recepção
+  // do lado direito. Posições e distâncias estimadas — conferir no hospital.
+  { code: 'private-lanchonete', label: 'Lanchonete', type: NavigationNodeType.ROOM, floor: 'Piso Terreo', x: 28, y: 64, z: 0, areaCode: 'private', sectorCode: 'private-services', instruction: 'A lanchonete fica ao lado da recepcao principal.' },
+  { code: 'private-cafe', label: 'Cafe e lanches (autoatendimento)', type: NavigationNodeType.ROOM, floor: 'Piso Terreo', x: 70, y: 74, z: 0, areaCode: 'private', sectorCode: 'private-services', instruction: 'O ponto de cafe fica perto da recepcao do lado direito.' },
   { code: 'private-exit', label: 'Saida Private', type: NavigationNodeType.EXIT, floor: 'Piso Terreo', x: 85, y: 70, z: 0, areaCode: 'private', sectorCode: 'shared-exit' },
   { code: 'private-visit', label: 'Visita / Internacao Private', type: NavigationNodeType.ROOM, floor: '1o Andar', x: 82, y: 24, z: 1, areaCode: 'private', sectorCode: 'private-visit' },
   { code: 'sus-entry', label: 'Entrada Hospital Marco Capute', type: NavigationNodeType.ENTRANCE, floor: 'Piso Terreo', x: 12, y: 84, z: 0, areaCode: 'sus', sectorCode: 'sus-reception', instruction: 'Entrada pela frente.' },
@@ -97,6 +102,8 @@ const edgeSeeds = [
   { from: 'corridor-a', to: 'private-laboratory', distanceMeters: 18, accessible: true },
   { from: 'corridor-a', to: 'private-bathroom', distanceMeters: 12, accessible: true },
   { from: 'private-reception', to: 'private-waiting', distanceMeters: 10, accessible: true },
+  { from: 'private-reception', to: 'private-lanchonete', distanceMeters: 15, accessible: true, instruction: 'A lanchonete fica ao lado da recepcao principal.' },
+  { from: 'corridor-a', to: 'private-cafe', distanceMeters: 25, accessible: true, instruction: 'Siga pelo corredor principal ate a recepcao do lado direito.' },
   { from: 'corridor-a', to: 'private-exit', distanceMeters: 28, accessible: true },
   { from: 'corridor-a', to: 'private-visit', distanceMeters: 80, accessible: true, instruction: 'Use o elevador para acessar internacao Private.' },
   { from: 'sus-entry', to: 'sus-reception', distanceMeters: 35, accessible: true, instruction: 'Siga da entrada pela frente ate a recepcao.' },
@@ -127,6 +134,8 @@ const destinationSeeds = [
   { code: 'private-laboratorio', icon: 'flask-outline', name: 'Laboratorio Private', areaCode: 'private', sectorCode: 'private-laboratory', nodeCode: 'private-laboratory', category: 'Exames', floor: 'Piso Terreo', distanceLabel: '135 m', timeLabel: '3 min', accessLevel: 'patient' },
   { code: 'private-bathroom', icon: 'toilet', name: 'Banheiro Private', areaCode: 'private', sectorCode: 'private-services', nodeCode: 'private-bathroom', category: 'Servicos', floor: 'Piso Terreo', distanceLabel: '65 m', timeLabel: '1 min', accessLevel: 'visitor_allowed' },
   { code: 'private-waiting', icon: 'seat-outline', name: 'Sala de espera Private', areaCode: 'private', sectorCode: 'private-services', nodeCode: 'private-waiting', category: 'Servicos', floor: 'Piso Terreo', distanceLabel: '75 m', timeLabel: '1 min', accessLevel: 'visitor_allowed' },
+  { code: 'private-lanchonete', icon: 'food-outline', name: 'Lanchonete', areaCode: 'private', sectorCode: 'private-services', nodeCode: 'private-lanchonete', category: 'Alimentacao', floor: 'Piso Terreo', distanceLabel: '15 m', timeLabel: '1 min', accessLevel: 'public' },
+  { code: 'private-cafe', icon: 'coffee-outline', name: 'Café e lanches (autoatendimento)', areaCode: 'private', sectorCode: 'private-services', nodeCode: 'private-cafe', category: 'Alimentacao', floor: 'Piso Terreo', distanceLabel: '45 m', timeLabel: '1 min', accessLevel: 'public' },
   { code: 'private-exit', icon: 'exit-run', name: 'Saida Private', areaCode: 'private', sectorCode: 'shared-exit', nodeCode: 'private-exit', category: 'Servicos', floor: 'Piso Terreo', distanceLabel: '90 m', timeLabel: '2 min', accessLevel: 'public' },
   { code: 'private-visita', icon: 'account-heart-outline', name: 'Visita / Internacao Private', areaCode: 'private', sectorCode: 'private-visit', nodeCode: 'private-visit', category: 'Visita', floor: '1o Andar', distanceLabel: '210 m', timeLabel: '4 min', accessLevel: 'visitor_authorization' },
   { code: 'sus-reception', icon: 'desk', name: 'Recepcao Hospital Marco Capute', areaCode: 'sus', sectorCode: 'sus-reception', nodeCode: 'sus-reception', category: 'Servicos', floor: 'Piso Terreo', distanceLabel: '35 m', timeLabel: '1 min', accessLevel: 'public' },

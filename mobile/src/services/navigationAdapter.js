@@ -6,6 +6,7 @@ import {
 } from '../data/routes';
 
 const fallbackIconByCategory = {
+  Alimentacao: 'coffee-outline',
   Atendimento: 'stethoscope',
   Exames: 'flask-outline',
   Restrito: 'lock-alert-outline',

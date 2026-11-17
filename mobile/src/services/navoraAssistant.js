@@ -155,6 +155,10 @@ const DESTINATION_SYNONYMS = [
   { terms: ['recepcao', 'balcao', 'guiche'], cores: ['recepcao', 'recepcao mais proxima'] },
   { terms: ['banheiro', 'sanitario', 'toalete', 'wc'], cores: ['banheiro'] },
   { terms: ['sala de espera', 'esperar', 'aguardar'], cores: ['sala de espera'] },
+  // Só o HMC Private tem (planta de 17/11): lanchonete de comida fresca e um
+  // ponto de autoatendimento com geladeira de lanches e café.
+  { terms: ['lanchonete', 'cantina', 'comer', 'comida', 'fome', 'lanchar', 'lanche'], cores: ['lanchonete', 'cafe e lanches (autoatendimento)'] },
+  { terms: ['cafe', 'cafezinho', 'autoatendimento', 'maquina de cafe', 'geladeira'], cores: ['cafe e lanches (autoatendimento)', 'lanchonete'] },
   { terms: ['saida', 'ir embora', 'sair do hospital', 'sair daqui', 'como saio'], cores: ['saida'] },
   { terms: ['tomografia'], cores: ['tomografia'] },
   { terms: ['raio-x', 'raio x', 'raiox', 'rx'], cores: ['raio-x'] },

@@ -146,6 +146,11 @@ export const destinations = [
   { id: 'private-laboratorio', icon: 'flask-outline', name: 'Laboratorio Private', area: 'private', category: 'Exames', floor: 'Piso Terreo', distance: '135 m', time: '3 min', accessLevel: 'patient', externalPatientAccess: true },
   { id: 'private-bathroom', icon: 'toilet', name: 'Banheiro Private', area: 'private', category: 'Servicos', floor: 'Piso Terreo', distance: '65 m', time: '1 min', accessLevel: 'visitor_allowed' },
   { id: 'private-waiting', icon: 'seat-outline', name: 'Sala de espera Private', area: 'private', category: 'Servicos', floor: 'Piso Terreo', distance: '75 m', time: '1 min', accessLevel: 'visitor_allowed' },
+  // Planta do HMC Private (17/11): lanchonete ao lado da recepção principal e
+  // ponto de autoatendimento (geladeira com lanches e café) perto da recepção
+  // do lado direito. Distâncias estimadas — conferir no hospital.
+  { id: 'private-lanchonete', icon: 'food-outline', name: 'Lanchonete', area: 'private', category: 'Alimentacao', floor: 'Piso Terreo', distance: '15 m', time: '1 min', accessLevel: 'public' },
+  { id: 'private-cafe', icon: 'coffee-outline', name: 'Café e lanches (autoatendimento)', area: 'private', category: 'Alimentacao', floor: 'Piso Terreo', distance: '45 m', time: '1 min', accessLevel: 'public' },
   { id: 'private-exit', icon: 'exit-run', name: 'Saida Private', area: 'private', category: 'Servicos', floor: 'Piso Terreo', distance: '90 m', time: '2 min', accessLevel: 'public' },
   { id: 'private-visita', icon: 'account-heart-outline', name: 'Visita / Internacao Private', area: 'private', category: 'Visita', floor: '1o Andar', distance: '210 m', time: '4 min', accessLevel: 'visitor_authorization' },
   { id: 'sus-reception', icon: 'desk', name: 'Recepcao Hospital Marco Capute', area: 'sus', category: 'Servicos', floor: 'Piso Terreo', distance: '35 m', time: '1 min', accessLevel: 'public' },

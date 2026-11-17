@@ -1078,7 +1078,7 @@ export default function PatientHomeScreen({
           </View>
 
           {/*
-           * 5. ACESSOS RÁPIDOS (uma linha, quatro cards)
+           * 5. ACESSOS RÁPIDOS (uma linha, quatro cards + Lanchonete e café no Private)
            */}
 
           <View style={styles.section}>
@@ -1098,6 +1098,41 @@ export default function PatientHomeScreen({
                 />
               ))}
             </View>
+
+            {/*
+             * Lanchonete e ponto de café: só o HMC Private tem (planta de
+             * 17/11). Card inteiro em vez de um 5º card na linha, que ficaria
+             * apertado demais. Abre a busca já na categoria Alimentação.
+             */}
+            {area.id === 'private' && (
+              <Pressable
+                onPress={() => navigate('Search', { category: 'Alimentacao' })}
+                accessibilityRole="button"
+                accessibilityLabel={`${t('home.foodTitle')}. ${t('home.foodSub')}`}
+                style={({ pressed }) => [
+                  styles.rowCard,
+                  styles.foodCard,
+                  {
+                    backgroundColor: appColors.surface,
+                    borderColor: appColors.border,
+                  },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <View style={[styles.tile40, { backgroundColor: appColors.iconBg }]}>
+                  <MaterialCommunityIcons name="coffee-outline" size={21} color={appColors.primary} />
+                </View>
+                <View style={styles.cardCopy}>
+                  <Text numberOfLines={1} style={[styles.cardTitle, { color: appColors.text }]}>
+                    {t('home.foodTitle')}
+                  </Text>
+                  <Text numberOfLines={2} style={[styles.cardSubtitle, { color: appColors.muted }]}>
+                    {t('home.foodSub')}
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={22} color={appColors.primary} />
+              </Pressable>
+            )}
 
             {isVisitor &&
               !visitApproved && (
@@ -1433,6 +1468,24 @@ const styles =
       fontWeight: '800',
     },
 
+    foodCard: {
+      marginTop: 10,
+    },
+    cardCopy: {
+      flex: 1,
+      minWidth: 0,
+      gap: 3,
+    },
+    cardTitle: {
+      fontSize: 16,
+      fontWeight: '900',
+      flexShrink: 1,
+    },
+    cardSubtitle: {
+      fontSize: 13,
+      lineHeight: 18,
+      fontWeight: '600',
+    },
     rowCard: {
       minHeight: 60,
       borderRadius: 18,
